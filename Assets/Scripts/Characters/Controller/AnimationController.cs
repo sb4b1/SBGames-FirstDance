@@ -1,0 +1,112 @@
+using UnityEngine;
+using SB4b1.Logging;
+using System.Collections.Generic;
+using UnityEngine.AI;
+using ArtificeToolkit.Attributes;
+
+[RequireComponent(typeof(Animator), typeof(SpriteRenderer))]
+public class AnimationController : MonoBehaviour
+{
+    [SerializeField] private Animator animator;
+    [SerializeField] private SpriteRenderer sprite;
+    [SerializeField] private CharacterBrain brain;
+    [SerializeField] private CharacterMovementController movement;
+    [SerializeField] private NavMeshAgent agent;
+
+    private static readonly int HASH_MOVE_X = Animator.StringToHash("MoveX");
+    private static readonly int HASH_MOVE_Y = Animator.StringToHash("MoveY");
+    private static readonly int HASH_SPEED  = Animator.StringToHash("Speed");
+    private static readonly int HASH_ATTACK = Animator.StringToHash("IsAttacking");
+
+    private Vector2 lastMoveDir = Vector2.down;
+
+    private void Awake()
+    {
+        if (animator == null) animator = GetComponent<Animator>();
+        if (movement == null) movement = GetComponentInParent<CharacterMovementController>();
+        if (brain == null) brain = GetComponentInParent<CharacterBrain>();
+        if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
+    }
+
+    private void Update()
+    {
+        UpdateMovement();
+        UpdateAttack();
+        UpdateFlip();
+    }
+
+    private void UpdateMovement()
+    {
+        Vector2 velocity = brain.IsPlayerControlled? movement.MoveDirection:
+                           (agent != null ? (Vector2)agent.velocity : Vector2.zero);
+
+    if (velocity.sqrMagnitude > 0.01f)
+        lastMoveDir = velocity.normalized;
+
+    animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
+    animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
+    animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
+    }
+
+    private void UpdateAttack()
+    {
+        animator.SetBool(HASH_ATTACK, brain.IsAttacking);
+    }
+
+    private void UpdateFlip()
+    {
+        if (lastMoveDir.x > 0.1f) sprite.flipX = false;
+        else if (lastMoveDir.x < -0.1f) sprite.flipX = true;
+    }
+
+    // =========================
+    // Animation Events
+    // =========================
+    public void OnAttackAnimationEnd()
+    {
+        brain.EndAttack();
+    }
+
+// Generate paremeters for animator
+#if UNITY_EDITOR
+
+    [Button]
+    private void Validate()
+    {
+        List<string> names = new()
+        {
+            "Speed",
+            "MoveX",
+            "MoveY",
+            "IdleUp",
+            "IdleDown",
+            "IdleRight",
+            "IdleLeft",
+            "IsWalking",
+            "IsAttacking"
+        };
+
+        int validate = 0;
+        animator = GetComponent<Animator>();
+
+        if (animator.parameterCount == 0)
+        {
+            ELogger.Warning(this, "No paramerters found.");
+            return;
+        }
+        foreach (var parameter in animator.parameters)
+        {
+            if(!names.Contains(parameter.name))
+            {
+                ELogger.Warning(this, parameter.name);
+                validate++;
+            }
+        }
+
+        if (validate == 0 || animator.parameterCount == 0) ELogger.Log(this, "No missing paramerters.");
+    }
+
+
+
+#endif
+}

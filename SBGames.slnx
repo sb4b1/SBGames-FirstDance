@@ -1,2 +1,7 @@
 ﻿<Solution>
+  <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="Micosmo.SensorToolkit.Editor.csproj" />
+  <Project Path="Micosmo.SensorToolkit.csproj" />
+  <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>
