@@ -24,13 +24,13 @@
         <mxCell id="PQgSUGH7uALMGuiR7q-m-9" parent="mavc2PxRUqXrTLtG8VZS-8" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" value="Use Offence Skill" vertex="1">
           <mxGeometry height="120" width="140" x="10" y="170" as="geometry" />
         </mxCell>
-        <mxCell id="PQgSUGH7uALMGuiR7q-m-10" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Item 1" vertex="1">
+        <mxCell id="PQgSUGH7uALMGuiR7q-m-10" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Fear &amp;lt;= 75" vertex="1">
           <mxGeometry height="30" width="140" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="PQgSUGH7uALMGuiR7q-m-11" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Item 2" vertex="1">
+        <mxCell id="PQgSUGH7uALMGuiR7q-m-11" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Threat --" vertex="1">
           <mxGeometry height="30" width="140" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="PQgSUGH7uALMGuiR7q-m-12" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Item 3" vertex="1">
+        <mxCell id="PQgSUGH7uALMGuiR7q-m-12" parent="PQgSUGH7uALMGuiR7q-m-9" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" value="Cost 3" vertex="1">
           <mxGeometry height="30" width="140" y="90" as="geometry" />
         </mxCell>
         <mxCell id="aKJIGo1b5vLfJ3pbRJWr-22" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontSize=8;startSize=30;" value="Goal" vertex="1">
