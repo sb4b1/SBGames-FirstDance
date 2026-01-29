@@ -12,15 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf3fe472de7fa6d4684979c378aa3f69, type: 3}
   m_Name: FSkill_001
   m_EditorClassIdentifier: Assembly-CSharp::SkillData
-  skillID: 
-  skillName: 
+  skillID: 001
+  skillName: FSkill_001
   description: 
   icon: {fileID: 0}
   baseDamage: 10
-  damageType: 0
-  skillPrefab: {fileID: 0}
-  projectileSpeed: 10
-  projectileLifetime: 5
+  damageType: 3
+  skillPrefab: {fileID: 57455629093989876, guid: fae478432504c0f488702db9c00751c2, type: 3}
+  projectileSpeed: 3
+  projectileLifetime: 5.07
+  projectileForward: 1
+  projectileRotationOffset: 0
   maxChainTargets: 0
   chainDamageMultiplier: 0.7
   aoeRadius: 0
