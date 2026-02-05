@@ -55,7 +55,6 @@ GameObject:
   m_Component:
   - component: {fileID: 3843292984236393184}
   - component: {fileID: 5415710526957412800}
-  - component: {fileID: 2542603047232974978}
   m_Layer: 0
   m_Name: AttackHitbox
   m_TagString: Untagged
@@ -114,18 +113,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0.09, y: -0.035}
   m_Radius: 0.05
---- !u!114 &2542603047232974978
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1260756780467848515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: db6970f6d8e2e1344a3fba6cd5db60f1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AttackHitbox
 --- !u!1 &2396189886448498672
 GameObject:
   m_ObjectHideFlags: 0
@@ -258,10 +245,7 @@ MonoBehaviour:
   sprite: {fileID: 4786395061666043320}
   brain: {fileID: 5661646937458837832}
   movement: {fileID: 5841761043065473055}
-  combat: {fileID: 0}
   agent: {fileID: 7031461656827861849}
-  transformCache: {fileID: 0}
-  flipDirection: 1
 --- !u!1 &2810017690310066115
 GameObject:
   m_ObjectHideFlags: 0
@@ -502,10 +486,34 @@ MonoBehaviour:
   signalProcessors: []
   OnDetected:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 4759534745067829468}
+        m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
+        m_MethodName: OnTargetDetect
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   OnLostDetection:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 4759534745067829468}
+        m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
+        m_MethodName: OnTargetLost
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   OnSomeDetection:
     m_PersistentCalls:
       m_Calls: []
@@ -632,9 +640,12 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   signalFilter:
-    IgnoreList: []
-    EnableTagFilter: 0
-    AllowedTags: []
+    IgnoreList:
+    - {fileID: 8960087825022006478}
+    EnableTagFilter: 1
+    AllowedTags:
+    - Faction_01
+    - Faction_02
   DetectionMode: 1
   Shape: 0
   Circle:
@@ -646,7 +657,7 @@ MonoBehaviour:
     Height: 1
   DetectsOnLayers:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 65
   IgnoreTriggerColliders: 0
   pulseRoutine:
     Mode:
@@ -702,7 +713,7 @@ GameObject:
   - component: {fileID: 6820165486231997942}
   m_Layer: 6
   m_Name: N_001
-  m_TagString: Untagged
+  m_TagString: Faction_02
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -833,7 +844,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b8f13460be2b44409863f71ae313b2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterCombatController
-  attackHitbox: {fileID: 1260756780467848515}
 --- !u!1 &9097028675395075657
 GameObject:
   m_ObjectHideFlags: 0
@@ -884,9 +894,6 @@ MonoBehaviour:
   agent: {fileID: 7031461656827861849}
   stats: {fileID: 7331921466431717763}
   controller: {fileID: 5841761043065473055}
-  CurrentTarget: {fileID: 0}
-  fearLevel: 0
-  threatLevel: 0
 --- !u!114 &7690681229766653026
 MonoBehaviour:
   m_ObjectHideFlags: 0
