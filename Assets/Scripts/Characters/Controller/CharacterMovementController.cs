@@ -45,7 +45,7 @@ public class CharacterMovementController : MonoBehaviour
 
     private void ReadInput()
     {
-        if (!brain.IsPlayerControlled || brain.IsDashing)
+        if (brain.ControlMode != ControlMode.Player || brain.IsDashing)
         {
             moveInput = Vector2.zero;
             return;

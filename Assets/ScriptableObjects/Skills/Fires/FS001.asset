@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf3fe472de7fa6d4684979c378aa3f69, type: 3}
+  m_Name: FS001
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillID: FS001
+  skillName: FSkill_001
+  description: 
+  icon: {fileID: 0}
+  skillPrefab: {fileID: 57455629093989876, guid: fae478432504c0f488702db9c00751c2, type: 3}
+  projectileForward: 1
+  projectileRotationOffset: 0
+  baseDamage: 10
+  damageType: 3
+  projectileSpeed: 3
+  projectileLifetime: 5.07
+  chain: 0
+  maxChainTargets: 0
+  chainDamageMultiplier: 0.7
+  aoe: 0
+  aoeRadius: 0
+  beamTickInterval: 0.1
+  statusEffects: []

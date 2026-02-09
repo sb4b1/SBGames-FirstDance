@@ -5,6 +5,7 @@ using UnityEngine.AI;
 using ArtificeToolkit.Attributes;
 
 [RequireComponent(typeof(Animator), typeof(SpriteRenderer))]
+[RequireComponent(typeof(CharacterFlipRotator))]
 public class AnimationController : MonoBehaviour
 {
     [SerializeField] private Animator animator;
@@ -12,6 +13,7 @@ public class AnimationController : MonoBehaviour
     [SerializeField] private CharacterBrain brain;
     [SerializeField] private CharacterMovementController movement;
     [SerializeField] private NavMeshAgent agent;
+    [SerializeField] private CharacterFlipRotator flipRotator;
 
     private static readonly int HASH_MOVE_X = Animator.StringToHash("MoveX");
     private static readonly int HASH_MOVE_Y = Animator.StringToHash("MoveY");
@@ -23,6 +25,7 @@ public class AnimationController : MonoBehaviour
     private void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
+        if (flipRotator == null) flipRotator = GetComponent<CharacterFlipRotator>();
         if (movement == null) movement = GetComponentInParent<CharacterMovementController>();
         if (brain == null) brain = GetComponentInParent<CharacterBrain>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
@@ -37,7 +40,7 @@ public class AnimationController : MonoBehaviour
 
     private void UpdateMovement()
     {
-        Vector2 velocity = brain.IsPlayerControlled? movement.MoveDirection:
+        Vector2 velocity = brain.ControlMode == ControlMode.Player ? movement.MoveDirection:
                            (agent != null ? (Vector2)agent.velocity : Vector2.zero);
 
     if (velocity.sqrMagnitude > 0.01f)
@@ -55,8 +58,8 @@ public class AnimationController : MonoBehaviour
 
     private void UpdateFlip()
     {
-        if (lastMoveDir.x > 0.1f) sprite.flipX = false;
-        else if (lastMoveDir.x < -0.1f) sprite.flipX = true;
+        if (lastMoveDir.x > 0.1f) flipRotator.ApplyRotation(false);
+        else if (lastMoveDir.x < -0.1f) flipRotator.ApplyRotation(true);
     }
 
     // =========================

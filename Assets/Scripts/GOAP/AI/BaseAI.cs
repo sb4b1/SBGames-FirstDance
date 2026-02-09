@@ -8,6 +8,14 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private CharacterStatsManager stats;
     [SerializeField] private CharacterMovementController controller;
 
+    public Transform CurrentTarget { get; protected set; }
+    public Transform[] EnemyTargets { get; protected set; }
+    public Transform[] AllyTargets { get; protected set; }
+
+    public int ThreatLevel { get; protected set; }
+    public int FearLevel { get; protected set; }
+    public float AgentLife { get; protected set; }
+
     protected GoapActionProvider provider;
     protected GoapBehaviour goap;
 
@@ -40,7 +48,11 @@ public class BaseAI : MonoBehaviour
 
     protected virtual void SetGoal() { }
 
+    public void SetTarget(Transform target) => CurrentTarget = target;
+
+    public void SetEnemyTargets(Transform[] targets) => EnemyTargets = targets;
 
     public void AgentDestination(Vector2 targetPosition) => agent.SetDestination(targetPosition);
     public bool IsAgentStop(bool value) => agent.isStopped = value;
+
 }

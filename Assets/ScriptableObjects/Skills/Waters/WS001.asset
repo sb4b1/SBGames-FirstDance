@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf3fe472de7fa6d4684979c378aa3f69, type: 3}
+  m_Name: WS001
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillID: WS001
+  skillName: WSkill_001
+  description: 
+  icon: {fileID: 0}
+  skillPrefab: {fileID: 697117051704437738, guid: 63ecff21f366f8b429072752b04805b1, type: 3}
+  projectileForward: 0
+  projectileRotationOffset: 0
+  baseDamage: 10
+  damageType: 1
+  projectileSpeed: 10
+  projectileLifetime: 5
+  chain: 0
+  maxChainTargets: 0
+  chainDamageMultiplier: 0
+  aoe: 1
+  aoeRadius: 3
+  beamTickInterval: 0.1
+  statusEffects: []

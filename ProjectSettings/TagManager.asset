@@ -44,5 +44,11 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Character
+    uniqueID: 4229403911
+    locked: 0
+  - name: SkillFX
+    uniqueID: 1230265923
+    locked: 0
   m_RenderingLayers:
   - Default

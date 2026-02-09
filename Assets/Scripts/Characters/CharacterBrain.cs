@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEditor;
 using SB4b1.ComponentUtils;
 using SB4b1.Logging;
 using ArtificeToolkit.Attributes;
@@ -8,11 +9,15 @@ public class CharacterBrain : MonoBehaviour
     // =========================
     // Control
     // =========================
-    [SerializeField] private bool isPlayerControlled;
+
+    [SerializeField] private ControlMode controlMode;
+    private AgentStatus agentStatus;
+
+    public ControlMode ControlMode => controlMode;
+    public AgentStatus AgentStatus => agentStatus;
 
     [SerializeField] private GameObject aiAugment;
 
-    public bool IsPlayerControlled => isPlayerControlled;
     // =========================
     // State
     // =========================
@@ -28,12 +33,25 @@ public class CharacterBrain : MonoBehaviour
         HasAI = aiAugment != null;
     }
 
+    private void Start()
+    {
+        if (controlMode == ControlMode.Player)
+        {
+            AIActivation(false);
+        }
+        else
+        {
+            AIActivation(true);
+        }
+    }
+
 
     private void Update()
     {
-        if (isPlayerControlled) return;
+        if (controlMode == ControlMode.Player) return;
         if (HasAI == false) return;
         if (aiAugment.activeSelf == false) AIActivation(true);
+
     }
 
     // =========================
@@ -115,15 +133,21 @@ public class CharacterBrain : MonoBehaviour
     [Button]
     private void PlayerControl()
     {
-        isPlayerControlled = true;
+        controlMode = ControlMode.Player;
         if (aiAugment != null) AIActivation(false);
     }
 
     [Button]
-    private void BotControl()
+    private void AgentControl()
     {
-        isPlayerControlled = false;
+        controlMode = ControlMode.AI;
         if (aiAugment != null) AIActivation(true);
+    }
+
+    private void ToggleAI()
+    {
+        if (!HasAI) return;
+        AIActivation(!aiAugment.activeSelf);
     }
 #endif
 }

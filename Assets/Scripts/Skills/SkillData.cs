@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ArtificeToolkit.Attributes;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "SBGames/Skills/Skill Data")]
@@ -9,15 +10,7 @@ public class SkillData : ScriptableObject
     public string skillName;
     [TextArea] public string description;
     public Sprite icon;
-
-    [Header("Damage")]
-    public float baseDamage = 10f;
-    public DamageType damageType = DamageType.Physical;
-
-    [Header("Delivery")]
     public GameObject skillPrefab;
-    public float projectileSpeed = 10f;
-    public float projectileLifetime = 5f;
 
     public enum ProjectileForward
     {
@@ -32,14 +25,24 @@ public class SkillData : ScriptableObject
     [Tooltip("Additional rotation (degrees) applied around Z after aligning to travel direction.")]
     public float projectileRotationOffset = 0f;
 
-    [Header("Chaining")]
+    [Header("Stats")]
+    public SkillType type = SkillType.Default;
+    public float baseDamage = 10f;
+    public DamageType damageType = DamageType.Physical;
+    public float projectileSpeed = 10f;
+    public float projectileLifetime = 5f;
+
+    public bool chain = false;
+
+    [EnableIf("chain"), FoldoutGroup("Chain Settings")]
     public int maxChainTargets = 0;
+    [EnableIf("chain"), FoldoutGroup("Chain Settings")]
     public float chainDamageMultiplier = 0.7f;
 
-    [Header("Area of Effect")]
+    public bool aoe = false;
+    [EnableIf("aoe"), FoldoutGroup("AoE Settings")]
     public float aoeRadius = 0f;
 
-    [Header("Beam")]
     public float beamTickInterval = 0.1f;
 
     [Header("On-Hit Status Effects")]

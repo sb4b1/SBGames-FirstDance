@@ -3,8 +3,17 @@ using ArtificeToolkit.Attributes;
 using SB4b1.Logging;
 using UnityEngine;
 
+[RequireComponent(typeof(SkillHitResolver))]
 public class SkillInstance : MonoBehaviour, IPoolable
 {
+    [SerializeField]
+    private Animator animator;
+    [SerializeField]
+    private GameObject hitboxObject;
+
+    [ReadOnly]
+    public GameObject currentTarget;
+
     public SkillData Data { get; private set; }
     public float CurrentDamage { get; set; }
 
@@ -20,29 +29,36 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     private float lifetimeTimer;
     private bool isActive;
+    private bool isHit;
 
     private void Awake()
     {
-        targeting   = GetComponent<SkillTargeting>();
         hitResolver = GetComponent<SkillHitResolver>();
         movement    = GetComponent<ISkillMovement>();
         detonation  = GetComponent<ISkillDetonation>();
+        
+        targeting   = GetComponentInChildren<SkillTargeting>();
     }
 
-    public void Initialize(SkillData data, Vector3 direction)
+    public void Initialize(SkillData data, Vector3 direction, GameObject target = null)
     {
         Data = data;
+        currentTarget = target;
         CurrentDamage = data.baseDamage;
-
         RemainingChains = data.maxChainTargets;
         HasDetonated = false;
 
         HitTargets.Clear();
-
         lifetimeTimer = data.projectileLifetime;
         isActive = true;
+        isHit = false;
 
         movement?.Initialize(this, direction);
+
+        if (data.type == SkillType.AoE)
+        {
+            DeactivateHitbox();
+        }
     }
 
     private void Update()
@@ -52,7 +68,8 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
         float dt = Time.deltaTime;
 
-        movement?.Tick(this, dt);
+        if (!isHit)
+            movement?.Tick(this, dt);
 
         lifetimeTimer -= dt;
         if (lifetimeTimer <= 0f)
@@ -66,12 +83,14 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (!isActive)
             return;
 
+        animator?.SetTrigger("OnHit");
+        isHit = true;
         hitResolver.ResolveHit(this, target);
         RegisterHit(target);
 
         if (context == HitContext.Direct &&
             RemainingChains > 0 &&
-            targeting.TryGetNextTarget(this, out var next))
+            targeting.TryGetTarget(this, out var next))
         {
             RemainingChains--;
             CurrentDamage *= Data.chainDamageMultiplier;
@@ -82,7 +101,6 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (context == HitContext.Direct || context == HitContext.Chain)
         {
             Detonate();
-            ReturnToPool();
         }
     }
 
@@ -117,11 +135,24 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     public void OnDespawn()
     {
+        currentTarget = null;
+        isHit = false;
         Data = null;
         CurrentDamage = 0f;
         RemainingChains = 0;
         HasDetonated = false;
         HitTargets.Clear();
+        ReturnToPool();
+    }
+
+    public void ActivateHitbox()
+    {
+        hitboxObject.SetActive(true);
+    }
+
+    public void DeactivateHitbox()
+    {
+        hitboxObject.SetActive(false);
     }
 
 #if UNITY_EDITOR

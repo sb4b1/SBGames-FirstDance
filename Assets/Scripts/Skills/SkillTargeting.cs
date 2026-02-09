@@ -1,6 +1,7 @@
 using UnityEngine;
 using Micosmo.SensorToolkit;
 using System.Collections.Generic;
+using ArtificeToolkit.Attributes;
 
 public class SkillTargeting : MonoBehaviour
 {
@@ -10,30 +11,56 @@ public class SkillTargeting : MonoBehaviour
     // =========================
     // Single / Chain Target
     // =========================
-    public bool TryGetNextTarget(SkillInstance skill, out GameObject target)
-{
-    if (sensor == null)
+
+    public GameObject GetTarget()
     {
+        if (sensor == null)
+            return null;
+
+        sensor.Pulse();
+
+        foreach (var detection in sensor.GetDetections())
+        {
+            return detection;
+        }
+
+        return null;
+    }
+
+    public List<GameObject> GetTargets()
+    {
+        if (sensor == null)
+            return null;
+
+        sensor.Pulse();
+
+        return sensor.GetDetections();
+    }
+
+    public bool TryGetTarget(SkillInstance skill, out GameObject target)
+    {
+        if (sensor == null)
+        {
+            target = null;
+            return false;
+        }
+
+        sensor.Pulse();
+
+        foreach (var detection in sensor.GetDetections())
+        {
+            GameObject obj = detection.gameObject;
+
+            if (skill.HitTargets.Contains(obj))
+                continue;
+
+            target = obj;
+            return true;
+        }
+
         target = null;
         return false;
     }
-
-    sensor.Pulse();
-
-    foreach (var detection in sensor.Detections)
-    {
-        GameObject obj = detection.gameObject;
-
-        if (skill.HitTargets.Contains(obj))
-            continue;
-
-        target = obj;
-        return true;
-    }
-
-    target = null;
-    return false;
-}
 
     // =========================
     // AoE Targets
@@ -47,10 +74,7 @@ public class SkillTargeting : MonoBehaviour
 
         sensor.Pulse();
 
-        foreach (var detection in sensor.Detections)
-        {
-            results.Add(detection.gameObject);
-        }
+        results = sensor.GetDetections();
 
         return results;
     }
@@ -65,7 +89,7 @@ public class SkillTargeting : MonoBehaviour
 
         sensor.Pulse();
 
-        foreach (var detection in sensor.Detections)
+        foreach (var detection in sensor.GetDetections())
             yield return detection.gameObject;
     }
 }
