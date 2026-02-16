@@ -58,8 +58,8 @@ public class AnimationController : MonoBehaviour
 
     private void UpdateFlip()
     {
-        if (lastMoveDir.x > 0.1f) flipRotator.ApplyRotation(false);
-        else if (lastMoveDir.x < -0.1f) flipRotator.ApplyRotation(true);
+        if (lastMoveDir.x > 0.1f) flipRotator.ApplyFlip(false);
+        else if (lastMoveDir.x < -0.1f) flipRotator.ApplyFlip(true);
     }
 
     // =========================

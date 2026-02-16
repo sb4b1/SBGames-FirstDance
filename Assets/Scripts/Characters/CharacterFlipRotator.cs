@@ -21,7 +21,7 @@ public class CharacterFlipRotator : MonoBehaviour
             rootTransform = transform.root;
     }
 
-    public void ApplyRotation(bool flipped)
+    public void ApplyFlip(bool flipped)
     {
         rootTransform.localScale = new Vector3(
             flipAxis == Axis.X ? (flipped ? -1f : 1f) : 1f,
@@ -34,7 +34,7 @@ public class CharacterFlipRotator : MonoBehaviour
     [Button]
     private void ToggleFlip()
     {
-        ApplyRotation(flipAxis == Axis.X ? rootTransform.localScale.x > 0 :
+        ApplyFlip(flipAxis == Axis.X ? rootTransform.localScale.x > 0 :
                       flipAxis == Axis.Y ? rootTransform.localScale.y > 0 :
                       rootTransform.localScale.z > 0);
     }

@@ -9,8 +9,8 @@ public class CharacterSkillController : MonoBehaviour
     [System.Serializable]
     public class Skill
     {
-        public SkillCaster skill;
-        
+        [SerializeField] private SkillCaster skill;
+
         [Button]
         public void Trigger()
         {

@@ -1,3 +1,5 @@
+using System;
+using ArtificeToolkit.Attributes;
 using UnityEngine;
 
 public class SkillCaster : MonoBehaviour
@@ -23,6 +25,7 @@ public class SkillCaster : MonoBehaviour
     [SerializeField] private float cooldownDuration = 1f;
     private float cooldownTimer;
 
+    private string casterID;
     private Transform casterTransform;
 
 
@@ -35,6 +38,7 @@ public class SkillCaster : MonoBehaviour
     private void Awake()
     {
         casterTransform = transform.root;
+        casterID = casterTransform.GetComponent<CharacterIdentifier>().ID;
     }
 
     private void Update()
@@ -133,7 +137,7 @@ public class SkillCaster : MonoBehaviour
 
         if (skillObject.TryGetComponent(out SkillInstance skillInstance))
         {
-            skillInstance.Initialize(skillData, direction, target);
+            skillInstance.Initialize(skillData, direction, casterID, target);
         }
         else
         {

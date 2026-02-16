@@ -29,7 +29,10 @@ public class SkillData : ScriptableObject
     public SkillType type = SkillType.Default;
     public float baseDamage = 10f;
     public DamageType damageType = DamageType.Physical;
+
+    [EnableIf("type", SkillType.Projectile), FoldoutGroup("Projectile Settings")]
     public float projectileSpeed = 10f;
+    [EnableIf("type", SkillType.Projectile), FoldoutGroup("Projectile Settings")]
     public float projectileLifetime = 5f;
 
     public bool chain = false;
@@ -39,9 +42,9 @@ public class SkillData : ScriptableObject
     [EnableIf("chain"), FoldoutGroup("Chain Settings")]
     public float chainDamageMultiplier = 0.7f;
 
-    public bool aoe = false;
-    [EnableIf("aoe"), FoldoutGroup("AoE Settings")]
-    public float aoeRadius = 0f;
+    public bool area = false;
+    [EnableIf("area"), FoldoutGroup("Area Settings")]
+    public float areaRadius = 0f;
 
     public float beamTickInterval = 0.1f;
 

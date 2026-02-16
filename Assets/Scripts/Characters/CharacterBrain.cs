@@ -1,8 +1,9 @@
 using UnityEngine;
-using UnityEditor;
 using SB4b1.ComponentUtils;
 using SB4b1.Logging;
 using ArtificeToolkit.Attributes;
+using System;
+using System.Runtime.InteropServices;
 
 public class CharacterBrain : MonoBehaviour
 {
@@ -11,7 +12,7 @@ public class CharacterBrain : MonoBehaviour
     // =========================
 
     [SerializeField] private ControlMode controlMode;
-    private AgentStatus agentStatus;
+    [SerializeField] private AgentStatus agentStatus;
 
     public ControlMode ControlMode => controlMode;
     public AgentStatus AgentStatus => agentStatus;
@@ -35,22 +36,15 @@ public class CharacterBrain : MonoBehaviour
 
     private void Start()
     {
+
         if (controlMode == ControlMode.Player)
         {
             AIActivation(false);
         }
-        else
+        else if (controlMode == ControlMode.AI)
         {
             AIActivation(true);
         }
-    }
-
-
-    private void Update()
-    {
-        if (controlMode == ControlMode.Player) return;
-        if (HasAI == false) return;
-        if (aiAugment.activeSelf == false) AIActivation(true);
 
     }
 
@@ -62,11 +56,10 @@ public class CharacterBrain : MonoBehaviour
     {
         aiAugment.SetActive(value);
 
-
+        agentStatus = value ? AgentStatus.Active : AgentStatus.Inactive;
         ELogger.Log(this, nameof(AIActivation), value ? "Activate AI" : "Deactivate AI");
     }
 
-    [Button]
     public void AddAIAugment()
     {
         aiAugment = ComponentUtil.GetChildGameObjectByTag(this.gameObject, "AI_Augment");
@@ -130,21 +123,19 @@ public class CharacterBrain : MonoBehaviour
 
 #if UNITY_EDITOR
 
-    [Button]
-    private void PlayerControl()
+    public void PlayerControl()
     {
         controlMode = ControlMode.Player;
         if (aiAugment != null) AIActivation(false);
     }
 
-    [Button]
-    private void AgentControl()
+    public void AgentControl()
     {
         controlMode = ControlMode.AI;
         if (aiAugment != null) AIActivation(true);
     }
 
-    private void ToggleAI()
+    public void ToggleAI()
     {
         if (!HasAI) return;
         AIActivation(!aiAugment.activeSelf);

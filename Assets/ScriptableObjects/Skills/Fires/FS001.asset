@@ -19,14 +19,15 @@ MonoBehaviour:
   skillPrefab: {fileID: 57455629093989876, guid: fae478432504c0f488702db9c00751c2, type: 3}
   projectileForward: 1
   projectileRotationOffset: 0
+  type: 0
   baseDamage: 10
-  damageType: 3
+  damageType: 1
   projectileSpeed: 3
   projectileLifetime: 5.07
   chain: 0
   maxChainTargets: 0
   chainDamageMultiplier: 0.7
-  aoe: 0
-  aoeRadius: 0
+  area: 0
+  areaRadius: 0
   beamTickInterval: 0.1
   statusEffects: []

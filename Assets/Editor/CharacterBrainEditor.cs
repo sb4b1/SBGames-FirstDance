@@ -1,33 +1,56 @@
 using UnityEditor;
-using UnityEngine;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
 
 [CustomEditor(typeof(CharacterBrain))]
 public class CharacterBrainEditor : Editor
 {
-    public override void OnInspectorGUI()
+    public VisualTreeAsset VTree;
+    private CharacterBrain characterBrain;
+
+    Button playerButton;
+    Button agentButton;
+    Button toggleAIButton;
+
+    private void OnEnable()
     {
-        // Draw default inspector first
-        DrawDefaultInspector();
+        characterBrain = (CharacterBrain)target;
+    }
 
-        CharacterBrain brain = (CharacterBrain)target;
+    public override VisualElement CreateInspectorGUI()
+    {
+        var root = new VisualElement();
+        VTree.CloneTree(root);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Runtime Info", EditorStyles.boldLabel);
-
-        EditorGUILayout.LabelField(
-            "Control Mode",
-            brain.ControlMode.ToString()
-        );
-
-        EditorGUILayout.LabelField(
-            "Agent Status",
-            brain.AgentStatus.ToString()
-        );
-
-        // Ensure repaint during Play Mode
-        if (Application.isPlaying)
+        var foldout = new Foldout()
         {
-            Repaint();
-        }
+            text = "CharacterBrain Properties",
+            value = false
+        };
+        InspectorElement.FillDefaultInspector(foldout, serializedObject, this);
+        root.Add(foldout);
+
+        playerButton = root.Q<Button>("PlayerControlButton");
+        agentButton = root.Q<Button>("AgentControlButton");
+        toggleAIButton = root.Q<Button>("ToggleAIButton");
+
+        playerButton.RegisterCallback<ClickEvent>(OnPlayerButtonClicked);
+        agentButton.RegisterCallback<ClickEvent>(OnAgentButtonClicked);
+        toggleAIButton.RegisterCallback<ClickEvent>(OnToggleAIButtonClicked);
+
+        return root;
+    }
+
+    private void OnPlayerButtonClicked(ClickEvent evt)
+    {
+        characterBrain.PlayerControl();
+    }
+    private void OnAgentButtonClicked(ClickEvent evt)
+    {
+        characterBrain.AgentControl();
+    }
+    private void OnToggleAIButtonClicked(ClickEvent evt)
+    {
+        characterBrain.ToggleAI();
     }
 }

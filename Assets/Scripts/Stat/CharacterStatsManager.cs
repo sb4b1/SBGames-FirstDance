@@ -95,9 +95,9 @@ public class CharacterStatsManager : MonoBehaviour, IDamagable
                 // later: armor stat
                 break;
 
-            case DamageType.Poison:
+            //case DamageType.Poison:
                 // later: resist stat
-                break;
+                //break;
 
             case DamageType.True:
                 return amount;

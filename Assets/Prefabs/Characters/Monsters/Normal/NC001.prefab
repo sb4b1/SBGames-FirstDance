@@ -144,7 +144,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3, y: 3, z: 1}
+  m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3843292984236393184}
@@ -828,7 +828,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
-  isPlayerControlled: 1
+  controlMode: 0
+  agentStatus: 0
   aiAugment: {fileID: 9097028675395075657}
 --- !u!114 &5841761043065473055
 MonoBehaviour:

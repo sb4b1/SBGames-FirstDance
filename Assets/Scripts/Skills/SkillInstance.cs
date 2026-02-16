@@ -14,6 +14,8 @@ public class SkillInstance : MonoBehaviour, IPoolable
     [ReadOnly]
     public GameObject currentTarget;
 
+    public string casterID { get; private set; }
+
     public SkillData Data { get; private set; }
     public float CurrentDamage { get; set; }
 
@@ -40,9 +42,10 @@ public class SkillInstance : MonoBehaviour, IPoolable
         targeting   = GetComponentInChildren<SkillTargeting>();
     }
 
-    public void Initialize(SkillData data, Vector3 direction, GameObject target = null)
+    public void Initialize(SkillData data, Vector3 direction,string casterID, GameObject target = null)
     {
         Data = data;
+        this.casterID = casterID;
         currentTarget = target;
         CurrentDamage = data.baseDamage;
         RemainingChains = data.maxChainTargets;
@@ -55,9 +58,13 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
         movement?.Initialize(this, direction);
 
-        if (data.type == SkillType.AoE)
+        if (data.type == SkillType.Area)
         {
             DeactivateHitbox();
+        }
+        else
+        {
+            ActivateHitbox();
         }
     }
 
@@ -164,7 +171,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (Data.maxChainTargets > 0 && targeting == null)
             ELogger.Warning("Chain enabled but no SkillTargeting component", this);
 
-        if (Data.aoeRadius > 0 && detonation == null)
+        if (Data.areaRadius > 0 && detonation == null)
             ELogger.Warning("AoE configured but no ISkillDetonation", this);
     }
 #endif
