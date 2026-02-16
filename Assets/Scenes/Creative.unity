@@ -214,6 +214,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: currentGoalKey
+      value: None
+      objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: goals.Array.size
       value: 1
       objectReference: {fileID: 0}
@@ -221,6 +225,18 @@ PrefabInstance:
       propertyPath: 'goals.Array.data[0]'
       value: 
       objectReference: {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: goalScores.pairs.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: goalScores.pairs.Array.data[0].Key
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: goalScores.pairs.Array.data[0].Value
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4786395061666043320, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_SortingLayer
       value: 1
@@ -837,6 +853,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0e87db3413d4f7458eeace248aff5a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NormalAgentTypeFactory
+--- !u!114 &1260728905 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7622576983817106478, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+  m_PrefabInstance: {fileID: 2731564991270147110}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
 --- !u!4 &1357419981 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
@@ -4609,7 +4636,7 @@ PrefabInstance:
     - target: {fileID: 4541481479586341584, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: agent
       value: 
-      objectReference: {fileID: 2731564991270147113}
+      objectReference: {fileID: 1260728905}
     - target: {fileID: 5060950443793682970, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_Size.x
       value: 0.26852733
@@ -4680,17 +4707,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
   id: 
---- !u!114 &2731564991270147113 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7622576983817106478, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
-  m_PrefabInstance: {fileID: 2731564991270147110}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

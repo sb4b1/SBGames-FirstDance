@@ -19,6 +19,52 @@ public class BaseAIEditor : Editor
         var root = new VisualElement();
         VTree.CloneTree(root);
 
+        var serializedGoalUtilities = serializedObject.FindProperty("goalScores");
+        var pairsProperty = serializedGoalUtilities.FindPropertyRelative("pairs");
+
+        var listView = new ListView
+        {
+            showAddRemoveFooter = true,
+            showFoldoutHeader = true,
+            headerTitle = "Goal Utilities",
+            reorderable = true,
+            bindingPath = pairsProperty.propertyPath,
+            virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight
+        };
+
+        listView.makeItem = () =>
+        {
+            var container = new VisualElement();
+            container.style.flexDirection = FlexDirection.Row;
+
+            var keyField = new PropertyField();
+            keyField.style.flexGrow = 1;
+
+            var valueField = new PropertyField();
+            valueField.style.flexGrow = 1;
+
+            container.Add(keyField);
+            container.Add(valueField);
+
+            return container;
+        };
+
+        listView.bindItem = (element, index) =>
+        {
+            var pair = pairsProperty.GetArrayElementAtIndex(index);
+
+            var keyProp = pair.FindPropertyRelative("Key");
+            var valueProp = pair.FindPropertyRelative("Value");
+
+            ((PropertyField)element.ElementAt(0)).BindProperty(keyProp);
+            ((PropertyField)element.ElementAt(1)).BindProperty(valueProp);
+        };
+
+        listView.itemsSource = new int[pairsProperty.arraySize];
+        listView.Bind(serializedObject);
+
+        root.Add(listView);
+
         var foldout = new Foldout()
         {
             text = "BaseAI Properties",

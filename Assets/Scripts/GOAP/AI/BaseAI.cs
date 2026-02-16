@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using CrashKonijn.Goap.Runtime;
+using SB4b1.Helpers;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -26,9 +27,9 @@ public class BaseAI : MonoBehaviour
     public float AgentLife { get; protected set; }
 
 #if UNITY_EDITOR
-
+    [Header("Debugging")]
     [SerializeField] private string currentGoalKey = EnumUtilGoal.None.ToString();
-    [SerializeField] private Dictionary<EnumUtilGoal, float> goalScores = new Dictionary<EnumUtilGoal, float>();
+    [SerializeField] private SerializableDictionary<EnumUtilGoal, float> goalScores = new();
 #endif
 
 
@@ -116,7 +117,12 @@ public class BaseAI : MonoBehaviour
 
         foreach (var goal in goals)
         {
-            goalScores[goal.GetGOAPGoalKey()] = goal.Evaluate(this);
+            float score = goal.Evaluate(this);
+            goalScores.GetPairs().Add(new SerializableDictionary<EnumUtilGoal, float>.Pair
+            {
+                Key = goal.GetGOAPGoalKey(),
+                Value = score
+            });
         }
 #endif
 
