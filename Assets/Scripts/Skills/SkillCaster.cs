@@ -32,6 +32,7 @@ public class SkillCaster : MonoBehaviour
     private enum SpawnTypes
     {
         AtCaster,
+        AtCasterSpawnPoint,
         AtTarget
     }
 
@@ -39,6 +40,15 @@ public class SkillCaster : MonoBehaviour
     {
         casterTransform = transform.root;
         casterID = casterTransform.GetComponent<CharacterIdentifier>().ID;
+
+        if (spawnType == SpawnTypes.AtCasterSpawnPoint && skillSpawnPoint == null)
+        {
+            skillSpawnPoint = transform.parent.Find("SpawnPoint");
+            if (skillSpawnPoint == null)
+            {
+                Debug.LogError("SkillCaster missing spawn point for AtCaster spawn type", this);
+            }
+        }
     }
 
     private void Update()
@@ -153,16 +163,13 @@ public class SkillCaster : MonoBehaviour
     // =========================
     private Vector3 GetSpawnPosition(GameObject target = null)
     {
-        if (spawnType == SpawnTypes.AtCaster || targeting == null)
+        return spawnType switch
         {
-            return skillSpawnPoint != null
-                ? skillSpawnPoint.position
-                : casterTransform.position;
-        }
-        else // AtTarget
-        {
-            return target.transform.position;
-        }
+            SpawnTypes.AtCaster => casterTransform.position,
+            SpawnTypes.AtCasterSpawnPoint => skillSpawnPoint != null ? skillSpawnPoint.position : casterTransform.position,
+            SpawnTypes.AtTarget => target != null ? target.transform.position : casterTransform.position,
+            _ => casterTransform.position,
+        };
     }
 
     private GameObject FindFirstTarget()

@@ -15,6 +15,9 @@ public class SkillCollision : MonoBehaviour
         if (skill.HitTargets.Contains(other.gameObject))
             return;
 
+        if (other.gameObject.TryGetComponent(out CharacterIdentifier otherCharID) && otherCharID.ID == skill.casterID)
+            return;
+
         skill.OnHit(other.gameObject, HitContext.Direct);
     }
 }
