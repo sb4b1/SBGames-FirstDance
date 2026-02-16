@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CrashKonijn.Goap.Runtime;
 using UnityEngine;
 using UnityEngine.AI;
@@ -7,6 +8,14 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterStatsManager stats;
     [SerializeField] private CharacterMovementController controller;
+    [SerializeField] private List<UtilityGoal> goals;
+    
+    // This can be used to differentiate between different types of agents (e.g., "NormalAgent", "AggressiveAgent", etc.)
+    // NormalAgent is the default type, and if no specific behavior is assigned in the GoapActionProvider, it will use the NormalAgent behavior
+    [SerializeField] private string agentType = "NormalAgent";
+
+    protected GoapBehaviour goap;
+    protected GoapActionProvider provider;
 
     public Transform CurrentTarget { get; protected set; }
     public Transform[] EnemyTargets { get; protected set; }
@@ -16,13 +25,26 @@ public class BaseAI : MonoBehaviour
     public int FearLevel { get; protected set; }
     public float AgentLife { get; protected set; }
 
-    protected GoapActionProvider provider;
-    protected GoapBehaviour goap;
+#if UNITY_EDITOR
+
+    [SerializeField] private string currentGoalKey = EnumUtilGoal.None.ToString();
+    [SerializeField] private Dictionary<EnumUtilGoal, float> goalScores = new Dictionary<EnumUtilGoal, float>();
+#endif
+
+
+
+
+
+
+
 
     protected virtual void Awake()
     {
         this.goap = FindAnyObjectByType<GoapBehaviour>();
         this.provider = this.GetComponent<GoapActionProvider>();
+
+        if (this.provider.AgentTypeBehaviour == null)
+            this.provider.AgentType = this.goap.GetAgentType(agentType);
     }
  
     private void Start()
@@ -46,7 +68,10 @@ public class BaseAI : MonoBehaviour
         agent.speed = stats.Movespeed.Value;
     }
 
-    protected virtual void SetGoal() { }
+    protected virtual void SetGoal()
+    {
+        Planner(SelectBestGoal());
+    }
 
     public void SetTarget(Transform target) => CurrentTarget = target;
 
@@ -54,5 +79,49 @@ public class BaseAI : MonoBehaviour
 
     public void AgentDestination(Vector2 targetPosition) => agent.SetDestination(targetPosition);
     public bool IsAgentStop(bool value) => agent.isStopped = value;
+
+    private void Planner(EnumUtilGoal goalKey)
+    {
+        switch (goalKey)
+        {
+            case EnumUtilGoal.Wander:
+                provider.RequestGoal<WanderGoal>();
+                break;
+            default:
+                Debug.LogWarning("Unknown utility goal: " + goalKey);
+                break;
+        }
+    }
+
+    private EnumUtilGoal SelectBestGoal()
+    {
+        UtilityGoal bestGoal = null;
+        float highestScore = 0f;
+
+        foreach (var goal in goals)
+        {
+            float score = goal.Evaluate(this);
+
+            if (score > highestScore)
+            {
+                highestScore = score;
+                bestGoal = goal;
+            }
+        }
+
+#if UNITY_EDITOR
+        // Update the current goal key and scores for debugging purposes
+        currentGoalKey = bestGoal != null ? bestGoal.GetGOAPGoalKey().ToString() : EnumUtilGoal.None.ToString();
+        goalScores.Clear();
+
+        foreach (var goal in goals)
+        {
+            goalScores[goal.GetGOAPGoalKey()] = goal.Evaluate(this);
+        }
+#endif
+
+
+        return bestGoal != null ? bestGoal.GetGOAPGoalKey() : EnumUtilGoal.None;
+    }
 
 }

@@ -1,0 +1,6 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="Label" style="flex-grow: 1; width: 377px; flex-direction: row;">
+        <ui:Label text="Current Goal : " name="CurrentGoal" style="align-content: auto; flex-direction: row; align-self: auto; align-items: auto; justify-content: flex-start; width: 83px; height: 18px;"/>
+        <ui:Label text="Param" name="CurrentGoalParam" enable-rich-text="false" binding-path="currentGoalKey" parse-escape-sequences="false" style="align-content: auto; justify-content: flex-start; -unity-text-align: upper-left; white-space: nowrap; width: 184px; height: 18px;"/>
+    </ui:VisualElement>
+</ui:UXML>

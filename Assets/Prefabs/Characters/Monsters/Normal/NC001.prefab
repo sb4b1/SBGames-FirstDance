@@ -46,6 +46,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
   skills: []
+  skillSpawnPoint: {fileID: 0}
 --- !u!1 &1260756780467848515
 GameObject:
   m_ObjectHideFlags: 0
@@ -534,7 +535,7 @@ MonoBehaviour:
   OnDetected:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 4759534745067829468}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
         m_MethodName: OnTargetDetect
         m_Mode: 0
@@ -549,7 +550,7 @@ MonoBehaviour:
   OnLostDetection:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 4759534745067829468}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
         m_MethodName: OnTargetLost
         m_Mode: 0
@@ -884,10 +885,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3525965130228454493}
-  - component: {fileID: 4759534745067829468}
   - component: {fileID: 7690681229766653026}
   - component: {fileID: 8446831177810594064}
   - component: {fileID: 5427059989974091042}
+  - component: {fileID: 3967720624424618889}
   m_Layer: 0
   m_Name: NormalAI
   m_TagString: AI_Augment
@@ -910,21 +911,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 3109198578723773857}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4759534745067829468
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9097028675395075657}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5688c8c1bd11d6b458859fd6ec6c016f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NormalAI
-  agent: {fileID: 7031461656827861849}
-  stats: {fileID: 7331921466431717763}
-  controller: {fileID: 5841761043065473055}
 --- !u!114 &7690681229766653026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -972,5 +958,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2764e0c64ff38814ba8b4c8521fdefda, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AgentMoveBehaviour
-  agent: {fileID: 4759534745067829468}
+  agent: {fileID: 3967720624424618889}
   agentBehaviour: {fileID: 8446831177810594064}
+--- !u!114 &3967720624424618889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9097028675395075657}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
+  agent: {fileID: 7031461656827861849}
+  stats: {fileID: 7331921466431717763}
+  controller: {fileID: 5841761043065473055}
+  goals: []
