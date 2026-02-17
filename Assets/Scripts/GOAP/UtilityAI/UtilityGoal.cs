@@ -1,4 +1,3 @@
-using CrashKonijn.Goap.Runtime;
 using UnityEngine;
 
 public abstract class UtilityGoal : ScriptableObject
