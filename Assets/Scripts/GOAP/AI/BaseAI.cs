@@ -15,16 +15,24 @@ public class BaseAI : MonoBehaviour
     // NormalAgent is the default type, and if no specific behavior is assigned in the GoapActionProvider, it will use the NormalAgent behavior
     [SerializeField] private string agentType = "NormalAgent";
 
-    protected GoapBehaviour goap;
-    protected GoapActionProvider provider;
+    private GoapBehaviour goap;
+    private GoapActionProvider provider;
 
-    public Transform CurrentTarget { get; protected set; }
-    public Transform[] EnemyTargets { get; protected set; }
-    public Transform[] AllyTargets { get; protected set; }
+    [SerializeField] private Transform currentTarget;
+    [SerializeField] private Transform[] enemyTargets;
+    [SerializeField] private Transform[] allyTargets;
 
-    public int ThreatLevel { get; protected set; }
-    public int FearLevel { get; protected set; }
-    public float AgentLife { get; protected set; }
+    [SerializeField] private int threatLevel;
+    [SerializeField] private int fearLevel;
+    [SerializeField] private float agentLife;
+
+    public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
+    public Transform[] EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
+    public Transform[] AllyTargets { get => allyTargets; private set => allyTargets = value; }
+
+    public int ThreatLevel { get => threatLevel; private set => threatLevel = value; }
+    public int FearLevel { get => fearLevel; private set => fearLevel = value; }
+    public float AgentLife { get => agentLife; private set => agentLife = value; }
 
 #if UNITY_EDITOR
     [Header("Debugging")]
@@ -39,7 +47,7 @@ public class BaseAI : MonoBehaviour
 
 
 
-    protected virtual void Awake()
+    private void Awake()
     {
         this.goap = FindAnyObjectByType<GoapBehaviour>();
         this.provider = this.GetComponent<GoapActionProvider>();
@@ -57,7 +65,7 @@ public class BaseAI : MonoBehaviour
         InitializeAgent();
     }
 
-    protected virtual void Update()
+    private void Update()
     {
         SetGoal();
     }
@@ -69,7 +77,7 @@ public class BaseAI : MonoBehaviour
         agent.speed = stats.Movespeed.Value;
     }
 
-    protected virtual void SetGoal()
+    private void SetGoal()
     {
         Planner(SelectBestGoal());
     }

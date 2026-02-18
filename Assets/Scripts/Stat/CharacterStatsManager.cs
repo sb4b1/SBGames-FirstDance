@@ -1,5 +1,6 @@
 using UnityEngine;
 using SB4b1.Logging;
+using System.Collections;
 
 public class CharacterStatsManager : MonoBehaviour, IDamagable
 {
@@ -14,6 +15,9 @@ public class CharacterStatsManager : MonoBehaviour, IDamagable
     public Stat Movespeed { get; private set; } = new();
     public Stat Damage { get; private set; } = new();
     public Stat AttackRange { get; private set; } = new();
+    public Stat AttackTimeInterval { get; private set; } = new();
+
+    public bool AttackReady { get; private set; } = true;
 
     public event System.Action<float, float> OnLifeChanged;
 
@@ -44,6 +48,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamagable
         Movespeed.BaseValue = baseStats.Movespeed;
         Damage.BaseValue = baseStats.Damage;
         AttackRange.BaseValue = baseStats.AttackRange;
+        AttackTimeInterval.BaseValue = baseStats.AttackTimeInterval;
     }
 
     // =========================
@@ -120,5 +125,22 @@ public class CharacterStatsManager : MonoBehaviour, IDamagable
     {
         ELogger.Log(this, nameof(OnDeath), $"{name} died");
         // Hook death logic here
+    }
+
+    // =========================
+
+    public void StartAttackTimer()
+    {
+        if (AttackReady)
+        {
+            StartCoroutine(AttackCooldownCoroutine(AttackTimeInterval.Value));
+        }
+    }
+
+    private IEnumerator AttackCooldownCoroutine(float interval)
+    {
+        AttackReady = false;
+        yield return new WaitForSeconds(interval);
+        AttackReady = true;
     }
 }

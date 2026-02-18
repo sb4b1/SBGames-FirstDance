@@ -1,10 +1,8 @@
 using UnityEngine;
 using SB4b1.ComponentUtils;
 using SB4b1.Logging;
-using ArtificeToolkit.Attributes;
-using System;
-using System.Runtime.InteropServices;
 
+[RequireComponent(typeof(CharacterStatsManager))]
 public class CharacterBrain : MonoBehaviour
 {
     // =========================
@@ -18,12 +16,15 @@ public class CharacterBrain : MonoBehaviour
     public AgentStatus AgentStatus => agentStatus;
 
     [SerializeField] private GameObject aiAugment;
+    [SerializeField] private CharacterStatsManager statsManager;
 
     // =========================
     // State
     // =========================
     public bool CanMove { get; private set; } = true;
-    public bool CanAttack { get; private set; } = true;
+    public bool CanAttack => statsManager.AttackReady;
+
+
     public bool IsDashing { get; private set; }
     public bool IsAttacking { get; private set; }
     public bool HasAI { get; private set; }
@@ -32,6 +33,17 @@ public class CharacterBrain : MonoBehaviour
     {
         aiAugment = ComponentUtil.GetChildGameObjectByTag(this.gameObject, "AI_Augment");
         HasAI = aiAugment != null;
+
+        if (statsManager == null)
+        {
+            ELogger.Warning(this, nameof(Awake), "CharacterStatsManager reference is missing! Attempting to find in children...");
+            statsManager = GetComponent<CharacterStatsManager>();
+
+            if (statsManager == null)
+            {
+                ELogger.Error(this, nameof(Awake), "CharacterStatsManager not found Please assign it in the inspector.");
+            }
+        }
     }
 
     private void Start()
@@ -110,6 +122,7 @@ public class CharacterBrain : MonoBehaviour
     {
         if (IsAttacking || !CanAttack) return false;
 
+        statsManager.StartAttackTimer();
         IsAttacking = true;
         CanMove = false;
         return true;
