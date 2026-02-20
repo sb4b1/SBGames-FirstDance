@@ -1,7 +1,6 @@
 using UnityEngine;
 using Micosmo.SensorToolkit;
 using System.Collections.Generic;
-using ArtificeToolkit.Attributes;
 
 public class SkillTargeting : MonoBehaviour
 {

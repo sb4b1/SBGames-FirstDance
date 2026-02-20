@@ -4,7 +4,7 @@ public class SkillHitResolver : MonoBehaviour
 {
     public void ResolveHit(SkillInstance skill, GameObject target)
     {
-        if (!target.TryGetComponent(out IDamagable damagable))
+        if (!target.TryGetComponent(out IDamageable damagable))
             return;
 
         damagable.TakeDamage(new DamageData(

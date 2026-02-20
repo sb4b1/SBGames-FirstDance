@@ -15,4 +15,5 @@ MonoBehaviour:
   MaxLife: 100
   Movespeed: 5
   Damage: 10
-  AttackRange: 1
+  AttackRange: 1.5
+  AttackTimeInterval: 1

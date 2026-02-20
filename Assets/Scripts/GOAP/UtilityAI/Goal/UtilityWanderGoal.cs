@@ -1,8 +1,10 @@
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "SBGames/UtilityAI/Goal/Wander")]
-public class UtilityWanderGoal : ConstantConsideration
+public class UtilityWanderGoal : UtilityGoal
 {
+    [SerializeField] protected float score = .4f;
+
     public override float Evaluate(BaseAI context)
     {
         if (context.ThreatLevel > 0 || context.FearLevel > 0)

@@ -1,21 +1,33 @@
 using UnityEngine;
 using SB4b1.Logging;
 using System.Collections;
+using ArtificeToolkit.Attributes;
 
-public class CharacterStatsManager : MonoBehaviour, IDamagable
+public class CharacterStatsManager : MonoBehaviour, IDamageable
 {
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStats baseStats;
 
     // Runtime life
-    public float Life { get; private set; }
+    [SerializeField] private float life;
+
+    public float Life { get => life; private set => life = value; }
 
     // Core stats (private set = safer)
-    public Stat MaxLife { get; private set; } = new();
-    public Stat Movespeed { get; private set; } = new();
-    public Stat Damage { get; private set; } = new();
-    public Stat AttackRange { get; private set; } = new();
-    public Stat AttackTimeInterval { get; private set; } = new();
+
+#if UNITY_EDITOR
+    [SerializeField, ReadOnly] private float maxLife;
+    [SerializeField, ReadOnly] private float movespeed;
+    [SerializeField, ReadOnly] private float damage;
+    [SerializeField, ReadOnly] private float attackRange;
+    [SerializeField, ReadOnly] private float attackTimeInterval;
+#endif
+
+    public Stat MaxLife { get; private set; } = new Stat();
+    public Stat Movespeed { get; private set; } = new Stat();
+    public Stat Damage { get; private set; } = new Stat();
+    public Stat AttackRange { get; private set; } = new Stat();
+    public Stat AttackTimeInterval { get; private set; } = new Stat();
 
     public bool AttackReady { get; private set; } = true;
 
@@ -49,6 +61,14 @@ public class CharacterStatsManager : MonoBehaviour, IDamagable
         Damage.BaseValue = baseStats.Damage;
         AttackRange.BaseValue = baseStats.AttackRange;
         AttackTimeInterval.BaseValue = baseStats.AttackTimeInterval;
+
+#if UNITY_EDITOR
+        maxLife = MaxLife.Value;
+        movespeed = Movespeed.Value;
+        damage = Damage.Value;
+        attackRange = AttackRange.Value;
+        attackTimeInterval = AttackTimeInterval.Value;
+#endif
     }
 
     // =========================

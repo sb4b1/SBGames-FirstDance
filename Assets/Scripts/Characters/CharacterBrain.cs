@@ -1,6 +1,7 @@
 using UnityEngine;
 using SB4b1.ComponentUtils;
 using SB4b1.Logging;
+using System.Collections;
 
 [RequireComponent(typeof(CharacterStatsManager))]
 public class CharacterBrain : MonoBehaviour
@@ -48,16 +49,9 @@ public class CharacterBrain : MonoBehaviour
 
     private void Start()
     {
-
-        if (controlMode == ControlMode.Player)
-        {
-            AIActivation(false);
-        }
-        else if (controlMode == ControlMode.AI)
-        {
-            AIActivation(true);
-        }
-
+        bool activeAI = aiAugment.activeSelf;
+        AIActivation(true);
+        DelayAction(0.1f, () => AIActivation(activeAI));
     }
 
     // =========================
@@ -134,6 +128,21 @@ public class CharacterBrain : MonoBehaviour
         CanMove = true;
     }
 
+    private void DelayAction(float delay, System.Action action)
+    {
+        StartCoroutine(DelayActionCoroutine(delay, action));
+    }
+
+    // Helper method
+    private IEnumerator DelayActionCoroutine(float delay, System.Action action)
+    {
+        yield return new WaitForSeconds(delay);
+        action?.Invoke();
+    }
+
+
+
+
 #if UNITY_EDITOR
 
     public void PlayerControl()
@@ -150,8 +159,7 @@ public class CharacterBrain : MonoBehaviour
 
     public void ToggleAI()
     {
-        if (!HasAI) return;
-        AIActivation(!aiAugment.activeSelf);
+        if (aiAugment != null) AIActivation(!aiAugment.activeSelf);
     }
 #endif
 }

@@ -8,6 +8,8 @@ public class NormalAgentTypeFactory : AgentTypeFactoryBase
             var factory = CreateBuilder("NormalAgent");
             
             factory.AddCapability<WanderCapabilityFactory>();
+            factory.AddCapability<AttackCapabilityFactory>();
+            factory.AddCapability<BasicCapabilityFactory>();
 
             return factory.Build();
         }

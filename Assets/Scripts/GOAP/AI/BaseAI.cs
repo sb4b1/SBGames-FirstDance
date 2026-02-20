@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CrashKonijn.Goap.Runtime;
 using SB4b1.Helpers;
@@ -9,6 +10,7 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterStatsManager stats;
     [SerializeField] private CharacterMovementController controller;
+    [SerializeField] private VisionController vision;
     [SerializeField] private List<UtilityGoal> goals;
     
     // This can be used to differentiate between different types of agents (e.g., "NormalAgent", "AggressiveAgent", etc.)
@@ -19,16 +21,16 @@ public class BaseAI : MonoBehaviour
     private GoapActionProvider provider;
 
     [SerializeField] private Transform currentTarget;
-    [SerializeField] private Transform[] enemyTargets;
-    [SerializeField] private Transform[] allyTargets;
+    [SerializeField] private List<Transform> enemyTargets;
+    [SerializeField] private List<Transform> allyTargets;
+
+    public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
+    public List<Transform> EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
+    public List<Transform> AllyTargets { get => allyTargets; private set => allyTargets = value; }
 
     [SerializeField] private int threatLevel;
     [SerializeField] private int fearLevel;
     [SerializeField] private float agentLife;
-
-    public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
-    public Transform[] EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
-    public Transform[] AllyTargets { get => allyTargets; private set => allyTargets = value; }
 
     public int ThreatLevel { get => threatLevel; private set => threatLevel = value; }
     public int FearLevel { get => fearLevel; private set => fearLevel = value; }
@@ -77,30 +79,49 @@ public class BaseAI : MonoBehaviour
         agent.speed = stats.Movespeed.Value;
     }
 
+        // Emotional state Method
+#region Emotional State
+
+    private void CalculateEmotionalState()
+    {
+        
+    }
+
+    public void SenseEnemy()
+    {
+        // Increase threat level when sensing an enemy
+        threatLevel += 10;
+        fearLevel += 5; // Optionally increase fear level as well
+    }
+
+    public void LostEnemy()
+    {
+        // Decrease threat level when losing sight of an enemy
+        threatLevel -= 10;
+        fearLevel -= 5; // Optionally decrease fear level as well
+    }
+
+    
+
+
+
+#endregion
+
+    public void UpdateTargets()
+    {
+        enemyTargets = vision.EnemyTargets;
+        allyTargets = vision.AllyTargets;
+    }
+
+    public void SetTarget(Transform target) => CurrentTarget = target;
+
     private void SetGoal()
     {
         Planner(SelectBestGoal());
     }
 
-    public void SetTarget(Transform target) => CurrentTarget = target;
-
-    public void SetEnemyTargets(Transform[] targets) => EnemyTargets = targets;
-
     public void AgentDestination(Vector2 targetPosition) => agent.SetDestination(targetPosition);
     public bool IsAgentStop(bool value) => agent.isStopped = value;
-
-    private void Planner(EnumUtilGoal goalKey)
-    {
-        switch (goalKey)
-        {
-            case EnumUtilGoal.Wander:
-                provider.RequestGoal<WanderGoal>();
-                break;
-            default:
-                Debug.LogWarning("Unknown utility goal: " + goalKey);
-                break;
-        }
-    }
 
     private EnumUtilGoal SelectBestGoal()
     {
@@ -138,4 +159,22 @@ public class BaseAI : MonoBehaviour
         return bestGoal != null ? bestGoal.GetGOAPGoalKey() : EnumUtilGoal.None;
     }
 
+#region Planner
+
+    private void Planner(EnumUtilGoal goalKey)
+    {
+        switch (goalKey)
+        {
+            case EnumUtilGoal.Wander:
+                provider.RequestGoal<WanderGoal>();
+                break;
+            case EnumUtilGoal.KillEnemy:
+                provider.RequestGoal<KillEnemyGoal>();
+                break;
+            default:
+                Debug.LogWarning("Unknown utility goal: " + goalKey);
+                break;
+        }
+    }
+#endregion
 }
