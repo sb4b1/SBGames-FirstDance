@@ -247,11 +247,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3843292984236393184, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.1202
+      value: 0.102
       objectReference: {fileID: 0}
     - target: {fileID: 3843292984236393184, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0273
+      value: -0.038
       objectReference: {fileID: 0}
     - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: vision
@@ -357,6 +357,14 @@ PrefabInstance:
       propertyPath: isPlayerControlled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6394289248788847368, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.563
+      objectReference: {fileID: 0}
+    - target: {fileID: 6394289248788847368, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.191
+      objectReference: {fileID: 0}
     - target: {fileID: 6820165486231997942, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: stats
       value: 
@@ -423,6 +431,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8309516993667836581, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 904036882}
+    - targetCorrespondingSourceObject: {fileID: 4409346096098156148, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1729646124}
   m_SourcePrefab: {fileID: 100100000, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
 --- !u!4 &246561337 stripped
 Transform:
@@ -481,7 +492,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AttackPointGizmo
   attackPoint: {fileID: 246561341}
-  attackRadius: 0.15
+  attackRadius: 0.4
 --- !u!1 &263831875
 GameObject:
   m_ObjectHideFlags: 0
@@ -701,7 +712,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 12
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -4780,6 +4791,25 @@ MonoBehaviour:
   m_UseMeshPrefab: {fileID: 0}
   m_CompressBounds: 0
   m_OverrideVector: {x: 1, y: 1, z: 1}
+--- !u!1 &1729646123 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4409346096098156148, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 246561336}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1729646124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1729646123}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a76326eb26aad7a43afe533f01d3fb2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillSpawnPointGizmo
+  skillSpawnPoint: {fileID: 744356483}
+  spawnRadius: 0.15
 --- !u!1 &1767561355
 GameObject:
   m_ObjectHideFlags: 0
@@ -4835,11 +4865,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.686
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.093
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_LocalPosition.z

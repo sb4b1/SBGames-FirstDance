@@ -189,18 +189,6 @@ public class SkillCaster : MonoBehaviour
             targeting = GetComponent<SkillTargeting>();
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (skillSpawnPoint == null) return;
-
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(skillSpawnPoint.position, 0.15f);
-        Gizmos.DrawLine(
-            skillSpawnPoint.position,
-            skillSpawnPoint.position + transform.up * forwardSpawnOffset
-        );
-    }
-
     private void TryGetSensor()
     {
         targeting = transform.root.Find("Sensor").GetComponent<SkillTargeting>();
