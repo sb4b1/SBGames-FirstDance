@@ -45,7 +45,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9611174bc99fcd4dab33794adc2f0ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
-  skills: []
+  skills:
+  - skill: {fileID: 0}
+  - skill: {fileID: 0}
   skillSpawnPoint: {fileID: 4409346096098156148}
 --- !u!1 &1260756780467848515
 GameObject:
@@ -56,6 +58,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3843292984236393184}
+  - component: {fileID: 9034160231394880865}
   m_Layer: 0
   m_Name: AttackPoint
   m_TagString: Untagged
@@ -72,12 +75,26 @@ Transform:
   m_GameObject: {fileID: 1260756780467848515}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.64, y: -0.286, z: 0}
+  m_LocalPosition: {x: 0.102, y: -0.038, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 286667418776334637}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9034160231394880865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260756780467848515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 986064bf9e6c70946b48765a94fb9126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AttackPointGizmo
+  attackPoint: {fileID: 3843292984236393184}
+  attackRadius: 0.4
 --- !u!1 &2396189886448498672
 GameObject:
   m_ObjectHideFlags: 0
@@ -91,6 +108,7 @@ GameObject:
   - component: {fileID: 8232599140175757072}
   - component: {fileID: 7462584194519499158}
   - component: {fileID: 6081689708257595669}
+  - component: {fileID: 5038190993547726646}
   m_Layer: 0
   m_Name: Model
   m_TagString: Untagged
@@ -212,7 +230,7 @@ MonoBehaviour:
   brain: {fileID: 5661646937458837832}
   movement: {fileID: 5841761043065473055}
   agent: {fileID: 7031461656827861849}
-  flipRotator: {fileID: 0}
+  flipRotator: {fileID: 6081689708257595669}
 --- !u!114 &6081689708257595669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -227,6 +245,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterFlipRotator
   rootTransform: {fileID: 3109198578723773857}
   flipAxis: 0
+--- !u!114 &5038190993547726646
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2396189886448498672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e68ba37549e4ffe42bafd63aa7c1f78b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimationEventController
+  combatController: {fileID: 0}
 --- !u!1 &2810017690310066115
 GameObject:
   m_ObjectHideFlags: 0
@@ -269,6 +300,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6394289248788847368}
+  - component: {fileID: 1165039042296385559}
   m_Layer: 0
   m_Name: SpawnPoint
   m_TagString: Untagged
@@ -285,12 +317,26 @@ Transform:
   m_GameObject: {fileID: 4409346096098156148}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.29699993, y: -0.138, z: 0}
+  m_LocalPosition: {x: 0.563, y: -0.191, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8698132659801668505}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1165039042296385559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4409346096098156148}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a76326eb26aad7a43afe533f01d3fb2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillSpawnPointGizmo
+  skillSpawnPoint: {fileID: 6394289248788847368}
+  spawnRadius: 0.15
 --- !u!1 &5486633472546689026
 GameObject:
   m_ObjectHideFlags: 0
@@ -491,6 +537,7 @@ GameObject:
   - component: {fileID: 4220041162180980065}
   - component: {fileID: 3516661602192905692}
   - component: {fileID: 2170900001641181309}
+  - component: {fileID: 1419777042176616269}
   m_Layer: 0
   m_Name: Sensor
   m_TagString: Untagged
@@ -530,10 +577,10 @@ MonoBehaviour:
   OnDetected:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
-        m_MethodName: OnTargetDetect
-        m_Mode: 0
+      - m_Target: {fileID: 3967720624424618889}
+        m_TargetAssemblyTypeName: BaseAI, Assembly-CSharp
+        m_MethodName: SenseEnemy
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -545,10 +592,10 @@ MonoBehaviour:
   OnLostDetection:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: NormalAI, Assembly-CSharp
-        m_MethodName: OnTargetLost
-        m_Mode: 0
+      - m_Target: {fileID: 3967720624424618889}
+        m_TargetAssemblyTypeName: BaseAI, Assembly-CSharp
+        m_MethodName: LostEnemy
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -721,6 +768,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillTargeting
   sensor: {fileID: 4220041162180980065}
+--- !u!114 &1419777042176616269
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8309516993667836581}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 378c20ca70c7f22479d77091d0b0dfcd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VisionController
+  sensor: {fileID: 4220041162180980065}
+  brain: {fileID: 3967720624424618889}
+  enemyTargets: []
+  allyTargets: []
 --- !u!1 &8899575827743905027
 GameObject:
   m_ObjectHideFlags: 0
@@ -745,9 +808,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8899575827743905027}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.920235, y: 0.1052, z: 0}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3843292984236393184}
@@ -768,6 +831,7 @@ GameObject:
   - component: {fileID: 5841761043065473055}
   - component: {fileID: 7331921466431717763}
   - component: {fileID: 6820165486231997942}
+  - component: {fileID: 779946892532255747}
   m_Layer: 6
   m_Name: NC001
   m_TagString: Faction_02
@@ -803,7 +867,7 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8960087825022006478}
-  m_BodyType: 1
+  m_BodyType: 0
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
@@ -859,7 +923,7 @@ MonoBehaviour:
   controlMode: 0
   agentStatus: 0
   aiAugment: {fileID: 9097028675395075657}
-  statsManager: {fileID: 0}
+  statsManager: {fileID: 7331921466431717763}
 --- !u!114 &5841761043065473055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -912,6 +976,19 @@ MonoBehaviour:
   brain: {fileID: 5661646937458837832}
   stats: {fileID: 7331921466431717763}
   attackPoint: {fileID: 3843292984236393184}
+--- !u!114 &779946892532255747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8960087825022006478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3c69102f5af62a469c3b2a56e4ddd14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
+  id: 
 --- !u!1 &9097028675395075657
 GameObject:
   m_ObjectHideFlags: 0
@@ -1011,8 +1088,10 @@ MonoBehaviour:
   agent: {fileID: 7031461656827861849}
   stats: {fileID: 7331921466431717763}
   controller: {fileID: 5841761043065473055}
-  vision: {fileID: 0}
-  goals: []
+  vision: {fileID: 1419777042176616269}
+  goals:
+  - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+  - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   enemyTargets: []

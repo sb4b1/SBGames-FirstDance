@@ -13,7 +13,7 @@
     "com.unity.2d.tilemap": "1.0.0",
     "com.unity.2d.tilemap.extras": "6.0.1",
     "com.unity.2d.tooling": "1.0.2",
-    "com.unity.ai.assistant": "1.6.0-pre.2",
+    "com.unity.addressables": "2.8.1",
     "com.unity.ai.generators": "1.5.0-pre.2",
     "com.unity.ai.inference": "2.5.0",
     "com.unity.ai.navigation": "2.0.10",
