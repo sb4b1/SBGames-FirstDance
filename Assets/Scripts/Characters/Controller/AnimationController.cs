@@ -43,12 +43,12 @@ public class AnimationController : MonoBehaviour
         Vector2 velocity = brain.ControlMode == ControlMode.Player ? movement.MoveDirection:
                            (agent != null ? (Vector2)agent.velocity : Vector2.zero);
 
-    if (velocity.sqrMagnitude > 0.01f)
-        lastMoveDir = velocity.normalized;
+        if (velocity.sqrMagnitude > 0.01f)
+            lastMoveDir = velocity.normalized;
 
-    animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
-    animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
-    animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
+        animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
+        animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
+        animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
     }
 
     private void UpdateAttack()
