@@ -3,8 +3,12 @@ using SB4b1.Logging;
 using System.Collections;
 using ArtificeToolkit.Attributes;
 
+[RequireComponent(typeof(CharacterBrain))]
 public class CharacterStatsManager : MonoBehaviour, IDamageable
 {
+    private CharacterBrain brain;
+
+
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStats baseStats;
 
@@ -35,6 +39,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     private void Awake()
     {
+        brain = GetComponent<CharacterBrain>();
+
         InitializeStats();
     }
 
@@ -110,6 +116,48 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         TakeDamage(new DamageData(damage, DamageType.Physical));
     }
 
+    public void ForceDeath()
+    {
+        Life = 0;
+        NotifyLifeChanged();
+        OnDeath();
+    }
+
+
+    // =========================
+    // Generic Handling
+    // =========================
+
+    private void NotifyLifeChanged()
+    {
+        OnLifeChanged?.Invoke(Life, MaxLife.Value);
+    }
+
+    private void OnDeath()
+    {
+        brain.OnDespawn();
+        ELogger.Log(this, nameof(OnDeath), $"{name} died");
+        Destroy(gameObject); // Temporary death handling - destroy the GameObject. Later: add death animation, ragdoll, etc.
+        // Hook death logic here
+    }
+
+    // =========================
+
+    public void StartAttackTimer()
+    {
+        if (AttackReady)
+        {
+            StartCoroutine(AttackCooldownCoroutine(AttackTimeInterval.Value));
+        }
+    }
+
+    private IEnumerator AttackCooldownCoroutine(float interval)
+    {
+        AttackReady = false;
+        yield return new WaitForSeconds(interval);
+        AttackReady = true;
+    }
+
     private float CalculateFinalDamage(in DamageData damage)
     {
         float amount = damage.Amount;
@@ -129,38 +177,5 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         }
 
         return Mathf.Max(1f, amount);
-    }
-
-
-    // =========================
-    // Generic Handling
-    // =========================
-
-    private void NotifyLifeChanged()
-    {
-        OnLifeChanged?.Invoke(Life, MaxLife.Value);
-    }
-
-    private void OnDeath()
-    {
-        ELogger.Log(this, nameof(OnDeath), $"{name} died");
-        // Hook death logic here
-    }
-
-    // =========================
-
-    public void StartAttackTimer()
-    {
-        if (AttackReady)
-        {
-            StartCoroutine(AttackCooldownCoroutine(AttackTimeInterval.Value));
-        }
-    }
-
-    private IEnumerator AttackCooldownCoroutine(float interval)
-    {
-        AttackReady = false;
-        yield return new WaitForSeconds(interval);
-        AttackReady = true;
     }
 }

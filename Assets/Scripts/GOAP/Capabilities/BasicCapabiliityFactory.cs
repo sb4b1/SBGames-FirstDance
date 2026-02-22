@@ -8,8 +8,6 @@ public class BasicCapabilityFactory : CapabilityFactoryBase
     {
         var builder = new CapabilityBuilder("BasicCapability");
 
-        builder.AddTargetSensor<WanderTargetSensor>()
-            .SetTarget<WanderTarget>();
         builder.AddTargetSensor<EnemyTargetSensor>()
             .SetTarget<EnemyTarget>();
         builder.AddMultiSensor<AwarenessSensor>();

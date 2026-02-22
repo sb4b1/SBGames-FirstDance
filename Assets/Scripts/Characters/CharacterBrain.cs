@@ -4,7 +4,7 @@ using SB4b1.Logging;
 using System.Collections;
 
 [RequireComponent(typeof(CharacterStatsManager))]
-public class CharacterBrain : MonoBehaviour
+public class CharacterBrain : MonoBehaviour, IPoolable
 {
     // =========================
     // Control
@@ -49,9 +49,28 @@ public class CharacterBrain : MonoBehaviour
 
     private void Start()
     {
+        OnSpawn();
+
+        
         bool activeAI = aiAugment.activeSelf;
         AIActivation(true);
         DelayAction(0.1f, () => AIActivation(activeAI));
+    }
+
+    // =========================
+    // Pooling
+    // =========================
+
+    public void OnSpawn()
+    {
+        // Register this character when spawned
+        CharacterManager.Instance.RegisterCharacter(this);
+    }
+
+    public void OnDespawn()
+    {
+        // Unregister this character when despawned
+        CharacterManager.Instance.UnregisterCharacter(this);
     }
 
     // =========================

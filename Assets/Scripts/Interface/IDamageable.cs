@@ -9,4 +9,9 @@ public interface IDamageable
     /// Backward compatibility (legacy calls).
     /// </summary>
     void TakeDamage(float damage);
+
+    /// <summary>
+    /// Instantly kill this entity, bypassing any damage calculations or resistances.
+    /// </summary>
+    void ForceDeath();
 }

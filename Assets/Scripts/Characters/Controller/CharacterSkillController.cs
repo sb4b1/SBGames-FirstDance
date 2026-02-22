@@ -21,7 +21,7 @@ public class CharacterSkillController : MonoBehaviour
     {
         [SerializeField] private SkillCaster skill;
 
-        [Button]
+        [Button("Trigger Skill")]
         public void Trigger()
         {
             skill.TryCastSkill();

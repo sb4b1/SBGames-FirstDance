@@ -8,12 +8,22 @@ public class CharacterRuntimeDatabase : MonoBehaviour
 
     private Dictionary<string, CharacterEntry> characterDict;
 
+    public static CharacterRuntimeDatabase Instance { get; private set; }
+
     void Awake()
     {
         characterDict = database.characters
             .ToDictionary(c => c.id, c => c);
+    }
 
-            GameServices.Characters = this;
+    void Start()
+    {
+        GameServices.Register(this);
+
+        if (characterDict == null || characterDict.Count == 0)
+        {
+            Debug.LogWarning("[CharacterRuntimeDatabase] Character dictionary is empty. Check if the database is assigned and populated.");
+        }
     }
 
     public CharacterEntry Get(string id)
