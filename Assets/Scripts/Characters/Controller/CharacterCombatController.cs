@@ -22,6 +22,11 @@ public class CharacterCombatController : MonoBehaviour
         brain.TryStartAttack();
     }
 
+    public void CastSkill()
+    {
+        brain.TryCastSkill();
+    }
+
     public void SearchForTargets()
     {
         Collider2D[] hitColliders = Physics2D.OverlapCircleAll(attackPoint.transform.position, ATTACK_RADIUS);

@@ -11,6 +11,7 @@ public class SkillData : ScriptableObject
     [TextArea] public string description;
     public Sprite icon;
     public GameObject skillPrefab;
+    public UtilitySkill utilityData;
 
     public enum ProjectileForward
     {

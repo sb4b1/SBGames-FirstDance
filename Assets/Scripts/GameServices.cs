@@ -8,6 +8,8 @@ public class GameServices : MonoBehaviour
 
     public static CharacterRuntimeDatabase CharacterRuntimeDatabase { get;  set; }
 
+    public static UtilitySkillRuntimeDatabase UtilitySkillRuntimeDatabase { get; set; }
+
     private void Awake()
     {
         if (Instance != null && Instance != this)

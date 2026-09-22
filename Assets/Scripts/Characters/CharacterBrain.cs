@@ -18,6 +18,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     [SerializeField] private GameObject aiAugment;
     [SerializeField] private CharacterStatsManager statsManager;
+    [SerializeField] private AnimationController animController;
 
     // =========================
     // State
@@ -28,6 +29,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public bool IsDashing { get; private set; }
     public bool IsAttacking { get; private set; }
+    public bool IsCastingSkill { get; private set; }
     public bool HasAI { get; private set; }
 
     private void Awake()
@@ -43,6 +45,17 @@ public class CharacterBrain : MonoBehaviour, IPoolable
             if (statsManager == null)
             {
                 ELogger.Error(this, nameof(Awake), "CharacterStatsManager not found Please assign it in the inspector.");
+            }
+        }
+
+        if (animController == null)
+        {
+            ELogger.Warning(this, nameof(Awake), "AnimationController reference is missing! Attempting to find in children...");
+            animController = GetComponentInChildren<AnimationController>();
+
+            if (animController == null)
+            {
+                ELogger.Error(this, nameof(Awake), "AnimationController not found Please assign it in the inspector.");
             }
         }
     }
@@ -136,15 +149,38 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         if (IsAttacking || !CanAttack) return false;
 
         statsManager.StartAttackTimer();
-        IsAttacking = true;
+
         CanMove = false;
+        IsAttacking = true;
+        animController.UpdateAttack(true);
+        return true;
+    }
+
+    // =========================
+    // Skill
+    // =========================
+    public bool TryCastSkill()
+    {
+        if (IsCastingSkill) return false;
+
+        CanMove = false;
+        IsCastingSkill = true;
+        animController.UpdateCastSkill(true);
         return true;
     }
 
     public void EndAttack()
     {
-        IsAttacking = false;
         CanMove = true;
+        IsAttacking = false;
+        animController.UpdateAttack(false);
+    }
+
+    public void EndCastSkill()
+    {
+        CanMove = true;
+        IsCastingSkill = false;
+        animController.UpdateCastSkill(false);
     }
 
     private void DelayAction(float delay, System.Action action)

@@ -6,9 +6,11 @@ public class SkillCaster : MonoBehaviour
 {
     [Header("Skill Configuration")]
     [SerializeField]
-    private SkillData skillData;
+    private SkillData data;
     [SerializeField]
     private Transform skillSpawnPoint;
+
+    public SkillData Data => data;
 
     [Header("Targeting")]
     [SerializeField]
@@ -65,7 +67,7 @@ public class SkillCaster : MonoBehaviour
         if (!IsReady())
             return false;
 
-        if (skillData == null || skillData.skillPrefab == null)
+        if (data == null || data.skillPrefab == null)
         {
             Debug.LogError("SkillCaster missing SkillData or prefab", this);
             return false;
@@ -122,13 +124,13 @@ public class SkillCaster : MonoBehaviour
         // Compute 2D rotation (Z) so projectile faces travel direction according to skill settings
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         float zRot;
-        if (skillData != null)
+        if (data != null)
         {
-            zRot = skillData.projectileForward switch
+            zRot = data.projectileForward switch
             {
-                SkillData.ProjectileForward.Right => angle + skillData.projectileRotationOffset,
-                SkillData.ProjectileForward.CustomAngle => angle + skillData.projectileRotationOffset,
-                _ => angle - 90f + skillData.projectileRotationOffset,
+                SkillData.ProjectileForward.Right => angle + data.projectileRotationOffset,
+                SkillData.ProjectileForward.CustomAngle => angle + data.projectileRotationOffset,
+                _ => angle - 90f + data.projectileRotationOffset,
             };
         }
         else
@@ -140,19 +142,19 @@ public class SkillCaster : MonoBehaviour
 
         GameObject skillObject =
             ObjectPoolManager.Instance.Spawn(
-                skillData.skillPrefab,
+                data.skillPrefab,
                 spawnPosition,
                 rotation
             );
 
         if (skillObject.TryGetComponent(out SkillInstance skillInstance))
         {
-            skillInstance.Initialize(skillData, direction, casterID, target);
+            skillInstance.Initialize(data, direction, casterID, target);
         }
         else
         {
             Debug.LogError(
-                $"Skill prefab {skillData.skillPrefab.name} missing SkillInstance",
+                $"Skill prefab {data.skillPrefab.name} missing SkillInstance",
                 this
             );
         }

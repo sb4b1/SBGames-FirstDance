@@ -159,6 +159,23 @@ public class BaseAI : MonoBehaviour
         return bestGoal != null ? bestGoal.GetGOAPGoalKey() : EnumUtilGoal.None;
     }
 
+    public UtilitySkill SelectBestSkill(List<UtilitySkill> utilSkills)
+    {
+        UtilitySkill bestUtilSkill = null;
+        float highestScore = 0f;
+
+        foreach (var utilSkill in utilSkills)
+        {
+            float score = utilSkill.Evaluate(this);
+
+            if (score > highestScore)
+            {
+                highestScore = score;
+                bestUtilSkill = utilSkill;
+            }
+        }
+        return bestUtilSkill;
+    }
 #region Planner
 
     private void Planner(EnumUtilGoal goalKey)

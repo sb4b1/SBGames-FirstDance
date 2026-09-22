@@ -19,6 +19,7 @@ public class AnimationController : MonoBehaviour
     private static readonly int HASH_MOVE_Y = Animator.StringToHash("MoveY");
     private static readonly int HASH_SPEED  = Animator.StringToHash("Speed");
     private static readonly int HASH_ATTACK = Animator.StringToHash("IsAttacking");
+    private static readonly int HASH_CASTSkill = Animator.StringToHash("IsCastingSkill");
 
     private Vector2 lastMoveDir = Vector2.down;
 
@@ -34,7 +35,6 @@ public class AnimationController : MonoBehaviour
     private void Update()
     {
         UpdateMovement();
-        UpdateAttack();
         UpdateFlip();
     }
 
@@ -51,9 +51,14 @@ public class AnimationController : MonoBehaviour
         animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
     }
 
-    private void UpdateAttack()
+    public void UpdateAttack(bool isAttacking)
     {
-        animator.SetBool(HASH_ATTACK, brain.IsAttacking);
+        animator.SetBool(HASH_ATTACK, isAttacking);
+    }
+
+    public void UpdateCastSkill(bool isCasting)
+    {
+        animator.SetBool(HASH_CASTSkill, isCasting);
     }
 
     private void UpdateFlip()
@@ -86,7 +91,8 @@ public class AnimationController : MonoBehaviour
             "IdleRight",
             "IdleLeft",
             "IsWalking",
-            "IsAttacking"
+            "IsAttacking",
+            "IsCastingSkill"
         };
 
         int validate = 0;
