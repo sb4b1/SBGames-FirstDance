@@ -20,6 +20,16 @@ MonoBehaviour:
     list:
     - Key: Creative
       Value: 1
+  assetPathsMap:
+    list: []
+  logTypesMap:
+    list:
+    - Key: 3
+      Value: 1
+    - Key: 2
+      Value: 1
+    - Key: 0
+      Value: 1
   validatorTypesMap:
     list:
     - Key: Artifice_ValidatorModule_ScriptableObject_NullReferenceChecker
@@ -32,13 +42,39 @@ MonoBehaviour:
       Value: 1
     - Key: Artifice_ValidatorModule_CustomAttributeChecker
       Value: 1
-  logTypesMap:
-    list:
-    - Key: 3
-      Value: 1
-    - Key: 2
-      Value: 1
-    - Key: 0
-      Value: 1
-  assetPathsMap:
-    list: []
+  validatorModuleConfigurations:
+  - typeName: Artifice_ValidatorModule_ScriptableObject_CustomAttributeChecker
+    isOverridingDefaultConfiguration: 0
+    isAutorun: 1
+    batchingPriority: 150
+    useCustomBatchingValue: 0
+    customBatchingValue: 0
+    assetPathsToInclude: []
+  - typeName: Artifice_ValidatorModule_ScriptableObject_NullReferenceChecker
+    isOverridingDefaultConfiguration: 0
+    isAutorun: 1
+    batchingPriority: 150
+    useCustomBatchingValue: 0
+    customBatchingValue: 0
+    assetPathsToInclude: []
+  - typeName: Artifice_ValidatorModule_CustomAttributeChecker
+    isOverridingDefaultConfiguration: 0
+    isAutorun: 1
+    batchingPriority: 150
+    useCustomBatchingValue: 0
+    customBatchingValue: 0
+    assetPathsToInclude: []
+  - typeName: Artifice_ValidatorModule_NullScriptChecker_GameObjects
+    isOverridingDefaultConfiguration: 0
+    isAutorun: 1
+    batchingPriority: 150
+    useCustomBatchingValue: 0
+    customBatchingValue: 0
+    assetPathsToInclude: []
+  - typeName: Artifice_ValidatorModule_IsArtificeEnabled
+    isOverridingDefaultConfiguration: 0
+    isAutorun: 1
+    batchingPriority: 150
+    useCustomBatchingValue: 0
+    customBatchingValue: 0
+    assetPathsToInclude: []

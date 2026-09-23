@@ -6,6 +6,7 @@ public struct DamageData
     public float Amount;
     public bool IsCritical;
     public DamageType Type;
+    [NonSerialized]
     public object Source;
 
     public DamageData(

@@ -12,7 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3b5343b85a3f194e8310e05e8ce893c, type: 3}
   m_Name: Settings
   m_EditorClassIdentifier: 
-  showUserComments: 0
   redEditorTextColour: {r: 1, g: 0.2, b: 0.2, a: 1}
   activeSensorEditorColour: {r: 0.20000002, g: 1, b: 1, a: 0.21176471}
   signalBoundsColour: {r: 0.2, g: 1, b: 1, a: 1}

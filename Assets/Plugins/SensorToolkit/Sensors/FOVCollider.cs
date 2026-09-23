@@ -138,20 +138,16 @@ namespace Micosmo.SensorToolkit
                 }
             }
 
-            releaseMesh();
-            mesh = new Mesh();
+            if (mesh == null) {
+                mesh = new Mesh();
+                mesh.name = "FOVColliderPoints";
+            }
+            mesh.Clear();
             mesh.vertices = pts;
             mesh.triangles = triangles;
-            mesh.name = "FOVColliderPoints";
             mc.sharedMesh = mesh;
             mc.convex = true;
             mc.isTrigger = true;
-        }
-
-        void releaseMesh() {
-            if (mc.sharedMesh != null && mc.sharedMesh == mesh) {
-                DestroyImmediate(mc.sharedMesh, true);
-            }
         }
 
         void OnDrawGizmosSelected() {

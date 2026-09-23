@@ -105,6 +105,7 @@ MonoBehaviour:
   agentStatus: 0
   aiAugment: {fileID: 5702767144640782713}
   statsManager: {fileID: 0}
+  animController: {fileID: 0}
 --- !u!114 &4025492394318729815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -223,7 +224,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.04329014, y: -0.28736028}
+  m_Offset: {x: 0.0653283, y: -0.42128468}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -233,7 +234,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.3831817, y: 0.23479253}
+  m_Size: {x: 0.6510304, y: 0.5026413}
   m_EdgeRadius: 0
 --- !u!1 &3257484621512802898
 GameObject:
@@ -301,7 +302,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.03570792, y: -0.053444505}
+  m_Offset: {x: 0.061136603, y: -0.041577756}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -311,7 +312,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 1
-  m_Size: {x: 0.37452525, y: 0.70065606}
+  m_Size: {x: 0.6491549, y: 1.266868}
   m_EdgeRadius: 0
 --- !u!1 &4436548654749585189
 GameObject:
@@ -372,7 +373,7 @@ Animator:
   m_WriteDefaultValuesOnDisable: 0
 --- !u!212 &8372094761042967817
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -429,6 +430,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &636021813663669992
 MonoBehaviour:
   m_ObjectHideFlags: 0

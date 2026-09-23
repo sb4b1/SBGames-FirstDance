@@ -16,11 +16,19 @@ namespace Micosmo.SensorToolkit.Editors {
 
                 EditorGUI.BeginChangeCheck();
 
+#if UNITY_6000_0_OR_NEWER
+                string[] areaNames = UnityEngine.AI.NavMesh.GetAreaNames();
+#else
                 string[] areaNames = GameObjectUtility.GetNavMeshAreaNames();
+#endif
                 List<string> completeAreaNames = new List<string>();
 
                 foreach (string name in areaNames) {
+#if UNITY_6000_0_OR_NEWER
+                    var id = UnityEngine.AI.NavMesh.GetAreaFromName(name);
+#else
                     var id = GameObjectUtility.GetNavMeshAreaFromName(name);
+#endif
                     while (id >= completeAreaNames.Count) {
                         completeAreaNames.Add("");
                     }

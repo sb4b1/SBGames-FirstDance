@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 #if UNITY_EDITOR
+using UnityEditor;
 using System.Reflection;
 #endif
 
@@ -78,16 +79,11 @@ public static class ConsoleProDebug
 			if(_consoleWindowType == null || !_checkedConsoleWindowType)
 			{
 				_checkedConsoleWindowType = true;
-				Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-				for(int iAssembly = 0; iAssembly < assemblies.Length; iAssembly++)
+				foreach(Type type in TypeCache.GetTypesDerivedFrom<EditorWindow>())
 				{
-					Type[] types = assemblies[iAssembly].GetTypes();
-					for(int iType = 0; iType < types.Length; iType++)
+					if(type.Name == "ConsolePro3Window")
 					{
-						if(types[iType].Name == "ConsolePro3Window")
-						{
-							_consoleWindowType = types[iType];
-						}
+						_consoleWindowType = type;
 					}
 				}
 			}

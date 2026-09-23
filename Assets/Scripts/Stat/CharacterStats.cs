@@ -3,6 +3,7 @@ using UnityEngine;
 
 public class CharacterStats : MonoBehaviour
 {
+    [SerializeField]
     public Dictionary<StatType, Stat> Stats = new();
 
     public Stat GetStat(StatType type)

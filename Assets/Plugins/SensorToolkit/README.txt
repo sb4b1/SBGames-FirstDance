@@ -7,6 +7,7 @@ If you have any questions, feature requests or if you have found a bug then plea
 
 
 [CHANGELOG]
+2.5.18 - Fixes some deprecation warnings in Unity 6.0 and up
 2.5.17 - Can trigger OnNoDetection from initial pulse. SensorToolkit/Settings can toggle user-comments on sensor inspectors
 2.5.16 - Adds GetNavMeshHit() to NavMeshSensor, to expose the underlying NavMeshHit struct
 2.5.15 - Fix il2cpp build failure, Quality point generation on LOSSensor, and a couple of other small bugs.
