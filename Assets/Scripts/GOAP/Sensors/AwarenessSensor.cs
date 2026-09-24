@@ -30,6 +30,13 @@ public class AwarenessSensor : MultiSensorBase
             return (int) data.AgentLife;
         });
 
+        this.AddLocalWorldSensor<AgentMana>((agent, references) =>
+        {
+            var data = references?.GetCachedComponent<BaseAI>();
+
+            return (int) data.AgentMana;
+        });
+
         this.AddLocalTargetSensor<SelfTarget>((agent, references, target) =>
         {
             return new TransformTarget(agent.Transform);

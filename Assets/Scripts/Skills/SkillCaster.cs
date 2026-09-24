@@ -31,6 +31,47 @@ public class SkillCaster : MonoBehaviour
     private Transform casterTransform;
 
 
+    public bool IsReady() => cooldownTimer <= 0f;
+
+    #region FLAGS
+    public bool SkillTargetComponentExists() => targeting != null;
+    public bool CasterTransformExists() => casterTransform != null;
+
+    public byte Flags
+    {
+        get
+        {
+            byte flags = 0;
+            if (SkillTargetComponentExists()) flags |= 1 << 0; // Bit 1: SkillTargetComponentExists
+            if (CasterTransformExists()) flags |= 1 << 1; // Bit 2: CasterTransformExists
+            return flags;
+        }
+
+        // Flag 
+        // 0 : No flags set
+        // 1 : Only SkillTargetComponentExists
+        // 2 : Only CasterTransformExists
+        // 3 : Both flags set
+    }
+
+    public void CheckFlags()
+    {
+        if (Flags == 0)
+        {
+            Debug.LogWarning("SkillCaster: No flags are set. Check if the skill is ready, if the SkillTargeting component exists, and if the caster transform is assigned.", this);
+        }
+    }
+
+    public void SetupSkillCaster(SkillTargeting skillTargeting, Transform spawnPoint, Transform caster)
+    {
+        targeting = skillTargeting;
+        skillSpawnPoint = spawnPoint;
+        casterTransform = caster;
+    }
+
+    #endregion
+
+
     private enum SpawnTypes
     {
         AtCaster,
@@ -40,8 +81,14 @@ public class SkillCaster : MonoBehaviour
 
     private void Awake()
     {
-        casterTransform = transform.root;
-        casterID = casterTransform.GetComponent<CharacterIdentifier>().ID;
+        if (casterTransform == null)
+        {
+            casterTransform = transform.root;
+        }
+        if (casterTransform != null && casterTransform.TryGetComponent(out CharacterIdentifier identifier))
+        {
+            casterID = identifier.ID;
+        }
 
         if (spawnType == SpawnTypes.AtCasterSpawnPoint && skillSpawnPoint == null)
         {
@@ -53,6 +100,7 @@ public class SkillCaster : MonoBehaviour
         }
     }
 
+
     private void Update()
     {
         if (cooldownTimer > 0f)
@@ -62,6 +110,50 @@ public class SkillCaster : MonoBehaviour
     // =========================
     // CAST ENTRY POINT
     // =========================
+    [Button]
+    public void DebugCastSkill()
+    {
+        if (!IsReady())
+        {
+            Debug.LogWarning("SkillCaster: Skill is on cooldown. Cannot cast skill.", this);
+            return;
+        }
+
+        if (data == null || data.skillPrefab == null)
+        {
+            Debug.LogError("SkillCaster missing SkillData or prefab", this);
+            return;
+        }
+
+        if (casterTransform == null)
+        {
+            Debug.LogError("SkillCaster missing caster transform", this);
+            return;
+        }
+
+        GameObject target = targeting != null ? FindFirstTarget() : null;
+        Vector3 direction;
+        Vector3 spawnPosition;
+
+        if (target != null)
+        {
+            Vector3 toTarget = target.transform.position - GetSpawnPosition(target);
+            direction = toTarget.sqrMagnitude > 0.001f
+                ? toTarget.normalized
+                : casterTransform.up;
+            spawnPosition = GetSpawnPosition(target);
+        }
+        else
+        {
+            direction = casterTransform.up;
+            spawnPosition = GetSpawnPosition() + direction * forwardSpawnOffset;
+        }
+
+        Debug.Log($"[SkillCaster] Debug casting skill '{data.skillName}' from '{casterTransform.name}' at position {spawnPosition} with direction {direction}.", this);
+        CastSkill(direction, spawnPosition, target);
+        cooldownTimer = cooldownDuration;
+    }
+
     public bool TryCastSkill()
     {
         if (!IsReady())
@@ -183,8 +275,6 @@ public class SkillCaster : MonoBehaviour
         return targets.Count > 0 ? targets[0] : null;
     }
 
-    public bool IsReady() => cooldownTimer <= 0f;
-
     private void OnValidate()
     {
         if (targeting == null)
@@ -193,6 +283,6 @@ public class SkillCaster : MonoBehaviour
 
     private void TryGetSensor()
     {
-        targeting = transform.root.Find("Sensor").GetComponent<SkillTargeting>();
+        targeting = transform.Find("Sensor").GetComponent<SkillTargeting>();
     }
 }

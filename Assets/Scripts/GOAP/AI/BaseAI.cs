@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using CrashKonijn.Goap.Runtime;
 using SB4b1.Helpers;
@@ -9,10 +8,22 @@ public class BaseAI : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterStatsManager stats;
-    [SerializeField] private CharacterMovementController controller;
+    [SerializeField] private CharacterMovementController motionController;
+    [SerializeField] private CharacterSkillController skillController;
     [SerializeField] private VisionController vision;
     [SerializeField] private List<UtilityGoal> goals;
-    
+
+    // Automatically populated from CharacterSkillController.Skills at runtime.
+    // Each Skill's UtilityData (ScriptableObject) is collected here so SelectBestSkill can evaluate them.
+    // You do NOT need to assign these manually in the Inspector.
+    [SerializeField] private List<UtilitySkill> skills = new();
+
+    public CharacterSkillController SkillController => skillController;
+    public List<UtilitySkill> Skills => skills;
+
+    /// <summary>True when at least one skill in the SkillController is off cooldown.</summary>
+    public bool IsSkillReady => skillController != null && skillController.HasReadySkill();
+
     // This can be used to differentiate between different types of agents (e.g., "NormalAgent", "AggressiveAgent", etc.)
     // NormalAgent is the default type, and if no specific behavior is assigned in the GoapActionProvider, it will use the NormalAgent behavior
     [SerializeField] private string agentType = "NormalAgent";
@@ -21,33 +32,44 @@ public class BaseAI : MonoBehaviour
     private GoapActionProvider provider;
 
     [SerializeField] private Transform currentTarget;
+    [SerializeField] private float targetDistance;
     [SerializeField] private List<Transform> enemyTargets;
     [SerializeField] private List<Transform> allyTargets;
 
     public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
+    public float TargetDistance { get => targetDistance; private set => targetDistance = value; }
     public List<Transform> EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
     public List<Transform> AllyTargets { get => allyTargets; private set => allyTargets = value; }
 
     [SerializeField] private int threatLevel;
     [SerializeField] private int fearLevel;
     [SerializeField] private float agentLife;
+    [SerializeField] private float agentMana;
 
     public int ThreatLevel { get => threatLevel; private set => threatLevel = value; }
     public int FearLevel { get => fearLevel; private set => fearLevel = value; }
     public float AgentLife { get => agentLife; private set => agentLife = value; }
+    public float AgentMana { get => agentMana; private set => agentMana = value; }
+
+    public int EnemiesInSkillRange(float range)
+    {
+        if (enemyTargets == null || enemyTargets.Count == 0) return 0;
+        int count = 0;
+        for (int i = 0; i < enemyTargets.Count; i++)
+        {
+            if (enemyTargets[i] != null && Vector3.Distance(transform.position, enemyTargets[i].position) <= range)
+                count++;
+        }
+        return count;
+    }
 
 #if UNITY_EDITOR
     [Header("Debugging")]
     [SerializeField] private string currentGoalKey = EnumUtilGoal.None.ToString();
     [SerializeField] private SerializableDictionary<EnumUtilGoal, float> goalScores = new();
+    [SerializeField] private string currentSkillKey = "None";
+    [SerializeField] private SerializableDictionary<string, float> skillScores = new();
 #endif
-
-
-
-
-
-
-
 
     private void Awake()
     {
@@ -57,19 +79,31 @@ public class BaseAI : MonoBehaviour
         if (this.provider.AgentTypeBehaviour == null)
             this.provider.AgentType = this.goap.GetAgentType(agentType);
     }
- 
+
     private void Start()
     {
         if (stats == null) stats = GetComponentInParent<CharacterStatsManager>();
-        if (controller == null) controller = GetComponentInParent<CharacterMovementController>();
+        if (motionController == null) motionController = GetComponentInParent<CharacterMovementController>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
 
+        // Auto-find SkillController if not assigned
+        if (skillController == null)
+        {
+            skillController = GetComponent<CharacterSkillController>();
+            if (skillController == null) skillController = GetComponentInChildren<CharacterSkillController>();
+            if (skillController == null) skillController = GetComponentInParent<CharacterSkillController>();
+        }
+
         InitializeAgent();
+        InitializeSkills();
     }
 
     private void Update()
     {
         SetGoal();
+
+        //temporary: Update resources every frame for now, but this can be optimized later
+        UpdateResources();
     }
 
     private void InitializeAgent()
@@ -79,7 +113,40 @@ public class BaseAI : MonoBehaviour
         agent.speed = stats.Movespeed.Value;
     }
 
-        // Emotional state Method
+    /// <summary>
+    /// Collects all UtilitySkill ScriptableObjects from the CharacterSkillController's skill list
+    /// and populates the internal <see cref="skills"/> list automatically.
+    /// Call this again if skills are added/removed at runtime.
+    /// </summary>
+    public void InitializeSkills()
+    {
+        skills.Clear();
+
+        if (skillController == null) return;
+
+        foreach (var skill in skillController.Skills)
+        {
+            if (skill == null) continue;
+
+            UtilitySkill utilData = skill.UtilityData;
+            if (utilData != null && !skills.Contains(utilData))
+            {
+                skills.Add(utilData);
+            }
+        }
+
+#if UNITY_EDITOR
+        if (skills.Count == 0)
+            Debug.LogWarning($"[BaseAI] {name}: No UtilitySkill data found. " +
+                             $"Make sure each SkillCaster's SkillData has a 'utilityData' ScriptableObject assigned, " +
+                             $"or that the UtilitySkillRuntimeDatabase contains matching entries.");
+        else
+            Debug.Log($"[BaseAI] {name}: Initialized {skills.Count} utility skill(s): " +
+                      string.Join(", ", skills.ConvertAll(s => s.GetID())));
+#endif
+    }
+
+    // Emotional state Method
 #region Emotional State
 
     private void CalculateEmotionalState()
@@ -101,10 +168,6 @@ public class BaseAI : MonoBehaviour
         fearLevel -= 5; // Optionally decrease fear level as well
     }
 
-    
-
-
-
 #endregion
 
     public void UpdateTargets()
@@ -113,7 +176,16 @@ public class BaseAI : MonoBehaviour
         allyTargets = vision.AllyTargets;
     }
 
+    public void UpdateResources()
+    {
+        agentLife = stats.Life;
+        agentMana = stats.Mana;
+    }
+
     public void SetTarget(Transform target) => CurrentTarget = target;
+
+    public void SetAgentLife(float life) => AgentLife = life;
+    public void SetAgentMana(float mana) => AgentMana = mana;
 
     private void SetGoal()
     {
@@ -155,17 +227,31 @@ public class BaseAI : MonoBehaviour
         }
 #endif
 
-
         return bestGoal != null ? bestGoal.GetGOAPGoalKey() : EnumUtilGoal.None;
     }
 
+    /// <summary>
+    /// Selects the best UtilitySkill from the auto-populated skills list (sourced from CharacterSkillController).
+    /// Called by CharacterSkillController.TryCastSkillAI().
+    /// </summary>
+    public UtilitySkill SelectBestSkill()
+    {
+        return SelectBestSkill(skills);
+    }
+
+    /// <summary>
+    /// Selects the best UtilitySkill from an explicit list. Useful if you want to pass a custom subset.
+    /// </summary>
     public UtilitySkill SelectBestSkill(List<UtilitySkill> utilSkills)
     {
+        if (utilSkills == null || utilSkills.Count == 0) return null;
+
         UtilitySkill bestUtilSkill = null;
         float highestScore = 0f;
 
         foreach (var utilSkill in utilSkills)
         {
+            if (utilSkill == null) continue;
             float score = utilSkill.Evaluate(this);
 
             if (score > highestScore)
@@ -174,8 +260,24 @@ public class BaseAI : MonoBehaviour
                 bestUtilSkill = utilSkill;
             }
         }
+
+#if UNITY_EDITOR
+        currentSkillKey = bestUtilSkill != null ? bestUtilSkill.GetID() : "None";
+        skillScores.Clear();
+        foreach (var utilSkill in utilSkills)
+        {
+            if (utilSkill == null) continue;
+            skillScores.GetPairs().Add(new SerializableDictionary<string, float>.Pair
+            {
+                Key = utilSkill.GetID(),
+                Value = utilSkill.Evaluate(this)
+            });
+        }
+#endif
+
         return bestUtilSkill;
     }
+
 #region Planner
 
     private void Planner(EnumUtilGoal goalKey)

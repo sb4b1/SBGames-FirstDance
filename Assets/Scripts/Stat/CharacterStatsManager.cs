@@ -14,13 +14,16 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     // Runtime life
     [SerializeField] private float life;
+    [SerializeField] private float mana;
 
     public float Life { get => life; private set => life = value; }
+    public float Mana { get => mana; private set => mana = value; }
 
     // Core stats (private set = safer)
 
 #if UNITY_EDITOR
     [SerializeField, ReadOnly] private float maxLife;
+    [SerializeField, ReadOnly] private float maxMana;
     [SerializeField, ReadOnly] private float movespeed;
     [SerializeField, ReadOnly] private float damage;
     [SerializeField, ReadOnly] private float attackRange;
@@ -28,6 +31,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 #endif
 
     public Stat MaxLife { get; private set; } = new Stat();
+    public Stat MaxMana { get; private set; } = new Stat();
     public Stat Movespeed { get; private set; } = new Stat();
     public Stat Damage { get; private set; } = new Stat();
     public Stat AttackRange { get; private set; } = new Stat();
@@ -57,12 +61,14 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
         ApplyBaseStats();
         Life = MaxLife.Value;
+        Mana = MaxMana.Value;
         NotifyLifeChanged();
     }
 
     private void ApplyBaseStats()
     {
         MaxLife.BaseValue = baseStats.MaxLife;
+        MaxMana.BaseValue = baseStats.MaxMana;
         Movespeed.BaseValue = baseStats.Movespeed;
         Damage.BaseValue = baseStats.Damage;
         AttackRange.BaseValue = baseStats.AttackRange;
@@ -70,6 +76,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
 #if UNITY_EDITOR
         maxLife = MaxLife.Value;
+        maxMana = MaxMana.Value;
         movespeed = Movespeed.Value;
         damage = Damage.Value;
         attackRange = AttackRange.Value;
@@ -91,6 +98,16 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
             $"{name} healed <color=green>{value}</color>");
     }
 
+    public void RestoreMana(float value)
+    {
+        if (value <= 0) return;
+
+        Mana = Mathf.Min(Mana + value, MaxMana.Value);
+
+        ELogger.Log(this, nameof(RestoreMana),
+            $"{name} restored <color=blue>{value}</color> mana");
+    }
+
     public bool TakeDamage(in DamageData damage)
     {
         float finalDamage = CalculateFinalDamage(damage);
@@ -108,6 +125,25 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         }
 
         return false;
+    }
+
+    public bool TryConsumeMana(float amount)
+    {
+        if (amount <= 0) return true;
+
+        if (Mana >= amount)
+        {
+            Mana -= amount;
+            ELogger.Log(this, nameof(TryConsumeMana),
+                $"{name} consumed <color=blue>{amount}</color> mana");
+            return true;
+        }
+        else
+        {
+            ELogger.Log(this, nameof(TryConsumeMana),
+                $"{name} failed to consume <color=blue>{amount}</color> mana (not enough)");
+            return false;
+        }
     }
 
     // Legacy support

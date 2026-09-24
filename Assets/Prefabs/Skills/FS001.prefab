@@ -44,9 +44,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6b07b2ff3996ad4991673daa4dc334d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillCaster
-  skillData: {fileID: 11400000, guid: c90689d6a14c7bd41a0c50cb71778b5c, type: 2}
+  data: {fileID: 11400000, guid: c90689d6a14c7bd41a0c50cb71778b5c, type: 2}
   skillSpawnPoint: {fileID: 9080558179960770906}
   targeting: {fileID: 0}
   requireTarget: 0
+  spawnType: 0
   forwardSpawnOffset: 0.6
   cooldownDuration: 1

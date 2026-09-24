@@ -9,6 +9,7 @@ public class NormalAgentTypeFactory : AgentTypeFactoryBase
             
             factory.AddCapability<WanderCapabilityFactory>();
             factory.AddCapability<AttackCapabilityFactory>();
+            factory.AddCapability<SkillCapabilityFactory>();
             factory.AddCapability<BasicCapabilityFactory>();
 
             return factory.Build();

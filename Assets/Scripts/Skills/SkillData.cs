@@ -30,6 +30,7 @@ public class SkillData : ScriptableObject
     public SkillType type = SkillType.Default;
     public float baseDamage = 10f;
     public DamageType damageType = DamageType.Physical;
+    public float baseManaCost = 10f;
 
     [EnableIf("type", SkillType.Projectile), FoldoutGroup("Projectile Settings")]
     public float projectileSpeed = 10f;

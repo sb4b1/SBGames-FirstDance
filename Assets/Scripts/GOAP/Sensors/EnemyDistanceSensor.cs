@@ -14,9 +14,9 @@ public class EnemyDistanceSensor : MultiSensorBase
         this.AddLocalWorldSensor<EnemyDistance>((agent, references) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-            if (data.CurrentTarget == null) return 999;
+            if (data == null || data.CurrentTarget == null) return 999;
 
-            return (int)Vector3.Distance(agent.Transform.position, data.CurrentTarget.position);
+            return (int)data.TargetDistance;
         });
 
         this.AddLocalTargetSensor<KeepDistanceTarget>((agent, references, target) =>

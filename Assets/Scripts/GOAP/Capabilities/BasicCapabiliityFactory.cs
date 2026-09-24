@@ -11,6 +11,8 @@ public class BasicCapabilityFactory : CapabilityFactoryBase
         builder.AddTargetSensor<EnemyTargetSensor>()
             .SetTarget<EnemyTarget>();
         builder.AddMultiSensor<AwarenessSensor>();
+        builder.AddMultiSensor<CombatStatusSensor>();
+        builder.AddMultiSensor<EnemyDistanceSensor>();
 
         return builder.Build();
     }

@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9611174bc99fcd4dab33794adc2f0ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
-  baseAI: {fileID: 0}
+  baseAI: {fileID: 3967720624424618889}
   skills:
   - skill: {fileID: 0}
   - skill: {fileID: 0}
@@ -959,7 +959,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
   life: 0
+  mana: 0
   maxLife: 0
+  maxMana: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -1091,17 +1093,20 @@ MonoBehaviour:
   agent: {fileID: 7031461656827861849}
   stats: {fileID: 7331921466431717763}
   controller: {fileID: 5841761043065473055}
+  skillCaster: {fileID: 0}
   vision: {fileID: 1419777042176616269}
   goals:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   agentType: NormalAgent
   currentTarget: {fileID: 0}
+  targetDistance: 0
   enemyTargets: []
   allyTargets: []
   threatLevel: 0
   fearLevel: 0
   agentLife: 0
+  agentMana: 0
   currentGoalKey: None
   goalScores:
     pairs: []

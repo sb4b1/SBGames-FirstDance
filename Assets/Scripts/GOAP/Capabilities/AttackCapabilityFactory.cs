@@ -14,7 +14,8 @@ public class AttackCapabilityFactory : CapabilityFactoryBase
 
         builder.AddAction<AttackAction>()
             .SetTarget<EnemyTarget>()
-            .AddEffect<ThreatLevel>(EffectType.Decrease);
+            .AddEffect<ThreatLevel>(EffectType.Decrease)
+            .SetBaseCost(2);
 
         return builder.Build();
     }
