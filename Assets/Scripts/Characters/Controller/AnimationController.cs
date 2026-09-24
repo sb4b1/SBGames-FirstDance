@@ -30,7 +30,7 @@ public class AnimationController : MonoBehaviour
         if (movement == null) movement = GetComponentInParent<CharacterMovementController>();
         if (brain == null) brain = GetComponentInParent<CharacterBrain>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
-    }
+    }       
 
     private void Update()
     {
