@@ -6,6 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(SkillHitResolver))]
 public class SkillInstance : MonoBehaviour, IPoolable
 {
+    private static readonly int OnHitHash = Animator.StringToHash("OnHit");
     [SerializeField]
     private Animator animator;
     [SerializeField]
@@ -119,7 +120,9 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (!isActive)
             return;
 
-        animator?.SetTrigger("OnHit");
+        if (animator != null)
+            animator.SetTrigger(OnHitHash);
+            
         isHit = true;
         hitResolver.ResolveHit(this, target);
         RegisterHit(target);

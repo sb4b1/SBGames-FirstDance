@@ -254,7 +254,6 @@ public class CharacterSkillController : MonoBehaviour
                 if (skill.Flags == 3)
                 {
                     skill.DebugCastSkill();
-                    Debug.Log($"Skill {ID} triggered successfully.");
                 }
                 else
                 {

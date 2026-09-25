@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3525353504891636791}
   - component: {fileID: 6688678411423370283}
   - component: {fileID: 7898363161681684930}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: LS001_Effect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -38,7 +38,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &3407742261056584593
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -95,6 +95,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 1
+  m_BlendShapeWeights: []
 --- !u!95 &3525353504891636791
 Animator:
   serializedVersion: 7
@@ -154,7 +155,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8219711328549957406}
   - component: {fileID: 1289208799290573267}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}

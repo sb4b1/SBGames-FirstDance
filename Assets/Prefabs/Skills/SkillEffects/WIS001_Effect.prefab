@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3520405762811474412}
   - component: {fileID: 8763150173918453997}
   - component: {fileID: 8095795490057473233}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -113,7 +113,7 @@ GameObject:
   - component: {fileID: -1260093110143487810}
   - component: {fileID: 1307421268094269699}
   - component: {fileID: 3368160219748913143}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: WIS001_Effect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -199,7 +199,7 @@ Animator:
   m_WriteDefaultValuesOnDisable: 0
 --- !u!212 &3368160219748913143
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -256,3 +256,4 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []

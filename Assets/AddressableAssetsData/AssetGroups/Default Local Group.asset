@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: Default Local Group
   m_GUID: 4de1ef4eefbd3ea4f91e11affc4cbb44
   m_SerializeEntries:
+  - m_GUID: 40f46ec2688c217408e25589e6b5270d
+    m_Address: Assets/ScriptableObjects/Skills/Winds/WIS001.asset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 96bd16c15a8fe0f4f978d636125712bb
     m_Address: Assets/Prefabs/Characters/Monsters/Normal/NC001.prefab
     m_ReadOnly: 0

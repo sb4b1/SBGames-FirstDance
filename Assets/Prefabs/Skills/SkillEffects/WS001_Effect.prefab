@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7159631667651363677}
   - component: {fileID: 7377837290722606395}
   - component: {fileID: 3423170270135763007}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Sensor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -109,7 +109,7 @@ GameObject:
   - component: {fileID: 56851310277579528}
   - component: {fileID: 7653878301148428455}
   - component: {fileID: 9097296683630576495}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: WS001_Effect
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -135,7 +135,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8340518548746460451
 SpriteRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -192,6 +192,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!114 &970987186163127686
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -264,7 +265,7 @@ GameObject:
   - component: {fileID: 8166808194391142720}
   - component: {fileID: 6309646559259030899}
   - component: {fileID: 5446477430494554604}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
