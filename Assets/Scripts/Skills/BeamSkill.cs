@@ -20,7 +20,7 @@ public class BeamSkill : MonoBehaviour
         tickTimer -= Time.deltaTime;
         if (tickTimer > 0) return;
 
-        tickTimer = skill.Data.beamTickInterval;
+        tickTimer = skill.Stats != null ? skill.Stats.BeamTickInterval.Value : (skill.Data != null ? skill.Data.beamTickInterval : 0.1f);
 
         foreach (var target in targeting.GetBeamTargets())
         {

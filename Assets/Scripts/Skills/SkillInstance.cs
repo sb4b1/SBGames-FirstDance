@@ -17,6 +17,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
     public string casterID { get; private set; }
 
     public SkillData Data { get; private set; }
+    public SkillStatsManager Stats { get; private set; }
     public float CurrentDamage { get; set; }
 
     private SkillTargeting targeting;
@@ -42,8 +43,36 @@ public class SkillInstance : MonoBehaviour, IPoolable
         targeting   = GetComponentInChildren<SkillTargeting>();
     }
 
+    public void Initialize(SkillStatsManager stats, Vector3 direction, string casterID, GameObject target = null)
+    {
+        Stats = stats;
+        Data = stats != null ? stats.SkillData : null;
+        this.casterID = casterID;
+        currentTarget = target;
+        CurrentDamage = stats != null ? stats.Damage.Value : (Data != null ? Data.baseDamage : 0f);
+        RemainingChains = stats != null ? (int)stats.MaxChainTargets.Value : (Data != null ? Data.maxChainTargets : 0);
+        HasDetonated = false;
+
+        HitTargets.Clear();
+        lifetimeTimer = stats != null ? stats.ProjectileLifetime.Value : (Data != null ? Data.projectileLifetime : 0f);
+        isActive = true;
+        isHit = false;
+
+        movement?.Initialize(this, direction);
+
+        if (Data != null && Data.type == SkillType.Area)
+        {
+            DeactivateHitbox();
+        }
+        else
+        {
+            ActivateHitbox();
+        }
+    }
+
     public void Initialize(SkillData data, Vector3 direction,string casterID, GameObject target = null)
     {
+        Stats = null;
         Data = data;
         this.casterID = casterID;
         currentTarget = target;
@@ -100,7 +129,8 @@ public class SkillInstance : MonoBehaviour, IPoolable
             targeting.TryGetTarget(this, out var next))
         {
             RemainingChains--;
-            CurrentDamage *= Data.chainDamageMultiplier;
+            float multiplier = Stats != null ? Stats.ChainDamageMultiplier.Value : (Data != null ? Data.chainDamageMultiplier : 1f);
+            CurrentDamage *= multiplier;
             movement?.Redirect(this, next);
             return;
         }
@@ -145,6 +175,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         currentTarget = null;
         isHit = false;
         Data = null;
+        Stats = null;
         CurrentDamage = 0f;
         RemainingChains = 0;
         HasDetonated = false;

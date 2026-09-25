@@ -2,15 +2,16 @@ using System;
 using ArtificeToolkit.Attributes;
 using UnityEngine;
 
+[RequireComponent(typeof(SkillStatsManager))]
 public class SkillCaster : MonoBehaviour
 {
-    [Header("Skill Configuration")]
-    [SerializeField]
-    private SkillData data;
-    [SerializeField]
-    private Transform skillSpawnPoint;
+    [Header("Stats & Configuration")]
+    [SerializeField] private SkillStatsManager stats;
+    [SerializeField, HideInInspector] private SkillData data; // Retained for serialized prefab migration
+    [SerializeField] private Transform skillSpawnPoint;
 
-    public SkillData Data => data;
+    public SkillStatsManager Stats => stats;
+    public SkillData Data => stats != null && stats.SkillData != null ? stats.SkillData : data;
 
     [Header("Targeting")]
     [SerializeField]
@@ -24,12 +25,15 @@ public class SkillCaster : MonoBehaviour
     [SerializeField] private float forwardSpawnOffset = 0.6f;
 
     [Header("Cooldown")]
-    [SerializeField] private float cooldownDuration = 1f;
     private float cooldownTimer;
+
+    public float CooldownDuration => stats != null ? stats.Cooldown.Value : cooldownDuration;
+    public float CooldownTimer => cooldownTimer;
+    [SerializeField, HideInInspector] private float cooldownDuration = 1f;
 
     private string casterID;
     private Transform casterTransform;
-
+    private CharacterStatsManager casterStats;
 
     public bool IsReady() => cooldownTimer <= 0f;
 
@@ -67,10 +71,18 @@ public class SkillCaster : MonoBehaviour
         targeting = skillTargeting;
         skillSpawnPoint = spawnPoint;
         casterTransform = caster;
+
+        if (casterTransform != null)
+        {
+            casterStats = casterTransform.GetComponent<CharacterStatsManager>();
+            if (casterTransform.TryGetComponent(out CharacterIdentifier identifier))
+            {
+                casterID = identifier.ID;
+            }
+        }
     }
 
     #endregion
-
 
     private enum SpawnTypes
     {
@@ -81,18 +93,25 @@ public class SkillCaster : MonoBehaviour
 
     private void Awake()
     {
+        InitializeStatsReference();
+
         if (casterTransform == null)
         {
             casterTransform = transform.root;
         }
-        if (casterTransform != null && casterTransform.TryGetComponent(out CharacterIdentifier identifier))
+
+        if (casterTransform != null)
         {
-            casterID = identifier.ID;
+            casterStats = casterTransform.GetComponent<CharacterStatsManager>();
+            if (casterTransform.TryGetComponent(out CharacterIdentifier identifier))
+            {
+                casterID = identifier.ID;
+            }
         }
 
         if (spawnType == SpawnTypes.AtCasterSpawnPoint && skillSpawnPoint == null)
         {
-            skillSpawnPoint = transform.parent.Find("SpawnPoint");
+            skillSpawnPoint = transform.parent != null ? transform.parent.Find("SpawnPoint") : null;
             if (skillSpawnPoint == null)
             {
                 Debug.LogError("SkillCaster missing spawn point for AtCaster spawn type", this);
@@ -100,6 +119,22 @@ public class SkillCaster : MonoBehaviour
         }
     }
 
+    private void InitializeStatsReference()
+    {
+        if (stats == null)
+        {
+            stats = GetComponent<SkillStatsManager>();
+            if (stats == null)
+            {
+                stats = gameObject.AddComponent<SkillStatsManager>();
+            }
+        }
+
+        if (stats != null && stats.SkillData == null && data != null)
+        {
+            stats.BaseData = data;
+        }
+    }
 
     private void Update()
     {
@@ -119,7 +154,8 @@ public class SkillCaster : MonoBehaviour
             return;
         }
 
-        if (data == null || data.skillPrefab == null)
+        SkillData skillData = Data;
+        if (skillData == null || skillData.skillPrefab == null)
         {
             Debug.LogError("SkillCaster missing SkillData or prefab", this);
             return;
@@ -129,6 +165,15 @@ public class SkillCaster : MonoBehaviour
         {
             Debug.LogError("SkillCaster missing caster transform", this);
             return;
+        }
+
+        if (stats != null && stats.ManaCost.Value > 0f && casterStats != null)
+        {
+            if (!casterStats.TryConsumeMana(stats.ManaCost.Value))
+            {
+                Debug.LogWarning($"[SkillCaster] Not enough mana to cast '{skillData.skillName}'.", this);
+                return;
+            }
         }
 
         GameObject target = targeting != null ? FindFirstTarget() : null;
@@ -149,9 +194,9 @@ public class SkillCaster : MonoBehaviour
             spawnPosition = GetSpawnPosition() + direction * forwardSpawnOffset;
         }
 
-        Debug.Log($"[SkillCaster] Debug casting skill '{data.skillName}' from '{casterTransform.name}' at position {spawnPosition} with direction {direction}.", this);
+        Debug.Log($"[SkillCaster] Debug casting skill '{skillData.skillName}' from '{casterTransform.name}' at position {spawnPosition} with direction {direction}.", this);
         CastSkill(direction, spawnPosition, target);
-        cooldownTimer = cooldownDuration;
+        cooldownTimer = CooldownDuration;
     }
 
     public bool TryCastSkill()
@@ -159,15 +204,24 @@ public class SkillCaster : MonoBehaviour
         if (!IsReady())
             return false;
 
-        if (data == null || data.skillPrefab == null)
+        SkillData skillData = Data;
+        if (skillData == null || skillData.skillPrefab == null)
         {
             Debug.LogError("SkillCaster missing SkillData or prefab", this);
             return false;
         }
 
+        // Mana check
+        if (stats != null && stats.ManaCost.Value > 0f && casterStats != null)
+        {
+            if (!casterStats.TryConsumeMana(stats.ManaCost.Value))
+            {
+                return false;
+            }
+        }
+
         Vector3 direction;
         Vector3 spawnPosition;
-
 
         GameObject target = null;
         if (requireTarget)
@@ -196,12 +250,12 @@ public class SkillCaster : MonoBehaviour
         else
         {
             // ✅ NO TARGET → CAST IN FRONT
-            direction = casterTransform.up;
+            direction = casterTransform != null ? casterTransform.up : Vector3.up;
             spawnPosition = GetSpawnPosition() + direction * forwardSpawnOffset;
         }
 
         CastSkill(direction, spawnPosition, target);
-        cooldownTimer = cooldownDuration;
+        cooldownTimer = CooldownDuration;
         return true;
     }
 
@@ -213,16 +267,18 @@ public class SkillCaster : MonoBehaviour
         if (direction.sqrMagnitude < 0.0001f)
             direction = casterTransform != null ? casterTransform.up : Vector3.up;
 
+        SkillData skillData = Data;
+
         // Compute 2D rotation (Z) so projectile faces travel direction according to skill settings
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         float zRot;
-        if (data != null)
+        if (skillData != null)
         {
-            zRot = data.projectileForward switch
+            zRot = skillData.projectileForward switch
             {
-                SkillData.ProjectileForward.Right => angle + data.projectileRotationOffset,
-                SkillData.ProjectileForward.CustomAngle => angle + data.projectileRotationOffset,
-                _ => angle - 90f + data.projectileRotationOffset,
+                SkillData.ProjectileForward.Right => angle + skillData.projectileRotationOffset,
+                SkillData.ProjectileForward.CustomAngle => angle + skillData.projectileRotationOffset,
+                _ => angle - 90f + skillData.projectileRotationOffset,
             };
         }
         else
@@ -234,19 +290,26 @@ public class SkillCaster : MonoBehaviour
 
         GameObject skillObject =
             ObjectPoolManager.Instance.Spawn(
-                data.skillPrefab,
+                skillData.skillPrefab,
                 spawnPosition,
                 rotation
             );
 
         if (skillObject.TryGetComponent(out SkillInstance skillInstance))
         {
-            skillInstance.Initialize(data, direction, casterID, target);
+            if (stats != null)
+            {
+                skillInstance.Initialize(stats, direction, casterID, target);
+            }
+            else
+            {
+                skillInstance.Initialize(skillData, direction, casterID, target);
+            }
         }
         else
         {
             Debug.LogError(
-                $"Skill prefab {data.skillPrefab.name} missing SkillInstance",
+                $"Skill prefab {skillData.skillPrefab.name} missing SkillInstance",
                 this
             );
         }
@@ -259,10 +322,10 @@ public class SkillCaster : MonoBehaviour
     {
         return spawnType switch
         {
-            SpawnTypes.AtCaster => casterTransform.position,
-            SpawnTypes.AtCasterSpawnPoint => skillSpawnPoint != null ? skillSpawnPoint.position : casterTransform.position,
-            SpawnTypes.AtTarget => target != null ? target.transform.position : casterTransform.position,
-            _ => casterTransform.position,
+            SpawnTypes.AtCaster => casterTransform != null ? casterTransform.position : transform.position,
+            SpawnTypes.AtCasterSpawnPoint => skillSpawnPoint != null ? skillSpawnPoint.position : (casterTransform != null ? casterTransform.position : transform.position),
+            SpawnTypes.AtTarget => target != null ? target.transform.position : (casterTransform != null ? casterTransform.position : transform.position),
+            _ => casterTransform != null ? casterTransform.position : transform.position,
         };
     }
 
@@ -279,10 +342,16 @@ public class SkillCaster : MonoBehaviour
     {
         if (targeting == null)
             targeting = GetComponent<SkillTargeting>();
+
+        if (stats == null)
+            stats = GetComponent<SkillStatsManager>();
+
+        if (stats != null && stats.SkillData == null && data != null)
+            stats.BaseData = data;
     }
 
     private void TryGetSensor()
     {
-        targeting = transform.Find("Sensor").GetComponent<SkillTargeting>();
+        targeting = transform.Find("Sensor")?.GetComponent<SkillTargeting>();
     }
 }

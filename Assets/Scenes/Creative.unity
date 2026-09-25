@@ -264,8 +264,20 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 904036882}
     - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: skillController
+      value: 
+      objectReference: {fileID: 2112351712}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: goals.Array.size
       value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: motionController
+      value: 
+      objectReference: {fileID: 1498181504}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: skills.Array.size
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: 'goals.Array.data[0]'
@@ -275,6 +287,14 @@ PrefabInstance:
       propertyPath: 'goals.Array.data[1]'
       value: 
       objectReference: {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: 'goals.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: 'skills.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 2a0e794ff344a414b83a1297ead7c6ec, type: 2}
     - target: {fileID: 4220041162180980065, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: OnDetected.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
       value: 1
@@ -4714,6 +4734,17 @@ MonoBehaviour:
   configInitializer: {fileID: 0}
   agentTypeConfigFactories:
   - {fileID: 1167720100}
+--- !u!114 &1498181504 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5841761043065473055, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 246561336}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc48782a1eb3a7d4e84a5f02067a812e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterMovementController
 --- !u!1 &1681077225
 GameObject:
   m_ObjectHideFlags: 0
@@ -4892,6 +4923,17 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3978863970752599555, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
   m_PrefabInstance: {fileID: 246561336}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2112351712 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9150011966489319026, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 246561336}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9611174bc99fcd4dab33794adc2f0ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

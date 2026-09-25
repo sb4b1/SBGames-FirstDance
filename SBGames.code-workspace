@@ -2,6 +2,10 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "SBGames[discontinue]",
+			"path": "../SBGames[discontinue]"
 		}
 	],
 	"settings": {
@@ -11,6 +15,6 @@
 			"*.prefab": "yaml",
 			"*.unity": "yaml"
 		},
-		"dotnet.defaultSolution": "SBGames.slnx"
+		"dotnet.defaultSolution": "SBGames/SBGames.slnx"
 	}
 }

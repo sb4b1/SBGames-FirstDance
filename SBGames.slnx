@@ -18,4 +18,5 @@
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="com.bennykok.hierarchy-header.editor.csproj" />
   <Project Path="com.bennykok.hierarchy-header.csproj" />
+  <Project Path="../SBGames[discontinue]/AiToolbox.csproj" />
 </Solution>

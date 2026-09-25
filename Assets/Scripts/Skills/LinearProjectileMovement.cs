@@ -37,7 +37,8 @@ public class LinearProjectileMovement : MonoBehaviour, ISkillMovement
 
     public void Tick(SkillInstance skill, float dt)
     {
-        transform.position += direction * skill.Data.projectileSpeed * dt;
+        float speed = skill?.Stats != null ? skill.Stats.ProjectileSpeed.Value : (skill?.Data != null ? skill.Data.projectileSpeed : 0f);
+        transform.position += direction * speed * dt;
     }
 
     public void Redirect(SkillInstance skill, GameObject target)
