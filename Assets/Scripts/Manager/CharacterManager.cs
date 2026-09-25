@@ -46,7 +46,7 @@ public class CharacterManager : MonoBehaviour
             return;
         }
 
-        string id = identifier.ID;
+        string id = identifier.UniqueId;
 
         if (characters.ContainsKey(id))
         {
@@ -67,7 +67,7 @@ public class CharacterManager : MonoBehaviour
 
         if (!character.TryGetComponent<CharacterIdentifier>(out var identifier)) return;
 
-        string id = identifier.ID;
+        string id = identifier.UniqueId;
 
         if (characters.Remove(id))
         {

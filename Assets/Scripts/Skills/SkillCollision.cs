@@ -12,20 +12,17 @@ public class SkillCollision : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        DamageReceiver receiver = other.GetComponentInParent<DamageReceiver>();
-        ELogger.Log(this, nameof(OnTriggerEnter2D), $"Skill {skill.Data.name} collided with {other.gameObject.name}");
+        GameObject target = other.transform.root.gameObject;
 
-        //if (receiver == null)
-        //    return;
-
-        //GameObject target = receiver.Damageable as MonoBehaviour != null ? (receiver.Damageable as MonoBehaviour).gameObject : null;
-
-        if (skill.HitTargets.Contains(other.gameObject))
+        if (target == null)
             return;
 
-        if (other.gameObject.TryGetComponent(out CharacterIdentifier otherCharID) && otherCharID.ID == skill.casterID)
+        if (skill.HitTargets.Contains(target))
             return;
 
-        skill.OnHit(other.gameObject, HitContext.Direct);
+        if (target.TryGetComponent(out IIdentifier objID) && objID.UniqueId == skill.casterID)
+            return;
+
+        skill.OnHit(target, HitContext.Direct);
     }
 }

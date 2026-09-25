@@ -77,7 +77,7 @@ public class SkillCaster : MonoBehaviour
             casterStats = casterTransform.GetComponent<CharacterStatsManager>();
             if (casterTransform.TryGetComponent(out CharacterIdentifier identifier))
             {
-                casterID = identifier.ID;
+                casterID = identifier.UniqueId;
             }
         }
     }
@@ -105,7 +105,7 @@ public class SkillCaster : MonoBehaviour
             casterStats = casterTransform.GetComponent<CharacterStatsManager>();
             if (casterTransform.TryGetComponent(out CharacterIdentifier identifier))
             {
-                casterID = identifier.ID;
+                casterID = identifier.UniqueId;
             }
         }
 

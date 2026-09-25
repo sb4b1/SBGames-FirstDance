@@ -12,12 +12,6 @@ public class SkillHitResolver : MonoBehaviour
             return;
         }
 
-        #if UNITY_EDITOR
-        ELogger.Log(this, nameof(ResolveHit), $"Skill {skill.Data.name} hit target {target.name} for {skill.CurrentDamage} damage.");
-        #endif
-
-    
-
         damagable.TakeDamage(new DamageData(
             skill.CurrentDamage,
             skill.Data.damageType,

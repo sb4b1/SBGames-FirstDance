@@ -1,6 +1,6 @@
 public interface IIdentifier
 {
-    string ID { get; }
+    string UniqueId { get; }
 
     void GenerateID(){}
 }

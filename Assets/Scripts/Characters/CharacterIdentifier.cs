@@ -1,20 +1,16 @@
 using UnityEngine;
 
-public class CharacterIdentifier : MonoBehaviour, IIdentifier
+public class CharacterIdentifier : ObjectIdentifier
 {
-    [SerializeField] private string id;
-    public string ID => id;
+    public string Name => gameObject.name;
+    public string CharacterID => gameObject.name;
 
-    public void GenerateID()
-    {
-        id = System.Guid.NewGuid().ToString();
-    }
+#if UNITY_EDITOR
+    [SerializeField] private string characterName;
 
-    private void Awake()
+    private void OnValidate()
     {
-        if (string.IsNullOrEmpty(id))
-        {
-            GenerateID();
-        }
+        characterName = gameObject.name;
     }
+#endif
 }
