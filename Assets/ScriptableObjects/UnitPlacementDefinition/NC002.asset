@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39fc4b4c92152d642951ce6b5c4642ab, type: 3}
+  m_Name: NC002
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Placement.UnitPlacementDefinitionSO
+  unitId: NC002
+  displayName: NC002 (Owlet Monster)
+  baseCost: 25
+  baseCapacity: 2
+  footprint: {x: 1, y: 1}
+  prefab: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+  characterBrain: {fileID: 0}

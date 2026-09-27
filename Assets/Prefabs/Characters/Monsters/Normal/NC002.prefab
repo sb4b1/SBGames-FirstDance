@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 4025492394318729815}
   - component: {fileID: 583056955256405874}
   - component: {fileID: 8142828820705702646}
+  - component: {fileID: 8247723471863400132}
   m_Layer: 6
   m_Name: NC002
   m_TagString: Faction_01
@@ -101,11 +102,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
-  controlMode: 0
+  controlMode: 1
   agentStatus: 0
   aiAugment: {fileID: 5702767144640782713}
-  statsManager: {fileID: 0}
-  animController: {fileID: 0}
+  statsManager: {fileID: 583056955256405874}
+  animController: {fileID: 636021813663669992}
 --- !u!114 &4025492394318729815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118,8 +119,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b8f13460be2b44409863f71ae313b2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterCombatController
-  brain: {fileID: 0}
-  stats: {fileID: 0}
+  brain: {fileID: 5412846263211813637}
+  stats: {fileID: 583056955256405874}
   attackPoint: {fileID: 0}
 --- !u!114 &583056955256405874
 MonoBehaviour:
@@ -135,7 +136,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
   life: 0
+  mana: 0
   maxLife: 0
+  maxMana: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -158,6 +161,20 @@ MonoBehaviour:
   rb: {fileID: 5197063194100978056}
   brain: {fileID: 5412846263211813637}
   stats: {fileID: 583056955256405874}
+--- !u!114 &8247723471863400132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1442731878584338539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3c69102f5af62a469c3b2a56e4ddd14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
+  uniqueId: 
+  characterName: NC002
 --- !u!1 &1984529058379558800
 GameObject:
   m_ObjectHideFlags: 0
@@ -168,7 +185,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2729599850523166590}
   - component: {fileID: 6130416546669929347}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Collision
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -246,7 +263,7 @@ GameObject:
   m_Component:
   - component: {fileID: 223383599700414436}
   - component: {fileID: 5060950443793682970}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Trigger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -417,7 +434,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -65563385
-  m_SortingLayer: 1
+  m_SortingLayer: 2
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8704524280614070974, guid: 605998cc3eab0b8448c592774e61b646, type: 3}
@@ -448,7 +465,7 @@ MonoBehaviour:
   brain: {fileID: 5412846263211813637}
   movement: {fileID: 8142828820705702646}
   agent: {fileID: 2876902180845984889}
-  flipRotator: {fileID: 0}
+  flipRotator: {fileID: 5317264750259942299}
 --- !u!114 &5317264750259942299
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -482,7 +499,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2121575903542404369
 Transform:
   m_ObjectHideFlags: 0
@@ -561,19 +578,26 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BaseAI
   agent: {fileID: 2876902180845984889}
   stats: {fileID: 583056955256405874}
-  controller: {fileID: 8142828820705702646}
+  motionController: {fileID: 0}
+  skillController: {fileID: 0}
   vision: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+  skills: []
   agentType: NormalAgent
   currentTarget: {fileID: 0}
+  targetDistance: 0
   enemyTargets: []
   allyTargets: []
   threatLevel: 0
   fearLevel: 0
   agentLife: 0
+  agentMana: 0
   currentGoalKey: None
   goalScores:
+    pairs: []
+  currentSkillKey: None
+  skillScores:
     pairs: []
 --- !u!1 &6045907984605155341
 GameObject:
