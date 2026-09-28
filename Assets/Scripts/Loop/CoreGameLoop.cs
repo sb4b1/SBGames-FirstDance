@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using ArtificeToolkit.Attributes;
 
 namespace SBGames.Loop
 {
@@ -118,10 +119,25 @@ namespace SBGames.Loop
         [Tooltip("Automatically starts Round 1 (Planning phase) when the scene starts if not already started.")]
         [SerializeField] private bool autoStartOnSceneLoad = true;
 
-        // Current runtime state
-        private GamePhase currentPhase = GamePhase.NotStarted;
-        private int currentRound = 1;
-        private GameOverReason gameOverReason = GameOverReason.None;
+        [Header("Runtime State (Read Only)")]
+        [Tooltip("Current phase of the game loop.")]
+        [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private GamePhase currentPhase = GamePhase.NotStarted;
+
+        [Tooltip("Current stage / round number.")]
+        [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int currentRound = 1;
+
+        [Tooltip("Reason why game over was triggered (if applicable).")]
+        [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private GameOverReason gameOverReason = GameOverReason.None;
+
+        [Header("Debug / Stage Controls")]
+        [Tooltip("Target round number to jump to when clicking Jump To Target Round.")]
+        [SerializeField] private int debugTargetRound = 1;
+
+        [Tooltip("Target phase to switch to when clicking Switch To Target Phase.")]
+        [SerializeField] private GamePhase debugTargetPhase = GamePhase.Planning;
+
+        [Tooltip("Target game over reason when clicking Trigger Game Over.")]
+        [SerializeField] private GameOverReason debugGameOverReason = GameOverReason.EssenceDepleted;
 
         // Public Properties
         public GamePhase CurrentPhase => currentPhase;
@@ -414,5 +430,215 @@ namespace SBGames.Loop
             EnterPhase(GamePhase.GameOver);
             OnGameOver?.Invoke(gameOverReason, currentRound);
         }
+
+        #region Inspector Debug & Stage Controls
+
+        /// <summary>
+        /// Starts the game loop from Round 1 or startingRound in Planning phase.
+        /// </summary>
+        [ContextMenu("Debug/Start Game")]
+        [Button]
+        public void DebugStartGame()
+        {
+            Debug.Log("[CoreGameLoop Debug] Starting Game...");
+            StartGame();
+        }
+
+        /// <summary>
+        /// Switches phase directly to Planning without altering the round number.
+        /// </summary>
+        [ContextMenu("Debug/Start Planning Phase")]
+        [Button]
+        public void DebugStartPlanningPhase()
+        {
+            Debug.Log($"[CoreGameLoop Debug] Transitioning to Planning phase (Round {currentRound}).");
+            gameOverReason = GameOverReason.None;
+            EnterPhase(GamePhase.Planning);
+        }
+
+        /// <summary>
+        /// Switches phase directly to Battle.
+        /// </summary>
+        [ContextMenu("Debug/Start Battle Phase")]
+        [Button]
+        public void DebugStartBattlePhase()
+        {
+            if (currentPhase == GamePhase.NotStarted)
+            {
+                StartGame();
+            }
+
+            Debug.Log($"[CoreGameLoop Debug] Transitioning to Battle phase (Round {currentRound}).");
+            gameOverReason = GameOverReason.None;
+            EnterPhase(GamePhase.Battle);
+        }
+
+        /// <summary>
+        /// Steps forward to the next round in Planning phase and grants planning energy allowance.
+        /// </summary>
+        [ContextMenu("Debug/Next Round")]
+        [Button]
+        public void DebugNextRound()
+        {
+            if (currentPhase == GamePhase.NotStarted)
+            {
+                StartGame();
+                return;
+            }
+
+            currentRound++;
+            gameOverReason = GameOverReason.None;
+            EnterPhase(GamePhase.Planning);
+
+            dungeonMaster?.GainEnergy(planningEnergyAllowance);
+            OnRoundStarted?.Invoke(currentRound);
+            Debug.Log($"[CoreGameLoop Debug] Advanced to Round {currentRound} (Planning phase).");
+        }
+
+        /// <summary>
+        /// Steps back to the previous round (clamped to minimum 1) in Planning phase.
+        /// </summary>
+        [ContextMenu("Debug/Previous Round")]
+        [Button]
+        public void DebugPreviousRound()
+        {
+            currentRound = Mathf.Max(1, currentRound - 1);
+            gameOverReason = GameOverReason.None;
+            EnterPhase(GamePhase.Planning);
+
+            OnRoundStarted?.Invoke(currentRound);
+            Debug.Log($"[CoreGameLoop Debug] Reverted to Round {currentRound} (Planning phase).");
+        }
+
+        /// <summary>
+        /// Sets the round to debugTargetRound configured in the Inspector.
+        /// </summary>
+        [ContextMenu("Debug/Jump To Target Round")]
+        [Button]
+        public void DebugJumpToTargetRound()
+        {
+            DebugSetRound(debugTargetRound, true);
+        }
+
+        /// <summary>
+        /// Sets the current round/stage directly to a specific value.
+        /// </summary>
+        public void DebugSetRound(int targetRound, bool notifyListeners = true)
+        {
+            currentRound = Mathf.Max(1, targetRound);
+            debugTargetRound = currentRound;
+
+            if (currentPhase == GamePhase.NotStarted)
+            {
+                EnterPhase(GamePhase.Planning);
+            }
+
+            if (notifyListeners)
+            {
+                OnRoundStarted?.Invoke(currentRound);
+            }
+
+            Debug.Log($"[CoreGameLoop Debug] Jumped to Round {currentRound} (Phase: {currentPhase}).");
+        }
+
+        /// <summary>
+        /// Switches phase to debugTargetPhase configured in the Inspector.
+        /// </summary>
+        [ContextMenu("Debug/Switch To Target Phase")]
+        [Button]
+        public void DebugSwitchToTargetPhase()
+        {
+            DebugSetPhase(debugTargetPhase);
+        }
+
+        /// <summary>
+        /// Forces any specified GamePhase transition.
+        /// </summary>
+        public void DebugSetPhase(GamePhase phase)
+        {
+            if (phase == GamePhase.GameOver)
+            {
+                DebugTriggerGameOver(debugGameOverReason != GameOverReason.None ? debugGameOverReason : GameOverReason.EssenceDepleted);
+                return;
+            }
+
+            gameOverReason = GameOverReason.None;
+            EnterPhase(phase);
+            Debug.Log($"[CoreGameLoop Debug] Force set Phase to {phase} (Round {currentRound}).");
+        }
+
+        /// <summary>
+        /// Simulates battle Victory: awards victory bonus energy and advances to the next round Planning phase.
+        /// </summary>
+        [ContextMenu("Debug/Win Battle")]
+        [Button]
+        public void DebugWinBattle()
+        {
+            if (currentPhase != GamePhase.Battle)
+            {
+                EnterPhase(GamePhase.Battle);
+            }
+
+            Debug.Log($"[CoreGameLoop Debug] Resolving Round {currentRound} as Victory.");
+            ResolveBattle(BattleResult.Win());
+        }
+
+        /// <summary>
+        /// Simulates battle Defeat: applies essence penalty to DM and triggers GameOver if essence drops to 0.
+        /// </summary>
+        [ContextMenu("Debug/Lose Battle")]
+        [Button]
+        public void DebugLoseBattle()
+        {
+            if (currentPhase != GamePhase.Battle)
+            {
+                EnterPhase(GamePhase.Battle);
+            }
+
+            Debug.Log($"[CoreGameLoop Debug] Resolving Round {currentRound} as Defeat.");
+            ResolveBattle(BattleResult.Loss());
+        }
+
+        /// <summary>
+        /// Triggers game over using the debugGameOverReason field.
+        /// </summary>
+        [ContextMenu("Debug/Trigger Game Over")]
+        [Button]
+        public void DebugTriggerGameOver()
+        {
+            DebugTriggerGameOver(debugGameOverReason != GameOverReason.None ? debugGameOverReason : GameOverReason.EssenceDepleted);
+        }
+
+        /// <summary>
+        /// Forces game over state with the specified reason.
+        /// </summary>
+        public void DebugTriggerGameOver(GameOverReason reason)
+        {
+            Debug.LogWarning($"[CoreGameLoop Debug] Triggering Game Over (Reason: {reason}) on Round {currentRound}.");
+            TriggerGameOver(reason);
+        }
+
+        /// <summary>
+        /// Resets the game loop to initial starting configuration.
+        /// </summary>
+        [ContextMenu("Debug/Reset Game Loop")]
+        [Button]
+        public void DebugResetGame()
+        {
+            currentRound = startingRound;
+            debugTargetRound = startingRound;
+            gameOverReason = GameOverReason.None;
+            currentPhase = GamePhase.NotStarted;
+
+            Debug.Log("[CoreGameLoop Debug] Game loop reset to initial state.");
+            OnPhaseChanged?.Invoke(currentPhase);
+
+            if (autoStartOnSceneLoad)
+            {
+                StartGame();
+            }
+        }
+
+        #endregion
     }
 }

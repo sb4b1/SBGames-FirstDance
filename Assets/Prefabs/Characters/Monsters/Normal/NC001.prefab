@@ -180,7 +180,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -65563385
-  m_SortingLayer: 1
+  m_SortingLayer: 2
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -8157529274441160004, guid: 7fbd2378b3a82734189050037b3442a7, type: 3}
@@ -260,7 +260,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e68ba37549e4ffe42bafd63aa7c1f78b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationEventController
-  combatController: {fileID: 0}
+  combatController: {fileID: 6820165486231997942}
 --- !u!1 &2810017690310066115
 GameObject:
   m_ObjectHideFlags: 0
@@ -867,6 +867,7 @@ GameObject:
   - component: {fileID: 7331921466431717763}
   - component: {fileID: 6820165486231997942}
   - component: {fileID: 779946892532255747}
+  - component: {fileID: 6721864809019792033}
   m_Layer: 6
   m_Name: NC001
   m_TagString: Faction_02
@@ -959,7 +960,7 @@ MonoBehaviour:
   agentStatus: 0
   aiAugment: {fileID: 9097028675395075657}
   statsManager: {fileID: 7331921466431717763}
-  animController: {fileID: 0}
+  animController: {fileID: 7462584194519499158}
 --- !u!114 &5841761043065473055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1028,6 +1029,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
   uniqueId: 
   characterName: NC001
+--- !u!114 &6721864809019792033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8960087825022006478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66eed53a943b6bd4fb2140f7c9c47dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
+  characterDisplayName: Purple Monster
+  statsManager: {fileID: 7331921466431717763}
 --- !u!1 &9097028675395075657
 GameObject:
   m_ObjectHideFlags: 0

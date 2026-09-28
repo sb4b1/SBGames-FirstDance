@@ -287,10 +287,10 @@ PanelRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 999
   m_MaskInteraction: 0
   serializedVersion: 1
-  m_PanelSettings: {fileID: 0}
+  m_PanelSettings: {fileID: 11400000, guid: e12249038487f2345bbdd8f188ef8d40, type: 2}
   sourceAsset: {fileID: 0}
   m_ParentUI: {fileID: 0}
   m_WorldSpaceSizeMode: 1
@@ -4732,47 +4732,14 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1503231086}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
---- !u!1 &1503231084 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-  m_PrefabInstance: {fileID: 1503231083}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1503231085 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7331921466431717763, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-  m_PrefabInstance: {fileID: 1503231083}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1503231084}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a819b5c841abf4543adc0371c7748b50, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
---- !u!114 &1503231086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1503231084}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66eed53a943b6bd4fb2140f7c9c47dd0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
-  characterDisplayName: Purple Monster
-  statsManager: {fileID: 1503231085}
 --- !u!114 &1503231088 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6820165486231997942, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
   m_PrefabInstance: {fileID: 1503231083}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1503231084}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b8f13460be2b44409863f71ae313b2c, type: 3}
