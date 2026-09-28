@@ -36,6 +36,8 @@ namespace SBGames.Inventory.UI
         private VisualElement _statsContainer;
         private VisualElement _inventoryScrollView;
         private Label _statusFeedbackLabel;
+        private VisualElement _modalOverlay;
+        private VisualElement _modalBox;
 
         // Test item templates for quick prototyping
         private ItemDefinition _potionItem;
@@ -103,6 +105,7 @@ namespace SBGames.Inventory.UI
 
         public void Close()
         {
+            HideModal();
             if (_root != null)
             {
                 _root.style.display = DisplayStyle.None;
@@ -300,6 +303,9 @@ namespace SBGames.Inventory.UI
 
             // Bottom Bar (Testing Buttons)
             BuildTestingToolBar(_root);
+
+            // Modal Overlay for Slot Selection & Confirmations
+            BuildModalOverlay(_root);
         }
 
         private void BuildCharacterHeader(VisualElement parent)
@@ -503,21 +509,68 @@ namespace SBGames.Inventory.UI
 
                 if (slot.IsOccupied)
                 {
-                    var unequipBtn = new Button(() =>
+                    if (slot.CanUnequip)
                     {
-                        if (userInventory.UnequipFromCharacter(_selectedCharacter, slotIndex, out string msg))
+                        var unequipBtn = new Button(() =>
                         {
-                            SetStatus(msg);
-                        }
-                        else
+                            if (userInventory.UnequipFromCharacter(_selectedCharacter, slotIndex, out string msg))
+                            {
+                                SetStatus(msg);
+                            }
+                            else
+                            {
+                                SetStatus($"<color=red>{msg}</color>");
+                            }
+                        })
+                        { text = "Unequip" };
+                        unequipBtn.style.backgroundColor = new Color(0.5f, 0.25f, 0.25f);
+                        unequipBtn.style.color = Color.white;
+                        row.Add(unequipBtn);
+                    }
+                    else
+                    {
+                        var actionBtns = new VisualElement();
+                        actionBtns.style.flexDirection = FlexDirection.Row;
+
+                        var replaceBtn = new Button(() =>
                         {
-                            SetStatus($"<color=red>{msg}</color>");
-                        }
+                            ShowPickRuneForSlotModal(slotIndex, slot);
+                        })
+                        { text = "Replace" };
+                        replaceBtn.style.backgroundColor = new Color(0.55f, 0.35f, 0.15f);
+                        replaceBtn.style.color = Color.white;
+                        replaceBtn.style.marginRight = 4;
+                        actionBtns.Add(replaceBtn);
+
+                        var deleteBtn = new Button(() =>
+                        {
+                            if (userInventory.DestroyRuneFromCharacter(_selectedCharacter, slotIndex, out string msg))
+                            {
+                                SetStatus(msg);
+                            }
+                            else
+                            {
+                                SetStatus($"<color=red>{msg}</color>");
+                            }
+                        })
+                        { text = "Delete Rune" };
+                        deleteBtn.style.backgroundColor = new Color(0.6f, 0.18f, 0.18f);
+                        deleteBtn.style.color = Color.white;
+                        actionBtns.Add(deleteBtn);
+
+                        row.Add(actionBtns);
+                    }
+                }
+                else if (slot.SlotType == EquipmentSlotType.Rune)
+                {
+                    var inscribeBtn = new Button(() =>
+                    {
+                        ShowPickRuneForSlotModal(slotIndex, slot);
                     })
-                    { text = "Unequip" };
-                    unequipBtn.style.backgroundColor = new Color(0.5f, 0.25f, 0.25f);
-                    unequipBtn.style.color = Color.white;
-                    row.Add(unequipBtn);
+                    { text = "Inscribe" };
+                    inscribeBtn.style.backgroundColor = new Color(0.2f, 0.45f, 0.3f);
+                    inscribeBtn.style.color = Color.white;
+                    row.Add(inscribeBtn);
                 }
 
                 _equipmentContainer.Add(row);
@@ -643,14 +696,21 @@ namespace SBGames.Inventory.UI
                     actionsContainer.Add(useBtn);
                 }
 
-                // Equip button for Runes / Artifacts
+                // Equip / Inscribe button for Runes / Artifacts
                 if (isEquippable && _selectedCharacter != null)
                 {
+                    bool isRune = slot.Item.ItemType == ItemType.Rune;
                     var equipBtn = new Button(() =>
                     {
                         if (_selectedCharacter == null)
                         {
                             SetStatus("<color=red>No character selected.</color>");
+                            return;
+                        }
+
+                        if (isRune)
+                        {
+                            ShowInscribeSlotSelectionModal(slotIndex, slot.Item);
                             return;
                         }
 
@@ -669,8 +729,8 @@ namespace SBGames.Inventory.UI
                             SetStatus($"<color=red>Failed to equip {itemName}.</color>");
                         }
                     })
-                    { text = "Equip" };
-                    equipBtn.style.backgroundColor = new Color(0.2f, 0.4f, 0.6f);
+                    { text = isRune ? "Inscribe" : "Equip" };
+                    equipBtn.style.backgroundColor = isRune ? new Color(0.55f, 0.35f, 0.15f) : new Color(0.2f, 0.4f, 0.6f);
                     equipBtn.style.color = Color.white;
                     actionsContainer.Add(equipBtn);
                 }
@@ -760,6 +820,378 @@ namespace SBGames.Inventory.UI
                     new ItemStatModifierData(StatType.MoveSpeed, 2.5f, StatModType.Flat),
                     new ItemStatModifierData(StatType.MoveSpeed, 0.20f, StatModType.PercentMult)
                 });
+        }
+
+        #endregion
+
+        #region Rune Inscription Modal & Confirmation Dialogs
+
+        private void BuildModalOverlay(VisualElement parent)
+        {
+            _modalOverlay = new VisualElement();
+            _modalOverlay.style.position = Position.Absolute;
+            _modalOverlay.style.left = 0;
+            _modalOverlay.style.top = 0;
+            _modalOverlay.style.right = 0;
+            _modalOverlay.style.bottom = 0;
+            _modalOverlay.style.width = Length.Percent(100);
+            _modalOverlay.style.height = Length.Percent(100);
+            _modalOverlay.style.backgroundColor = new Color(0f, 0f, 0f, 0.78f);
+            _modalOverlay.style.justifyContent = Justify.Center;
+            _modalOverlay.style.alignItems = Align.Center;
+            _modalOverlay.style.display = DisplayStyle.None;
+
+            _modalBox = new VisualElement();
+            _modalBox.style.width = 480;
+            _modalBox.style.backgroundColor = new Color(0.16f, 0.16f, 0.20f);
+            _modalBox.style.borderTopLeftRadius = 8;
+            _modalBox.style.borderTopRightRadius = 8;
+            _modalBox.style.borderBottomLeftRadius = 8;
+            _modalBox.style.borderBottomRightRadius = 8;
+            _modalBox.style.borderLeftWidth = 1;
+            _modalBox.style.borderRightWidth = 1;
+            _modalBox.style.borderTopWidth = 1;
+            _modalBox.style.borderBottomWidth = 1;
+            _modalBox.style.borderLeftColor = new Color(0.35f, 0.35f, 0.45f);
+            _modalBox.style.borderRightColor = new Color(0.35f, 0.35f, 0.45f);
+            _modalBox.style.borderTopColor = new Color(0.35f, 0.35f, 0.45f);
+            _modalBox.style.borderBottomColor = new Color(0.35f, 0.35f, 0.45f);
+            _modalBox.style.paddingLeft = 18;
+            _modalBox.style.paddingRight = 18;
+            _modalBox.style.paddingTop = 16;
+            _modalBox.style.paddingBottom = 16;
+
+            _modalOverlay.Add(_modalBox);
+            parent.Add(_modalOverlay);
+        }
+
+        private void HideModal()
+        {
+            if (_modalOverlay != null)
+            {
+                _modalOverlay.style.display = DisplayStyle.None;
+            }
+        }
+
+        /// <summary>
+        /// Prompts the user to select which Rune Slot on the active character to inscribe the rune into.
+        /// </summary>
+        private void ShowInscribeSlotSelectionModal(int userSlotIndex, ItemDefinition runeItem)
+        {
+            if (_selectedCharacter == null || _selectedCharacter.Inventory == null)
+            {
+                SetStatus("<color=red>No character selected.</color>");
+                return;
+            }
+
+            var charInv = _selectedCharacter.Inventory;
+            _modalBox.Clear();
+            _modalOverlay.style.display = DisplayStyle.Flex;
+
+            // Title & Description
+            var title = new Label($"INSCRIBE RUNE: {runeItem.ItemName.ToUpper()}");
+            title.style.fontSize = 15;
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            title.style.color = new Color(1f, 0.85f, 0.35f);
+            title.style.marginBottom = 4;
+            _modalBox.Add(title);
+
+            var desc = new Label($"Select which Rune Slot on <b>{_selectedCharacter.CharacterDisplayName}</b> to inscribe into:");
+            desc.style.fontSize = 12;
+            desc.style.color = new Color(0.8f, 0.8f, 0.85f);
+            desc.style.marginBottom = 12;
+            _modalBox.Add(desc);
+
+            var slotListContainer = new VisualElement();
+            slotListContainer.style.marginBottom = 12;
+
+            int runeSlotCount = 0;
+            for (int i = 0; i < charInv.SlotCount; i++)
+            {
+                int targetSlotIndex = i;
+                var slot = charInv.GetSlot(i);
+                if (slot.SlotType != EquipmentSlotType.Rune) continue;
+
+                runeSlotCount++;
+
+                var slotBtn = new Button(() =>
+                {
+                    if (slot.IsOccupied)
+                    {
+                        // Slot already has an inscribed rune -> Ask confirmation before deleting old rune
+                        ShowInscribeConfirmationModal(userSlotIndex, runeItem, targetSlotIndex, slot.EquippedItem, slot.SlotName);
+                    }
+                    else
+                    {
+                        // Slot is empty -> Inscribe directly
+                        HideModal();
+                        bool success = userInventory.EquipToCharacter(
+                            userSlotIndex,
+                            _selectedCharacter,
+                            targetSlotIndex,
+                            confirmDestroyRune: true);
+
+                        if (success)
+                        {
+                            SetStatus($"Inscribed {runeItem.ItemName} into {slot.SlotName}.");
+                        }
+                        else
+                        {
+                            SetStatus($"<color=red>Failed to inscribe {runeItem.ItemName}.</color>");
+                        }
+                    }
+                });
+
+                slotBtn.style.paddingTop = 8;
+                slotBtn.style.paddingBottom = 8;
+                slotBtn.style.paddingLeft = 12;
+                slotBtn.style.paddingRight = 12;
+                slotBtn.style.marginBottom = 6;
+                slotBtn.style.borderTopLeftRadius = 4;
+                slotBtn.style.borderTopRightRadius = 4;
+                slotBtn.style.borderBottomLeftRadius = 4;
+                slotBtn.style.borderBottomRightRadius = 4;
+
+                if (slot.IsOccupied)
+                {
+                    slotBtn.text = $"{slot.SlotName}: [{slot.EquippedItem.ItemName}]  (⚠️ Will Delete Old Rune)";
+                    slotBtn.style.backgroundColor = new Color(0.28f, 0.18f, 0.16f);
+                    slotBtn.style.color = new Color(1f, 0.75f, 0.55f);
+                }
+                else
+                {
+                    slotBtn.text = $"{slot.SlotName}: <Empty>  (Ready)";
+                    slotBtn.style.backgroundColor = new Color(0.16f, 0.24f, 0.18f);
+                    slotBtn.style.color = new Color(0.6f, 0.95f, 0.65f);
+                }
+
+                slotListContainer.Add(slotBtn);
+            }
+
+            if (runeSlotCount == 0)
+            {
+                var noSlotsLabel = new Label("No Rune Slots found on this character.");
+                noSlotsLabel.style.color = new Color(0.7f, 0.7f, 0.7f);
+                slotListContainer.Add(noSlotsLabel);
+            }
+
+            _modalBox.Add(slotListContainer);
+
+            var cancelBtn = new Button(() => HideModal()) { text = "Cancel" };
+            cancelBtn.style.backgroundColor = new Color(0.28f, 0.28f, 0.32f);
+            cancelBtn.style.color = Color.white;
+            cancelBtn.style.paddingTop = 6;
+            cancelBtn.style.paddingBottom = 6;
+            _modalBox.Add(cancelBtn);
+        }
+
+        /// <summary>
+        /// Confirms with the user whether they want to overwrite and delete the existing rune in the chosen slot.
+        /// </summary>
+        private void ShowInscribeConfirmationModal(
+            int userSlotIndex,
+            ItemDefinition newRune,
+            int targetSlotIndex,
+            ItemDefinition oldRune,
+            string slotName)
+        {
+            _modalBox.Clear();
+
+            var title = new Label("⚠️ CONFIRM RUNE REPLACEMENT");
+            title.style.fontSize = 15;
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            title.style.color = new Color(0.95f, 0.35f, 0.3f);
+            title.style.marginBottom = 10;
+            _modalBox.Add(title);
+
+            var warningBox = new VisualElement();
+            warningBox.style.backgroundColor = new Color(0.24f, 0.14f, 0.14f);
+            warningBox.style.paddingLeft = 12;
+            warningBox.style.paddingRight = 12;
+            warningBox.style.paddingTop = 10;
+            warningBox.style.paddingBottom = 10;
+            warningBox.style.marginBottom = 14;
+            warningBox.style.borderTopLeftRadius = 4;
+            warningBox.style.borderTopRightRadius = 4;
+            warningBox.style.borderBottomLeftRadius = 4;
+            warningBox.style.borderBottomRightRadius = 4;
+            warningBox.style.borderLeftWidth = 1;
+            warningBox.style.borderRightWidth = 1;
+            warningBox.style.borderTopWidth = 1;
+            warningBox.style.borderBottomWidth = 1;
+            warningBox.style.borderLeftColor = new Color(0.65f, 0.25f, 0.25f);
+            warningBox.style.borderRightColor = new Color(0.65f, 0.25f, 0.25f);
+            warningBox.style.borderTopColor = new Color(0.65f, 0.25f, 0.25f);
+            warningBox.style.borderBottomColor = new Color(0.65f, 0.25f, 0.25f);
+
+            var msg = new Label(
+                $"<b>{slotName}</b> already has <b>[{oldRune.ItemName}]</b> inscribed.\n\n" +
+                $"Inscribing <b>[{newRune.ItemName}]</b> will permanently <b>DELETE and DESTROY</b> [{oldRune.ItemName}].\n\n" +
+                "Runes cannot be unequipped and deleted runes cannot be recovered.\n\n" +
+                "Are you sure you want to proceed?");
+            msg.style.whiteSpace = WhiteSpace.Normal;
+            msg.style.fontSize = 12;
+            msg.style.color = new Color(0.95f, 0.9f, 0.9f);
+            warningBox.Add(msg);
+            _modalBox.Add(warningBox);
+
+            var buttonRow = new VisualElement();
+            buttonRow.style.flexDirection = FlexDirection.Row;
+            buttonRow.style.justifyContent = Justify.FlexEnd;
+
+            var backBtn = new Button(() => ShowInscribeSlotSelectionModal(userSlotIndex, newRune))
+            {
+                text = "← Back to Slots"
+            };
+            backBtn.style.marginRight = 8;
+            backBtn.style.paddingLeft = 10;
+            backBtn.style.paddingRight = 10;
+            backBtn.style.paddingTop = 6;
+            backBtn.style.paddingBottom = 6;
+            backBtn.style.backgroundColor = new Color(0.28f, 0.28f, 0.32f);
+            backBtn.style.color = Color.white;
+            buttonRow.Add(backBtn);
+
+            var cancelBtn = new Button(() => HideModal())
+            {
+                text = "Cancel"
+            };
+            cancelBtn.style.marginRight = 8;
+            cancelBtn.style.paddingLeft = 10;
+            cancelBtn.style.paddingRight = 10;
+            cancelBtn.style.paddingTop = 6;
+            cancelBtn.style.paddingBottom = 6;
+            cancelBtn.style.backgroundColor = new Color(0.28f, 0.28f, 0.32f);
+            cancelBtn.style.color = Color.white;
+            buttonRow.Add(cancelBtn);
+
+            var confirmBtn = new Button(() =>
+            {
+                HideModal();
+                bool success = userInventory.EquipToCharacter(
+                    userSlotIndex,
+                    _selectedCharacter,
+                    targetSlotIndex,
+                    confirmDestroyRune: true);
+
+                if (success)
+                {
+                    SetStatus($"Inscribed {newRune.ItemName} into {slotName} (deleted {oldRune.ItemName}).");
+                }
+                else
+                {
+                    SetStatus($"<color=red>Failed to inscribe {newRune.ItemName}.</color>");
+                }
+            })
+            {
+                text = "Confirm Inscribe (Delete Old)"
+            };
+            confirmBtn.style.paddingLeft = 12;
+            confirmBtn.style.paddingRight = 12;
+            confirmBtn.style.paddingTop = 6;
+            confirmBtn.style.paddingBottom = 6;
+            confirmBtn.style.backgroundColor = new Color(0.75f, 0.2f, 0.2f);
+            confirmBtn.style.color = Color.white;
+            confirmBtn.style.unityFontStyleAndWeight = FontStyle.Bold;
+            buttonRow.Add(confirmBtn);
+
+            _modalBox.Add(buttonRow);
+        }
+
+        /// <summary>
+        /// Prompts the user to select which Rune from their user inventory to inscribe into the designated slot.
+        /// </summary>
+        private void ShowPickRuneForSlotModal(int targetSlotIndex, EquipmentSlot slot)
+        {
+            if (userInventory == null || userInventory.Inventory == null) return;
+
+            _modalBox.Clear();
+            _modalOverlay.style.display = DisplayStyle.Flex;
+
+            var title = new Label(slot.IsOccupied
+                ? $"REPLACE RUNE IN {slot.SlotName.ToUpper()}"
+                : $"INSCRIBE RUNE INTO {slot.SlotName.ToUpper()}");
+            title.style.fontSize = 15;
+            title.style.unityFontStyleAndWeight = FontStyle.Bold;
+            title.style.color = new Color(1f, 0.85f, 0.35f);
+            title.style.marginBottom = 4;
+            _modalBox.Add(title);
+
+            var desc = new Label(slot.IsOccupied
+                ? $"Select a Rune from inventory to inscribe over [{slot.EquippedItem.ItemName}] (will delete old rune):"
+                : "Select a Rune from inventory to inscribe:");
+            desc.style.fontSize = 12;
+            desc.style.color = new Color(0.8f, 0.8f, 0.85f);
+            desc.style.marginBottom = 12;
+            _modalBox.Add(desc);
+
+            var runeList = new VisualElement();
+            runeList.style.marginBottom = 12;
+
+            int availableRuneCount = 0;
+            var inv = userInventory.Inventory;
+            for (int i = 0; i < inv.Capacity; i++)
+            {
+                int userSlotIndex = i;
+                var userSlot = inv.GetSlot(i);
+                if (userSlot.IsEmpty || userSlot.Item.ItemType != ItemType.Rune) continue;
+
+                availableRuneCount++;
+                var runeItem = userSlot.Item;
+
+                var runeBtn = new Button(() =>
+                {
+                    if (slot.IsOccupied)
+                    {
+                        ShowInscribeConfirmationModal(userSlotIndex, runeItem, targetSlotIndex, slot.EquippedItem, slot.SlotName);
+                    }
+                    else
+                    {
+                        HideModal();
+                        bool success = userInventory.EquipToCharacter(
+                            userSlotIndex,
+                            _selectedCharacter,
+                            targetSlotIndex,
+                            confirmDestroyRune: true);
+
+                        if (success)
+                        {
+                            SetStatus($"Inscribed {runeItem.ItemName} into {slot.SlotName}.");
+                        }
+                        else
+                        {
+                            SetStatus($"<color=red>Failed to inscribe {runeItem.ItemName}.</color>");
+                        }
+                    }
+                });
+
+                runeBtn.text = $"{runeItem.ItemName} (x{userSlot.Amount})";
+                runeBtn.style.paddingTop = 8;
+                runeBtn.style.paddingBottom = 8;
+                runeBtn.style.paddingLeft = 12;
+                runeBtn.style.paddingRight = 12;
+                runeBtn.style.marginBottom = 6;
+                runeBtn.style.backgroundColor = new Color(0.22f, 0.22f, 0.28f);
+                runeBtn.style.color = new Color(0.95f, 0.9f, 0.7f);
+                runeList.Add(runeBtn);
+            }
+
+            if (availableRuneCount == 0)
+            {
+                var emptyMsg = new Label("No Runes found in inventory. Add runes using the toolbar below.");
+                emptyMsg.style.color = new Color(0.7f, 0.7f, 0.7f);
+                emptyMsg.style.marginBottom = 10;
+                runeList.Add(emptyMsg);
+            }
+
+            _modalBox.Add(runeList);
+
+            var cancelBtn = new Button(() => HideModal()) { text = "Cancel" };
+            cancelBtn.style.backgroundColor = new Color(0.28f, 0.28f, 0.32f);
+            cancelBtn.style.color = Color.white;
+            cancelBtn.style.paddingTop = 6;
+            cancelBtn.style.paddingBottom = 6;
+            _modalBox.Add(cancelBtn);
         }
 
         #endregion

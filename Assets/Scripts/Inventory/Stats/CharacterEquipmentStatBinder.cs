@@ -30,6 +30,7 @@ namespace SBGames.Inventory.Stats
 
             _characterInventory.OnItemEquipped += HandleItemEquipped;
             _characterInventory.OnItemUnequipped += HandleItemUnequipped;
+            _characterInventory.OnItemDestroyed += HandleItemUnequipped;
 
             // Apply any already equipped items (e.g. if loaded from save data or inspector defaults)
             ApplyAllCurrentEquipment();
@@ -111,6 +112,7 @@ namespace SBGames.Inventory.Stats
             {
                 _characterInventory.OnItemEquipped -= HandleItemEquipped;
                 _characterInventory.OnItemUnequipped -= HandleItemUnequipped;
+                _characterInventory.OnItemDestroyed -= HandleItemUnequipped;
 
                 for (int i = 0; i < _characterInventory.SlotCount; i++)
                 {

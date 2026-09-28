@@ -87,6 +87,7 @@ namespace SBGames.Inventory.Character
 
         /// <summary>
         /// Unequips the item from the specified equipment slot.
+        /// Fails if the item is a Rune (runes cannot be unequipped).
         /// </summary>
         public bool Unequip(int slotIndex, out ItemDefinition unequippedItem)
         {
@@ -94,6 +95,18 @@ namespace SBGames.Inventory.Character
             if (_inventory == null) return false;
 
             return _inventory.Unequip(slotIndex, out unequippedItem);
+        }
+
+        /// <summary>
+        /// Deletes/destroys the rune in the specified slot.
+        /// Runes cannot be unequipped back to inventory; they can only be deleted or replaced.
+        /// </summary>
+        public bool DestroyRune(int slotIndex, out ItemDefinition destroyedRune)
+        {
+            destroyedRune = null;
+            if (_inventory == null) return false;
+
+            return _inventory.DestroyRune(slotIndex, out destroyedRune);
         }
 
         /// <summary>

@@ -68,19 +68,41 @@ namespace SBGames.Inventory.Character
         }
 
         /// <summary>
+        /// Whether this slot's equipped item can be unequipped back to inventory.
+        /// Runes cannot be unequipped; they can only be replaced or deleted.
+        /// </summary>
+        public bool CanUnequip => IsOccupied && SlotType != EquipmentSlotType.Rune && (EquippedItem == null || EquippedItem.ItemType != ItemType.Rune);
+
+        /// <summary>
+        /// Clears the currently equipped item without unequip restrictions.
+        /// Used for internal item replacement or rune deletion.
+        /// </summary>
+        public bool Clear(out ItemDefinition clearedItem)
+        {
+            if (!IsOccupied)
+            {
+                clearedItem = null;
+                return false;
+            }
+
+            clearedItem = EquippedItem;
+            EquippedItem = null;
+            return true;
+        }
+
+        /// <summary>
         /// Unequips the currently equipped item, returning it and leaving the slot empty.
+        /// Fails if the slot contains a Rune (runes cannot be unequipped).
         /// </summary>
         public bool Unequip(out ItemDefinition unequippedItem)
         {
-            if (!IsOccupied)
+            if (!CanUnequip)
             {
                 unequippedItem = null;
                 return false;
             }
 
-            unequippedItem = EquippedItem;
-            EquippedItem = null;
-            return true;
+            return Clear(out unequippedItem);
         }
     }
 }

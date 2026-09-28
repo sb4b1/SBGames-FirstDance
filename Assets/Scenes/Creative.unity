@@ -903,6 +903,66 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0e87db3413d4f7458eeace248aff5a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NormalAgentTypeFactory
+--- !u!1001 &1315851427
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 2.14
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.62
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: m_Name
+      value: NC002
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1822531530}
+  m_SourcePrefab: {fileID: 100100000, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
 --- !u!1 &1403477193
 GameObject:
   m_ObjectHideFlags: 0
@@ -4444,11 +4504,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.38856
+      value: -1.66
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.10142
+      value: 0.61
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4811,6 +4871,36 @@ PanelRenderer:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_Position: 0
+--- !u!1 &1822531521 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+  m_PrefabInstance: {fileID: 1315851427}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1822531524 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 583056955256405874, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+  m_PrefabInstance: {fileID: 1315851427}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1822531521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a819b5c841abf4543adc0371c7748b50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
+--- !u!114 &1822531530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1822531521}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66eed53a943b6bd4fb2140f7c9c47dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
+  characterDisplayName: Owl Monster
+  statsManager: {fileID: 1822531524}
 --- !u!1 &1988939312
 GameObject:
   m_ObjectHideFlags: 0
@@ -4873,3 +4963,4 @@ SceneRoots:
   - {fileID: 1102249995}
   - {fileID: 1988939315}
   - {fileID: 1503231083}
+  - {fileID: 1315851427}

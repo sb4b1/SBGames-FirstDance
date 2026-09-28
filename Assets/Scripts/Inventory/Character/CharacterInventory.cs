@@ -30,6 +30,11 @@ namespace SBGames.Inventory.Character
         public event Action<int, EquipmentSlot, ItemDefinition> OnItemUnequipped;
 
         /// <summary>
+        /// Fired when an item (such as a rune) is destroyed / deleted: (slotIndex, slot, destroyedItem).
+        /// </summary>
+        public event Action<int, EquipmentSlot, ItemDefinition> OnItemDestroyed;
+
+        /// <summary>
         /// Fired when any slot's equipped state changes: (slotIndex, slot).
         /// </summary>
         public event Action<int, EquipmentSlot> OnSlotChanged;
@@ -148,12 +153,19 @@ namespace SBGames.Inventory.Character
                 }
             }
 
-            // Unequip current if present
+            // Clear current if present
             if (slot.IsOccupied)
             {
                 var prev = slot.EquippedItem;
-                slot.Unequip(out _);
-                OnItemUnequipped?.Invoke(slotIndex, slot, prev);
+                slot.Clear(out _);
+                if (destroyedRune != null)
+                {
+                    OnItemDestroyed?.Invoke(slotIndex, slot, destroyedRune);
+                }
+                else
+                {
+                    OnItemUnequipped?.Invoke(slotIndex, slot, prev);
+                }
             }
 
             // Equip new item
@@ -167,12 +179,13 @@ namespace SBGames.Inventory.Character
 
         /// <summary>
         /// Unequips the item in the specified slot, returning it in unequippedItem.
+        /// Runes cannot be unequipped; returns false for runes.
         /// </summary>
         public bool Unequip(int slotIndex, out ItemDefinition unequippedItem)
         {
             unequippedItem = null;
             var slot = GetSlot(slotIndex);
-            if (slot == null || !slot.IsOccupied) return false;
+            if (slot == null || !slot.IsOccupied || !slot.CanUnequip) return false;
 
             if (slot.Unequip(out unequippedItem))
             {
@@ -186,14 +199,42 @@ namespace SBGames.Inventory.Character
         }
 
         /// <summary>
-        /// Unequips all items from all slots, returning a list of all unequipped items.
+        /// Deletes/destroys the rune currently equipped in the specified slot.
+        /// Runes cannot be unequipped back to inventory; they can only be deleted or replaced.
+        /// </summary>
+        public bool DestroyRune(int slotIndex, out ItemDefinition destroyedRune)
+        {
+            destroyedRune = null;
+            var slot = GetSlot(slotIndex);
+            if (slot == null || !slot.IsOccupied) return false;
+
+            if (slot.SlotType != EquipmentSlotType.Rune && (slot.EquippedItem == null || slot.EquippedItem.ItemType != ItemType.Rune))
+            {
+                // Only runes can be destroyed this way (artifacts must be unequipped)
+                return false;
+            }
+
+            if (slot.Clear(out destroyedRune))
+            {
+                OnItemDestroyed?.Invoke(slotIndex, slot, destroyedRune);
+                OnSlotChanged?.Invoke(slotIndex, slot);
+                OnEquipmentChanged?.Invoke();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Unequips all unequipped items from slots that allow unequipping (e.g. Artifacts).
+        /// Runes cannot be unequipped and remain in their slots.
         /// </summary>
         public List<ItemDefinition> UnequipAll()
         {
             var unequipped = new List<ItemDefinition>();
             for (int i = 0; i < _slots.Count; i++)
             {
-                if (_slots[i].IsOccupied && Unequip(i, out var item))
+                if (_slots[i].IsOccupied && _slots[i].CanUnequip && Unequip(i, out var item))
                 {
                     unequipped.Add(item);
                 }

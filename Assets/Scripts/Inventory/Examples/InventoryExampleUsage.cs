@@ -142,9 +142,13 @@ namespace SBGames.Inventory.Examples
             float actualDamage = statsManager.Damage.Value;
             ok &= Assert(Mathf.Approximately(actualDamage, expectedDamage), $"Damage calculated to {expectedDamage} (got {actualDamage})", log);
 
-            // Unequip Rune -> Damage must revert cleanly to 20
+            // Verify Rune cannot be unequipped
             bool unequipped = charInv.Unequip(0, out var unequippedItem);
-            ok &= Assert(unequipped && unequippedItem == atkRune, "Rune unequipped successfully", log);
+            ok &= Assert(!unequipped && unequippedItem == null, "Rune cannot be unequipped (as per design rules)", log);
+
+            // Delete Rune -> Damage must revert cleanly to 20
+            bool destroyed = charInv.DestroyRune(0, out var destroyedRune);
+            ok &= Assert(destroyed && destroyedRune == atkRune, "Rune deleted/destroyed successfully", log);
             ok &= Assert(Mathf.Approximately(statsManager.Damage.Value, 20f), $"Damage reverted back to base 20 (got {statsManager.Damage.Value})", log);
 
             binder.Dispose();
@@ -182,11 +186,25 @@ namespace SBGames.Inventory.Examples
             charInv.Equip(runeSlot, runeA, out _, out _);
             ok &= Assert(charInv.GetSlot(runeSlot).EquippedItem == runeA, "Rune A equipped", log);
 
-            // Inscribing Rune B over Rune A -> Rune A is destroyed!
+            // Inscribing Rune B over Rune A with confirmDestroyRune: false -> Must be aborted and Rune A preserved!
+            bool unconfirmedInscribe = charInv.Equip(runeSlot, runeB, out _, out _, confirmDestroyRune: false);
+            ok &= Assert(!unconfirmedInscribe, "Inscribing over Rune A without user confirmation was aborted", log);
+            ok &= Assert(charInv.GetSlot(runeSlot).EquippedItem == runeA, "Rune A remains equipped when confirmation is declined", log);
+
+            // Inscribing Rune B over Rune A with user confirmation -> Rune A is destroyed/deleted!
             charInv.Equip(runeSlot, runeB, out var displacedRune, out var destroyedRuneResult, confirmDestroyRune: true);
             ok &= Assert(displacedRune == null, "Displaced item is null (rune not returned to inventory)", log);
             ok &= Assert(destroyedRuneResult == runeA, "Rune A was destroyed in inscription process", log);
-            ok &= Assert(charInv.GetSlot(runeSlot).EquippedItem == runeB, "Rune B is now equipped", log);
+            ok &= Assert(charInv.GetSlot(runeSlot).EquippedItem == runeB, "Rune B is now equipped into chosen slot", log);
+
+            // Runes cannot be unequipped
+            bool unequippedB = charInv.Unequip(runeSlot, out _);
+            ok &= Assert(!unequippedB, "Rune cannot be unequipped", log);
+
+            // Runes can only be replaced or deleted
+            bool deletedB = charInv.DestroyRune(runeSlot, out var deletedRune);
+            ok &= Assert(deletedB && deletedRune == runeB, "Rune B was deleted cleanly", log);
+            ok &= Assert(charInv.GetSlot(runeSlot).IsEmpty, "Rune slot is empty after deletion", log);
 
             return ok;
         }
@@ -265,12 +283,12 @@ namespace SBGames.Inventory.Examples
 
             ok &= Assert(Mathf.Approximately(stats.Damage.Value, 30f), "External buff applied (Damage is now 30)", log);
 
-            // Unequip rune -> ONLY the rune's modifier is removed, the external buff stays intact!
-            charInv.Unequip(0, out _);
+            // Delete rune -> ONLY the rune's modifier is removed, the external buff stays intact!
+            charInv.DestroyRune(0, out _);
             ok &= Assert(Mathf.Approximately(stats.Damage.Value, 25f), "Damage is 25 (base 15 + external buff 10; rune modifier cleanly removed)", log);
 
             // Inventory state remains completely intact
-            ok &= Assert(charInv.GetSlot(0).IsEmpty, "Equipment slot is empty after unequip", log);
+            ok &= Assert(charInv.GetSlot(0).IsEmpty, "Equipment slot is empty after rune deletion", log);
 
             binder.Dispose();
             DestroyImmediate(charGo);

@@ -215,6 +215,12 @@ namespace SBGames.Inventory.User
                 return false;
             }
 
+            if (!charSlot.CanUnequip)
+            {
+                resultMessage = "Runes cannot be unequipped. They can only be replaced by inscribing a new rune or deleted.";
+                return false;
+            }
+
             var itemToUnequip = charSlot.EquippedItem;
 
             // Check if user inventory can accept the unequipped item
@@ -232,6 +238,46 @@ namespace SBGames.Inventory.User
             }
 
             resultMessage = "Failed to unequip item.";
+            return false;
+        }
+
+        /// <summary>
+        /// Deletes/destroys an equipped rune from a character.
+        /// Runes cannot be unequipped back to inventory; they are permanently deleted.
+        /// </summary>
+        public bool DestroyRuneFromCharacter(
+            CharacterInventoryManager targetCharacter,
+            int characterSlotIndex,
+            out string resultMessage)
+        {
+            resultMessage = string.Empty;
+
+            if (targetCharacter == null || targetCharacter.Inventory == null)
+            {
+                resultMessage = "Invalid character reference.";
+                return false;
+            }
+
+            var charSlot = targetCharacter.Inventory.GetSlot(characterSlotIndex);
+            if (charSlot == null || !charSlot.IsOccupied)
+            {
+                resultMessage = "Selected equipment slot is empty.";
+                return false;
+            }
+
+            if (charSlot.SlotType != EquipmentSlotType.Rune && (charSlot.EquippedItem == null || charSlot.EquippedItem.ItemType != ItemType.Rune))
+            {
+                resultMessage = "Only runes can be deleted. Use unequip for artifacts.";
+                return false;
+            }
+
+            if (targetCharacter.DestroyRune(characterSlotIndex, out var destroyedRune))
+            {
+                resultMessage = $"Deleted rune {destroyedRune.ItemName}.";
+                return true;
+            }
+
+            resultMessage = "Failed to delete rune.";
             return false;
         }
     }
