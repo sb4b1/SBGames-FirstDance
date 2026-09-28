@@ -17,8 +17,9 @@ namespace SBGames.Placement
         /// <summary>Target cell already contains another placed unit or obstacle.</summary>
         CellOccupied = 3,
 
-        /// <summary>Player does not have enough resources to pay the placement cost.</summary>
+        /// <summary>Player does not have enough resources or energy to pay the placement cost.</summary>
         InsufficientResources = 4,
+        InsufficientEnergy = 4,
 
         /// <summary>Dungeon does not have enough remaining capacity for the scaled unit.</summary>
         ExceedsCapacityLimit = 5,
@@ -40,6 +41,9 @@ namespace SBGames.Placement
         public readonly int CapacityRequired;
         public readonly int AvailableResources;
         public readonly int AvailableCapacity;
+
+        public int EnergyRequired => CostRequired;
+        public int AvailableEnergy => AvailableResources;
 
         public PlacementValidationResult(
             bool isValid,

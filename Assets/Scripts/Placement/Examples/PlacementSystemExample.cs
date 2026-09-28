@@ -30,14 +30,17 @@ namespace SBGames.Placement.Examples
             Debug.Log("===============================================================");
 
             // 1. Setup Environment
-            // Initial Economy: 100 Gold, 6 Dungeon Capacity, 5x5 Grid
-            var wallet = new ResourceWallet(initialResources: 100);
+            // Initial Economy: 100 Energy (via DungeonMaster), 6 Dungeon Capacity, 5x5 Grid
+            var dmGo = new GameObject("[TestDungeonMaster]");
+            var dm = dmGo.AddComponent<SBGames.Loop.DungeonMaster>();
+            dm.Initialize(startingEssence: 100, startingEnergy: 100);
+
             var capacityPool = new CapacityPool(maxCapacity: 6);
             var occupancyTracker = new GridOccupancyTracker(5, 5);
             var multiplier = new LinearCapacityMultiplierStrategy();
             var phaseManager = new SimpleDungeonPhaseManager(DungeonPhase.BuildPhase);
 
-            var system = new DungeonPlacementSystem(wallet, capacityPool, occupancyTracker, multiplier, phaseManager);
+            var system = new DungeonPlacementSystem(dm, capacityPool, occupancyTracker, multiplier, phaseManager);
 
             // Unit Type Definitions (In-memory mock for testing, or ScriptableObjects in production)
             var scoutDef = new SimpleUnitDefinition("unit_scout", "Goblin Scout", baseCost: 15, baseCapacity: 1);
@@ -169,7 +172,7 @@ namespace SBGames.Placement.Examples
 
         private void LogStatus(DungeonPlacementSystem sys, string label)
         {
-            Debug.Log($"[{label}] Gold: {sys.Wallet.CurrentResources} | Capacity: {sys.CapacityPool.CurrentCapacityUsed}/{sys.CapacityPool.MaxCapacity} (Free: {sys.CapacityPool.AvailableCapacity}) | Units Placed: {sys.GetAllPlacedUnits().Count}");
+            Debug.Log($"[{label}] Energy: {sys.DungeonMaster.Energy} | Capacity: {sys.CapacityPool.CurrentCapacityUsed}/{sys.CapacityPool.MaxCapacity} (Free: {sys.CapacityPool.AvailableCapacity}) | Units Placed: {sys.GetAllPlacedUnits().Count}");
         }
 
         /// <summary>

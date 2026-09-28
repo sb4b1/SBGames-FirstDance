@@ -8,6 +8,7 @@ namespace SBGames.Placement
     public enum DungeonPhase
     {
         /// <summary>Preparation time: players can place, reposition, and sell units.</summary>
+        PlanningPhase = 0,
         BuildPhase = 0,
 
         /// <summary>Active combat / wave defense: unit placement and modifications are locked.</summary>
@@ -33,11 +34,11 @@ namespace SBGames.Placement
         private DungeonPhase currentPhase;
 
         public DungeonPhase CurrentPhase => currentPhase;
-        public bool CanPlaceOrModifyUnits => currentPhase == DungeonPhase.BuildPhase;
+        public bool CanPlaceOrModifyUnits => currentPhase == DungeonPhase.PlanningPhase;
 
         public event Action<DungeonPhase> OnPhaseChanged;
 
-        public SimpleDungeonPhaseManager(DungeonPhase initialPhase = DungeonPhase.BuildPhase)
+        public SimpleDungeonPhaseManager(DungeonPhase initialPhase = DungeonPhase.PlanningPhase)
         {
             currentPhase = initialPhase;
         }

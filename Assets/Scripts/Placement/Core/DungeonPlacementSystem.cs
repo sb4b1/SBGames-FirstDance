@@ -1,17 +1,18 @@
 using System;
 using System.Collections.Generic;
+using SBGames.Loop;
 using UnityEngine;
 
 namespace SBGames.Placement
 {
     /// <summary>
     /// Core placement engine for the roguelike dungeon builder.
-    /// Coordinates resource costs, capacity limits, combat power multipliers, and grid occupancy.
+    /// Coordinates unit energy costs directly with DungeonMaster, capacity limits, combat power multipliers, and grid occupancy.
     /// Pure C# system designed for zero side-effect pre-validation and deterministic execution.
     /// </summary>
     public class DungeonPlacementSystem
     {
-        public IResourceWallet Wallet { get; }
+        public DungeonMaster DungeonMaster { get; }
         public ICapacityPool CapacityPool { get; }
         public IGridOccupancyTracker OccupancyTracker { get; }
         public ICapacityMultiplierStrategy MultiplierStrategy { get; set; }
@@ -22,13 +23,13 @@ namespace SBGames.Placement
         public event Action<PlacementRequest, PlacementValidationResult> OnPlacementRejected;
 
         public DungeonPlacementSystem(
-            IResourceWallet wallet,
+            DungeonMaster dungeonMaster,
             ICapacityPool capacityPool,
             IGridOccupancyTracker occupancyTracker,
             ICapacityMultiplierStrategy multiplierStrategy = null,
             IDungeonPhaseManager phaseManager = null)
         {
-            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            DungeonMaster = dungeonMaster ?? throw new ArgumentNullException(nameof(dungeonMaster));
             CapacityPool = capacityPool ?? throw new ArgumentNullException(nameof(capacityPool));
             OccupancyTracker = occupancyTracker ?? throw new ArgumentNullException(nameof(occupancyTracker));
             MultiplierStrategy = multiplierStrategy ?? new LinearCapacityMultiplierStrategy();
@@ -37,31 +38,33 @@ namespace SBGames.Placement
 
         /// <summary>
         /// Pure validation of a placement request without mutating any system state.
-        /// Evaluates grid constraints, resource costs, and capacity consumption with CP multiplier.
+        /// Evaluates grid constraints, energy costs via DungeonMaster, and capacity consumption with CP multiplier.
         /// </summary>
         /// <param name="request">Unit placement intent details.</param>
         /// <returns>Validation outcome detailing success or precise failure constraint.</returns>
         public PlacementValidationResult ValidatePlacement(in PlacementRequest request)
         {
+            int availableEnergy = DungeonMaster != null ? DungeonMaster.Energy : 0;
+
             // 1. Basic structural validity
             if (request.UnitDefinition == null)
             {
                 return PlacementValidationResult.FailureResult(
                     PlacementStatus.InvalidRequest,
                     "Unit definition is null or missing.",
-                    0, 0, Wallet.CurrentResources, CapacityPool.AvailableCapacity
+                    0, 0, availableEnergy, CapacityPool.AvailableCapacity
                 );
             }
 
-            // 2. Phase restrictions (Build Phase vs Combat Phase)
+            // 2. Phase restrictions (Build / Planning Phase vs Combat Phase)
             if (PhaseManager != null && !PhaseManager.CanPlaceOrModifyUnits)
             {
                 return PlacementValidationResult.FailureResult(
                     PlacementStatus.PhaseLocked,
-                    $"Placement locked during {PhaseManager.CurrentPhase}. Only allowed during BuildPhase.",
+                    $"Placement locked during {PhaseManager.CurrentPhase}. Only allowed during Planning/Build phase.",
                     request.UnitDefinition.BaseCost,
                     0,
-                    Wallet.CurrentResources,
+                    availableEnergy,
                     CapacityPool.AvailableCapacity
                 );
             }
@@ -80,7 +83,7 @@ namespace SBGames.Placement
                             $"Footprint tile {checkPos} is out of dungeon bounds {OccupancyTracker.GridSize}.",
                             request.UnitDefinition.BaseCost,
                             0,
-                            Wallet.CurrentResources,
+                            availableEnergy,
                             CapacityPool.AvailableCapacity
                         );
                     }
@@ -92,16 +95,16 @@ namespace SBGames.Placement
                             $"Grid cell {checkPos} is already occupied.",
                             request.UnitDefinition.BaseCost,
                             0,
-                            Wallet.CurrentResources,
+                            availableEnergy,
                             CapacityPool.AvailableCapacity
                         );
                     }
                 }
             }
 
-            // 3. Constraint 1: Placement Cost Check
+            // 4. Constraint 1: Energy Cost Check (via DungeonMaster)
             int requiredCost = request.UnitDefinition.BaseCost;
-            if (!Wallet.CanAfford(requiredCost))
+            if (availableEnergy < requiredCost)
             {
                 int effectiveCapPreview = MultiplierStrategy.CalculateEffectiveCapacity(
                     request.UnitDefinition.BaseCapacity,
@@ -109,16 +112,16 @@ namespace SBGames.Placement
                 );
 
                 return PlacementValidationResult.FailureResult(
-                    PlacementStatus.InsufficientResources,
-                    $"Insufficient resources. Required: {requiredCost}, Available: {Wallet.CurrentResources}.",
+                    PlacementStatus.InsufficientEnergy,
+                    $"Insufficient Energy. Required: {requiredCost}, Available: {availableEnergy}.",
                     costRequired: requiredCost,
                     capacityRequired: effectiveCapPreview,
-                    availableResources: Wallet.CurrentResources,
+                    availableResources: availableEnergy,
                     availableCapacity: CapacityPool.AvailableCapacity
                 );
             }
 
-            // 4. Constraint 3 & Constraint 2: Dynamic Capacity Multiplier & Capacity Limit Check
+            // 5. Dynamic Capacity Multiplier & Capacity Limit Check
             int effectiveCapacity = MultiplierStrategy.CalculateEffectiveCapacity(
                 request.UnitDefinition.BaseCapacity,
                 request.CombatPowerFactor
@@ -131,23 +134,23 @@ namespace SBGames.Placement
                     $"Exceeds dungeon capacity pool. Required: {effectiveCapacity} (Base: {request.UnitDefinition.BaseCapacity} x CP Factor: {request.CombatPowerFactor:F2}), Available: {CapacityPool.AvailableCapacity}/{CapacityPool.MaxCapacity}.",
                     costRequired: requiredCost,
                     capacityRequired: effectiveCapacity,
-                    availableResources: Wallet.CurrentResources,
+                    availableResources: availableEnergy,
                     availableCapacity: CapacityPool.AvailableCapacity
                 );
             }
 
-            // All 3 constraints and spatial checks passed!
+            // All constraints and spatial checks passed!
             return PlacementValidationResult.SuccessResult(
                 costRequired: requiredCost,
                 capacityRequired: effectiveCapacity,
-                availableResources: Wallet.CurrentResources,
+                availableResources: availableEnergy,
                 availableCapacity: CapacityPool.AvailableCapacity
             );
         }
 
         /// <summary>
         /// Attempts to execute unit placement.
-        /// Atomically applies cost deduction, capacity consumption, and grid registration if valid.
+        /// Atomically applies energy deduction from DungeonMaster, capacity consumption, and grid registration if valid.
         /// Leaves state completely untouched if any constraint check fails.
         /// </summary>
         public bool TryPlaceUnit(
@@ -168,15 +171,14 @@ namespace SBGames.Placement
             int cost = validationResult.CostRequired;
             int capacity = validationResult.CapacityRequired;
 
-            bool deducted = Wallet.TryDeduct(cost);
+            bool deducted = DungeonMaster.SpendEnergy(cost);
             if (!deducted)
             {
-                // Safety guard in case of external race condition
                 placedUnit = null;
                 validationResult = PlacementValidationResult.FailureResult(
-                    PlacementStatus.InsufficientResources,
-                    "Failed to deduct placement cost.",
-                    cost, capacity, Wallet.CurrentResources, CapacityPool.AvailableCapacity
+                    PlacementStatus.InsufficientEnergy,
+                    "Failed to deduct energy cost from DungeonMaster.",
+                    cost, capacity, DungeonMaster.Energy, CapacityPool.AvailableCapacity
                 );
                 OnPlacementRejected?.Invoke(request, validationResult);
                 return false;
@@ -185,13 +187,13 @@ namespace SBGames.Placement
             bool allocated = CapacityPool.TryAllocate(capacity);
             if (!allocated)
             {
-                // Rollback wallet deduction
-                Wallet.Add(cost);
+                // Rollback energy deduction
+                DungeonMaster.GainEnergy(cost);
                 placedUnit = null;
                 validationResult = PlacementValidationResult.FailureResult(
                     PlacementStatus.ExceedsCapacityLimit,
                     "Failed to allocate capacity during execution.",
-                    cost, capacity, Wallet.CurrentResources, CapacityPool.AvailableCapacity
+                    cost, capacity, DungeonMaster.Energy, CapacityPool.AvailableCapacity
                 );
                 OnPlacementRejected?.Invoke(request, validationResult);
                 return false;
@@ -209,14 +211,14 @@ namespace SBGames.Placement
             bool registered = OccupancyTracker.RegisterUnit(placedUnit);
             if (!registered)
             {
-                // Rollback both capacity and wallet
+                // Rollback both capacity and energy
                 CapacityPool.Release(capacity);
-                Wallet.Add(cost);
+                DungeonMaster.GainEnergy(cost);
                 placedUnit = null;
                 validationResult = PlacementValidationResult.FailureResult(
                     PlacementStatus.CellOccupied,
                     "Failed to register unit on grid.",
-                    cost, capacity, Wallet.CurrentResources, CapacityPool.AvailableCapacity
+                    cost, capacity, DungeonMaster.Energy, CapacityPool.AvailableCapacity
                 );
                 OnPlacementRejected?.Invoke(request, validationResult);
                 return false;
@@ -227,7 +229,7 @@ namespace SBGames.Placement
         }
 
         /// <summary>
-        /// Removes an existing placed unit from the grid, frees its capacity, and optionally refunds cost.
+        /// Removes an existing placed unit from the grid, frees its capacity, and optionally refunds energy to DungeonMaster.
         /// </summary>
         /// <param name="gridPosition">Tile location of the unit.</param>
         /// <param name="removedUnit">The unit that was removed, or null if none was found.</param>
@@ -252,14 +254,14 @@ namespace SBGames.Placement
             // Release exact capacity consumed by this unit instance
             CapacityPool.Release(removedUnit.CapacityConsumed);
 
-            // Process optional resource refund
+            // Process optional energy refund directly to DungeonMaster
             bool isRefunded = false;
             if (refundRatio > 0f && removedUnit.CostPaid > 0)
             {
                 int refundAmount = Mathf.RoundToInt(removedUnit.CostPaid * Mathf.Clamp01(refundRatio));
                 if (refundAmount > 0)
                 {
-                    Wallet.Add(refundAmount);
+                    DungeonMaster.GainEnergy(refundAmount);
                     isRefunded = true;
                 }
             }

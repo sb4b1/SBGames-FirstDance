@@ -1,4 +1,5 @@
 using System;
+using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -35,10 +36,16 @@ namespace SBGames.Placement
         public Vector3 GridOrigin => gridOrigin;
 
         [Header("Starting Economy & Limits")]
+        [Tooltip("Fallback resources if no DungeonMaster is present.")]
         [SerializeField, Min(0)] private int startingResources = 100;
         [SerializeField, Min(1)] private int maxCapacity = 20;
         [Range(0f, 1f)]
-        [SerializeField] private float removalRefundRatio = 0.5f;
+        [Tooltip("Refund ratio when selling or removing units during Planning phase (1.0 = 100% full refund).")]
+        [SerializeField] private float removalRefundRatio = 1.0f;
+
+        [Header("Dungeon Master Economy")]
+        [SerializeField] private SBGames.Loop.DungeonMaster dungeonMaster;
+        [SerializeField] private SBGames.Loop.CoreGameLoop coreGameLoop;
 
         [Header("Dungeon Phase")]
         [SerializeField] private DungeonPhase initialPhase = DungeonPhase.BuildPhase;
@@ -56,7 +63,8 @@ namespace SBGames.Placement
 
         // Core system instances
         public DungeonPlacementSystem System { get; private set; }
-        public IResourceWallet Wallet => System?.Wallet;
+        public DungeonMaster DungeonMaster => System?.DungeonMaster ?? dungeonMaster;
+        public int CurrentEnergy => DungeonMaster != null ? DungeonMaster.Energy : 0;
         public ICapacityPool CapacityPool => System?.CapacityPool;
         public IGridOccupancyTracker OccupancyTracker => System?.OccupancyTracker;
         public IDungeonPhaseManager PhaseManager { get; private set; }
@@ -81,7 +89,16 @@ namespace SBGames.Placement
 
         private void InitializeSystem()
         {
-            var wallet = new ResourceWallet(startingResources);
+            if (dungeonMaster == null) dungeonMaster = FindAnyObjectByType<SBGames.Loop.DungeonMaster>();
+            if (coreGameLoop == null) coreGameLoop = FindAnyObjectByType<SBGames.Loop.CoreGameLoop>();
+
+            if (dungeonMaster == null)
+            {
+                var dmGo = new GameObject("[DungeonMaster]");
+                dungeonMaster = dmGo.AddComponent<SBGames.Loop.DungeonMaster>();
+                dungeonMaster.Initialize(startingEssence: 100, startingEnergy: startingResources > 0 ? startingResources : 50);
+            }
+
             var capacityPool = new CapacityPool(maxCapacity);
             var occupancyTracker = new GridOccupancyTracker(gridSize.x, gridSize.y);
             var multiplierStrategy = new LinearCapacityMultiplierStrategy();
@@ -89,7 +106,7 @@ namespace SBGames.Placement
             CombatPowerProvider = new DefaultCombatPowerProvider();
 
             System = new DungeonPlacementSystem(
-                wallet,
+                dungeonMaster,
                 capacityPool,
                 occupancyTracker,
                 multiplierStrategy,
@@ -97,18 +114,60 @@ namespace SBGames.Placement
             );
 
             // Wire internal events to UnityEvents for UI responsiveness
-            wallet.OnResourcesChanged += (current, delta) => onResourcesChanged?.Invoke(current, delta);
+            dungeonMaster.OnEnergyChanged += HandleDungeonMasterEnergyChanged;
             capacityPool.OnCapacityChanged += (used, max) => onCapacityChanged?.Invoke(used, max);
             PhaseManager.OnPhaseChanged += (phase) => onPhaseChanged?.Invoke(phase);
             System.OnUnitPlaced += HandleUnitPlaced;
             System.OnUnitRemoved += HandleUnitRemoved;
             System.OnPlacementRejected += HandlePlacementRejected;
+
+            // Sync with CoreGameLoop phases if active
+            if (coreGameLoop != null)
+            {
+                coreGameLoop.OnPhaseChanged += HandleCoreLoopPhaseChanged;
+                SyncPhaseWithCoreLoop(coreGameLoop.CurrentPhase);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (dungeonMaster != null)
+            {
+                dungeonMaster.OnEnergyChanged -= HandleDungeonMasterEnergyChanged;
+            }
+
+            if (coreGameLoop != null)
+            {
+                coreGameLoop.OnPhaseChanged -= HandleCoreLoopPhaseChanged;
+            }
+        }
+
+        private void HandleDungeonMasterEnergyChanged(int currentEnergy, int maxEnergy)
+        {
+            onResourcesChanged?.Invoke(currentEnergy, 0);
+        }
+
+        private void HandleCoreLoopPhaseChanged(SBGames.Loop.GamePhase loopPhase)
+        {
+            SyncPhaseWithCoreLoop(loopPhase);
+        }
+
+        private void SyncPhaseWithCoreLoop(SBGames.Loop.GamePhase loopPhase)
+        {
+            if (PhaseManager == null) return;
+
+            // Planning phase unlocks building; all other phases lock placement
+            var targetDungeonPhase = (loopPhase == SBGames.Loop.GamePhase.Planning)
+                ? DungeonPhase.BuildPhase
+                : DungeonPhase.CombatPhase;
+
+            PhaseManager.SetPhase(targetDungeonPhase);
         }
 
         private void Start()
         {
             // Initial UI sync
-            onResourcesChanged?.Invoke(Wallet.CurrentResources, 0);
+            onResourcesChanged?.Invoke(CurrentEnergy, 0);
             onCapacityChanged?.Invoke(CapacityPool.CurrentCapacityUsed, CapacityPool.MaxCapacity);
             onPhaseChanged?.Invoke(PhaseManager.CurrentPhase);
         }

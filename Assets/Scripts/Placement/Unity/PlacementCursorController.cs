@@ -80,6 +80,28 @@ namespace SBGames.Placement
             {
                 SelectUnit(activeUnitAsset);
             }
+
+            if (DungeonPlacementManager.Instance != null)
+            {
+                DungeonPlacementManager.Instance.onPhaseChanged.AddListener(HandlePlacementPhaseChanged);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (DungeonPlacementManager.Instance != null)
+            {
+                DungeonPlacementManager.Instance.onPhaseChanged.RemoveListener(HandlePlacementPhaseChanged);
+            }
+        }
+
+        private void HandlePlacementPhaseChanged(DungeonPhase phase)
+        {
+            if (phase != DungeonPhase.BuildPhase)
+            {
+                SetBuildMenuOpen(false);
+                DeselectUnit();
+            }
         }
 
         private void Update()
@@ -237,7 +259,7 @@ namespace SBGames.Placement
                         "Outside dungeon grid boundaries.",
                         currentUnit.BaseCost,
                         0,
-                        manager.Wallet?.CurrentResources ?? 0,
+                        manager.CurrentEnergy,
                         manager.CapacityPool?.AvailableCapacity ?? 0
                     );
                 }
@@ -315,6 +337,19 @@ namespace SBGames.Placement
         {
             if (WasGKeyPressed())
             {
+                // Guard 1: Do not toggle if Escape Menu is open
+                if (SBGames.Loop.UI.EscapeMenuUIController.Instance != null && SBGames.Loop.UI.EscapeMenuUIController.Instance.IsOpen)
+                {
+                    return;
+                }
+
+                // Guard 2: Only allow building during Build / Planning phase
+                if (DungeonPlacementManager.Instance != null && !DungeonPlacementManager.Instance.PhaseManager.CanPlaceOrModifyUnits)
+                {
+                    Debug.LogWarning("[PlacementCursorController] Building is only allowed during Planning / Build phase!");
+                    return;
+                }
+
                 ToggleBuildMenu();
             }
 
@@ -600,14 +635,14 @@ namespace SBGames.Placement
 
             var manager = DungeonPlacementManager.Instance;
             var phase = manager.PhaseManager?.CurrentPhase ?? DungeonPhase.BuildPhase;
-            int gold = manager.Wallet?.CurrentResources ?? 0;
+            int energy = manager.CurrentEnergy;
             int usedCap = manager.CapacityPool?.CurrentCapacityUsed ?? 0;
             int maxCap = manager.CapacityPool?.MaxCapacity ?? 0;
 
             // 1. Top-Left Economy & Status HUD
             GUI.Box(new Rect(10, 10, 310, 52), "");
             GUI.Label(new Rect(16, 12, 300, 22), $"<b>Phase:</b> {phase} (Press Space to toggle)");
-            GUI.Label(new Rect(16, 32, 300, 22), $"Gold: {gold}   |   Capacity: {usedCap}/{maxCap}");
+            GUI.Label(new Rect(16, 32, 300, 22), $"Energy: {energy}   |   Capacity: {usedCap}/{maxCap}");
 
             // 2. Build Menu Toggle Button
             string toggleBtnText = isBuildMenuOpen ? "<b>[G] Close Build Menu</b>" : "<b>[G] Open Build Menu</b>";
@@ -634,14 +669,14 @@ namespace SBGames.Placement
                 Color prev = GUI.backgroundColor;
                 GUI.backgroundColor = new Color(0.2f, 0.85f, 0.4f, 0.95f);
                 GUI.Box(new Rect(10, nextBannerY, 360, 26), "");
-                GUI.Label(new Rect(16, nextBannerY + 2, 350, 22), $"<b>PLACING:</b> {currentUnit.DisplayName} ({currentUnit.BaseCost} Gold)  |  [Right-Click to Cancel]");
+                GUI.Label(new Rect(16, nextBannerY + 2, 350, 22), $"<b>PLACING:</b> {currentUnit.DisplayName} ({currentUnit.BaseCost} Energy)  |  [Right-Click to Cancel]");
                 GUI.backgroundColor = prev;
             }
 
             // 3. Build Menu Tray (Rendered at bottom when open)
             if (isBuildMenuOpen)
             {
-                DrawBuildMenu(gold, usedCap, maxCap);
+                DrawBuildMenu(energy, usedCap, maxCap);
             }
 
             // 4. Cursor Hover Tooltip
@@ -655,7 +690,7 @@ namespace SBGames.Placement
                     float guiY = Screen.height - mousePos.y + 12f;
 
                     string info = "<b>SELL: " + placed.Definition.DisplayName + "</b>\n" +
-                                  "Refund: " + placed.CostPaid + " Gold\n" +
+                                  "Refund: " + placed.CostPaid + " Energy\n" +
                                   "Capacity freed: " + placed.CapacityConsumed + " Slots\n" +
                                   "<b>[Left-Click to Sell]</b>";
 
@@ -683,7 +718,7 @@ namespace SBGames.Placement
                 if (currentValidationResult.IsValid)
                 {
                     text = "<b>" + currentUnit.DisplayName + "</b>\n" +
-                           "Cost: " + currentValidationResult.CostRequired + " Gold\n" +
+                           "Cost: " + currentValidationResult.CostRequired + " Energy\n" +
                            "Capacity: " + currentValidationResult.CapacityRequired + " Slots\n" +
                            "<b>[Left-Click to Place]</b>\n[Right-Click to Cancel]";
                     textColor = Color.green;
@@ -724,7 +759,7 @@ namespace SBGames.Placement
             }
         }
 
-        private void DrawBuildMenu(int gold, int usedCap, int maxCap)
+        private void DrawBuildMenu(int energy, int usedCap, int maxCap)
         {
             float menuWidth = Mathf.Max(420f, availableUnits.Count * 170f + 30f);
             menuWidth = Mathf.Min(menuWidth, Screen.width - 40f);
@@ -766,12 +801,12 @@ namespace SBGames.Placement
                 if (cardX + cardWidth > menuX + menuWidth) break; // Avoid overflowing screen
 
                 bool isSelected = currentUnit != null && currentUnit.UnitId == unit.UnitId;
-                bool canAfford = gold >= unit.BaseCost;
+                bool canAfford = energy >= unit.BaseCost;
                 bool hasCapacity = (usedCap + unit.BaseCapacity) <= maxCap;
 
                 string statusPrefix = isSelected ? "▶ <b>[PLACING]</b>\n" : "";
                 string cardText = statusPrefix + "<b>[" + (i + 1) + "] " + unit.DisplayName + "</b>\n" +
-                                  unit.BaseCost + " Gold  |  " + unit.BaseCapacity + " Cap";
+                                  unit.BaseCost + " Energy  |  " + unit.BaseCapacity + " Cap";
 
                 Color origColor = GUI.backgroundColor;
                 if (isSelected)
