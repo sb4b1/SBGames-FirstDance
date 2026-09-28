@@ -469,6 +469,11 @@ Transform:
   - {fileID: 1681077226}
   m_Father: {fileID: 1767258328}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &485388953 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -671,6 +676,12 @@ MonoBehaviour:
   victoryEnergyBonus: 25
   maxRounds: 0
   autoStartOnSceneLoad: 1
+  currentPhase: 0
+  currentRound: 1
+  gameOverReason: 0
+  debugTargetRound: 1
+  debugTargetPhase: 1
+  debugGameOverReason: 1
 --- !u!114 &525693413
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -871,7 +882,7 @@ MonoBehaviour:
   planeOrientation: 0
   gridSize: {x: 5, y: 5}
   cellSize: 1
-  gridOrigin: {x: 0, y: 0, z: 0}
+  gridOrigin: {x: 7.05, y: -1.11, z: 0}
   startingResources: 99999
   maxCapacity: 20
   removalRefundRatio: 1
@@ -4725,6 +4736,10 @@ PrefabInstance:
       propertyPath: animController
       value: 
       objectReference: {fileID: 1696204461}
+    - target: {fileID: 7331921466431717763, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: level
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_Name
       value: NC001
@@ -4732,19 +4747,80 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1503231097}
   m_SourcePrefab: {fileID: 100100000, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
 --- !u!114 &1503231088 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6820165486231997942, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
   m_PrefabInstance: {fileID: 1503231083}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 485388953}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b8f13460be2b44409863f71ae313b2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterCombatController
+--- !u!114 &1503231089 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6721864809019792033, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485388953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66eed53a943b6bd4fb2140f7c9c47dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
+--- !u!114 &1503231091 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7331921466431717763, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485388953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a819b5c841abf4543adc0371c7748b50, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
+--- !u!114 &1503231097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485388953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9e13a79d44a75142a1ac85dab3cf650, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Stats.CharacterCombatPower
+  statsManager: {fileID: 1503231091}
+  inventoryManager: {fileID: 1503231089}
+  customConfig: {fileID: 0}
+  fallbackBaseCombatPower: 100
+  fallbackPowerPerLevel: 25
+  fallbackPowerPerInscribedRune: 15
+  fallbackPowerPerEquippedArtifact: 40
+  fallbackPowerPerFlatModifier: 10
+  fallbackPowerPerPercentAddModifier: 15
+  fallbackPowerPerPercentMultModifier: 20
+  fallbackMaxLifeWeight: 0.5
+  fallbackMaxManaWeight: 0.2
+  fallbackDamageWeight: 3
+  fallbackMoveSpeedWeight: 2
+  fallbackAttackSpeedWeight: 10
+  currentCombatPower: 0
+  previewLevelPower: 0
+  previewRunePower: 0
+  previewArtifactPower: 0
+  previewModifierPower: 0
+  previewStatPower: 0
+  previewInscribedRunes: 0
+  previewHasArtifact: 0
+  previewTotalModifiers: 0
 --- !u!1 &1681077225
 GameObject:
   m_ObjectHideFlags: 0

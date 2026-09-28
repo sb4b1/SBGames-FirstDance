@@ -9,6 +9,9 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     private CharacterBrain brain;
 
 
+    [Header("Character Progression")]
+    [SerializeField, Min(1)] private int level = 1;
+
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStats baseStats;
 
@@ -16,8 +19,11 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField] private float life;
     [SerializeField] private float mana;
 
+    public int Level => level;
     public float Life { get => life; private set => life = value; }
     public float Mana { get => mana; private set => mana = value; }
+
+    public event System.Action<int> OnLevelChanged;
 
     // Core stats (private set = safer)
 
@@ -82,6 +88,20 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         attackRange = AttackRange.Value;
         attackTimeInterval = AttackTimeInterval.Value;
 #endif
+    }
+
+    // =========================
+    // Level Handling
+    // =========================
+    public void SetLevel(int newLevel)
+    {
+        int clampedLevel = Mathf.Max(1, newLevel);
+        if (level != clampedLevel)
+        {
+            level = clampedLevel;
+            OnLevelChanged?.Invoke(level);
+            ELogger.Log(this, nameof(SetLevel), $"{name} level set to {level}");
+        }
     }
 
     // =========================
