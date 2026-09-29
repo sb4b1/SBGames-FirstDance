@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: CharacterDatabase
   m_EditorClassIdentifier: Assembly-CSharp::CharacterDatabase
   characters:
-  - id: NC001
+  - id: MONSTER_N001
     prefab: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-  - id: NC002
+  - id: MONSTER_N002
     prefab: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}

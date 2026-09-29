@@ -654,6 +654,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 638713114}
   - {fileID: 1281072016}
   - {fileID: 115202767}
   m_Father: {fileID: 0}
@@ -801,6 +802,7 @@ GameObject:
   - component: {fileID: 638713114}
   - component: {fileID: 638713116}
   - component: {fileID: 638713115}
+  - component: {fileID: 638713117}
   m_Layer: 0
   m_Name: PlacementManager
   m_TagString: Untagged
@@ -816,12 +818,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 638713113}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 525693411}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &638713115
 MonoBehaviour:
@@ -840,10 +842,7 @@ MonoBehaviour:
   validColor: {r: 0.2, g: 0.9, b: 0.2, a: 0.55}
   invalidColor: {r: 0.95, g: 0.15, b: 0.15, a: 0.55}
   isBuildMenuOpen: 0
-  availableUnits:
-  - {fileID: 11400000, guid: 7903700af3193e649ab9137103e29df4, type: 2}
-  - {fileID: 11400000, guid: 1db44b7bda2282e45b3e97f91dfaf874, type: 2}
-  activeUnitAsset: {fileID: 11400000, guid: fa9f86549ca5d264da6b2526e929ce67, type: 2}
+  shopCoordinator: {fileID: 638713117}
   enablePhaseHotkeys: 1
   isSellModeActive: 0
 --- !u!114 &638713116
@@ -885,6 +884,33 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   onPlacementFailed:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &638713117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 638713113}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13405156ee80f314383a6aff8f440dcd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Shop.Unity.ShopPlacementCoordinator
+  placementManager: {fileID: 638713116}
+  cursorController: {fileID: 638713115}
+  dungeonMaster: {fileID: 1281072019}
+  coreGameLoop: {fileID: 525693412}
+  shopConfig:
+    slotCount: 5
+    manualRerollCost: 2
+    levelCostMultiplier: 0.5
+  autoRefreshOnPlanningPhase: 1
+  onShopMonsterSummoned:
+    m_PersistentCalls:
+      m_Calls: []
+  onShopRefreshed:
     m_PersistentCalls:
       m_Calls: []
 --- !u!1 &882636643
@@ -1157,13 +1183,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: SBGames.Loop::SBGames.Loop.DungeonMaster
   maxEssence: 100
   currentEssence: 100
-  maxEnergy: 100
-  currentEnergy: 50
+  maxEnergy: 99999
+  currentEnergy: 99999
   roundLossEssencePenalty: 25
   essenceRecoveryEnergyCost: 20
   essenceRecoveryAmount: 15
   baseArtifactSacrificeEnergyReward: 25
   artifacts: []
+  talentTreeManager: {fileID: 0}
+  multiEmpowerTalentId: DM_ARTIFACT_OVERCHARGE
 --- !u!1001 &1315851427
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1214,6 +1242,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1442731878584338539, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_Name
+      value: MONSTER_N002
+      objectReference: {fileID: 0}
+    - target: {fileID: 8247723471863400132, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: characterName
       value: NC002
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -4763,6 +4795,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 779946892532255747, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: characterName
+      value: NC001
+      objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.x
       value: -1.66
@@ -4811,13 +4847,17 @@ PrefabInstance:
       propertyPath: animController
       value: 
       objectReference: {fileID: 1696204461}
+    - target: {fileID: 7184355760351402854, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: m_Name
+      value: SKILL_WI001
+      objectReference: {fileID: 0}
     - target: {fileID: 7331921466431717763, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: level
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_Name
-      value: NC001
+      value: MONSTER_N001
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5248,7 +5288,6 @@ SceneRoots:
   - {fileID: 23237165}
   - {fileID: 342473173}
   - {fileID: 1777165898}
-  - {fileID: 638713114}
   - {fileID: 525693411}
   - {fileID: 313346443}
   - {fileID: 263831876}

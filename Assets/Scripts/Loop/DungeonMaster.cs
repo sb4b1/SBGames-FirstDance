@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using SBGames.Inventory.Character;
+using SBGames.Inventory.Core;
+using SBGames.Loop.Talents;
 using UnityEngine;
 
 namespace SBGames.Loop
@@ -7,6 +10,8 @@ namespace SBGames.Loop
     /// <summary>
     /// Represents an artifact possessed by the Dungeon Master.
     /// Artifacts grant passive potency or abilities and act as anchors to the DM's existence.
+    /// When unempowered, artifacts apply their modifiers locally to the equipping unit.
+    /// When empowered, their modifiers become global across all friendly units and gain the 'Empowered ' prefix.
     /// If all artifacts are lost or destroyed, the DM is defeated.
     /// </summary>
     [Serializable]
@@ -16,24 +21,65 @@ namespace SBGames.Loop
         [SerializeField] private string artifactName;
         [SerializeField] private int powerLevel;
         [SerializeField] private int essenceCost;
+        [SerializeField] private bool isEmpowered;
+        [SerializeField] private List<ItemStatModifierData> statModifiers = new();
 
         public string Id => id;
         public string ArtifactName => artifactName;
         public int PowerLevel => powerLevel;
         public int EssenceCost => essenceCost;
+        public bool IsEmpowered => isEmpowered;
+        public IReadOnlyList<ItemStatModifierData> StatModifiers => statModifiers;
 
-        public Artifact(string artifactName, int powerLevel = 1, int essenceCost = 0, string id = null)
+        public Artifact(
+            string artifactName,
+            int powerLevel = 1,
+            int essenceCost = 0,
+            string id = null,
+            bool isEmpowered = false,
+            IEnumerable<ItemStatModifierData> modifiers = null)
         {
             this.id = string.IsNullOrEmpty(id) ? Guid.NewGuid().ToString() : id;
             this.artifactName = artifactName;
             this.powerLevel = Mathf.Max(1, powerLevel);
             this.essenceCost = Mathf.Max(0, essenceCost);
+            this.isEmpowered = isEmpowered;
+            if (modifiers != null)
+            {
+                this.statModifiers.AddRange(modifiers);
+            }
+            if (isEmpowered && !string.IsNullOrEmpty(this.artifactName) && !this.artifactName.StartsWith("Empowered ", StringComparison.OrdinalIgnoreCase))
+            {
+                this.artifactName = "Empowered " + this.artifactName;
+            }
         }
 
         public void IncreasePower(int amount)
         {
             if (amount <= 0) return;
             powerLevel += amount;
+        }
+
+        public void AddModifier(ItemStatModifierData modifier)
+        {
+            statModifiers.Add(modifier);
+        }
+
+        public void Empower(int powerIncrease = 1)
+        {
+            if (!isEmpowered)
+            {
+                isEmpowered = true;
+                if (!string.IsNullOrEmpty(artifactName) && !artifactName.StartsWith("Empowered ", StringComparison.OrdinalIgnoreCase))
+                {
+                    artifactName = "Empowered " + artifactName;
+                }
+            }
+
+            if (powerIncrease > 0)
+            {
+                IncreasePower(powerIncrease);
+            }
         }
     }
 
@@ -85,6 +131,11 @@ namespace SBGames.Loop
         [Tooltip("Collection of artifacts bound to the Dungeon Master. If this becomes empty, Game Over is triggered.")]
         [SerializeField] private List<Artifact> artifacts = new List<Artifact>();
 
+        [Header("Talents & Abilities")]
+        [Tooltip("Reference to the DM Talent Tree Manager for talent-locked abilities.")]
+        [SerializeField] private DMTalentTreeManager talentTreeManager;
+        [SerializeField] private string multiEmpowerTalentId = "DM_ARTIFACT_OVERCHARGE";
+
         // Events
         public event Action<int, int> OnEssenceChanged;
         public event Action<int, int> OnEnergyChanged;
@@ -103,10 +154,16 @@ namespace SBGames.Loop
         public IReadOnlyList<Artifact> Artifacts => artifacts;
         public int ArtifactCount => artifacts.Count;
         public bool IsDefeated => currentEssence <= 0 || artifacts.Count == 0;
+        public DMTalentTreeManager TalentTreeManager { get => talentTreeManager; set => talentTreeManager = value; }
+        public string MultiEmpowerTalentId { get => multiEmpowerTalentId; set => multiEmpowerTalentId = value; }
 
         private void Awake()
         {
             ClampValues();
+            if (talentTreeManager == null)
+            {
+                talentTreeManager = GetComponent<DMTalentTreeManager>() ?? FindAnyObjectByType<DMTalentTreeManager>();
+            }
             if (artifacts == null)
             {
                 artifacts = new List<Artifact>();
@@ -126,13 +183,18 @@ namespace SBGames.Loop
             IEnumerable<Artifact> startingArtifacts = null,
             int roundLossPenalty = 25,
             int maximumEssence = 100,
-            int maximumEnergy = 100)
+            int maximumEnergy = 100,
+            DMTalentTreeManager talentMgr = null)
         {
             maxEssence = Mathf.Max(1, maximumEssence);
             maxEnergy = Mathf.Max(1, maximumEnergy);
             currentEssence = Mathf.Clamp(startingEssence, 0, maxEssence);
             currentEnergy = Mathf.Clamp(startingEnergy, 0, maxEnergy);
             roundLossEssencePenalty = Mathf.Max(0, roundLossPenalty);
+            if (talentMgr != null)
+            {
+                talentTreeManager = talentMgr;
+            }
 
             artifacts.Clear();
             if (startingArtifacts != null)
@@ -147,6 +209,18 @@ namespace SBGames.Loop
 
             OnEssenceChanged?.Invoke(currentEssence, maxEssence);
             OnEnergyChanged?.Invoke(currentEnergy, maxEnergy);
+        }
+
+        /// <summary>
+        /// Checks if the player has unlocked the talent required to empower an artifact multiple times.
+        /// </summary>
+        public bool CanMultiEmpower()
+        {
+            if (talentTreeManager == null)
+            {
+                talentTreeManager = GetComponent<DMTalentTreeManager>() ?? FindAnyObjectByType<DMTalentTreeManager>();
+            }
+            return talentTreeManager != null && talentTreeManager.IsUnlocked(multiEmpowerTalentId);
         }
 
         /// <summary>
@@ -233,16 +307,31 @@ namespace SBGames.Loop
         }
 
         /// <summary>
-        /// Empowers an existing artifact by spending energy to increase its power level.
+        /// Empowers an existing artifact by spending energy to make its effect global and increase its power level.
+        /// The first empower turns its effect into a passive global aura and adds the 'Empowered ' prefix.
+        /// Subsequent empowerments require the 'DM_ARTIFACT_OVERCHARGE' talent unlocked in DMTalentTreeManager.
+        /// If the artifact was equipped on any character, it is automatically unequipped.
         /// </summary>
         public bool EmpowerArtifact(Artifact artifact, int energyCost, int powerIncrease = 1)
         {
             if (artifact == null) return false;
             if (!artifacts.Contains(artifact)) return false;
             if (powerIncrease <= 0) return false;
+
+            // If already empowered, multi-empowering requires the talent
+            if (artifact.IsEmpowered && !CanMultiEmpower())
+            {
+                return false;
+            }
+
             if (!SpendEnergy(energyCost)) return false;
 
-            artifact.IncreasePower(powerIncrease);
+            string originalName = artifact.ArtifactName;
+            artifact.Empower(powerIncrease);
+
+            // Auto-unequip from characters if it was equipped
+            AutoUnequipFromCharacters(artifact.Id, originalName);
+
             OnArtifactEmpowered?.Invoke(artifact);
             return true;
         }
@@ -254,6 +343,74 @@ namespace SBGames.Loop
         {
             var artifact = artifacts.Find(a => a.Id == artifactId);
             return EmpowerArtifact(artifact, energyCost, powerIncrease);
+        }
+
+        /// <summary>
+        /// Attempts to unequip the specified artifact from any active character inventory if equipped.
+        /// </summary>
+        public void AutoUnequipFromCharacters(string artifactId, string fallbackName = null)
+        {
+            var characterInventories = FindObjectsByType<CharacterInventoryManager>(FindObjectsInactive.Include);
+            if (characterInventories == null || characterInventories.Length == 0) return;
+
+            string cleanFallback = fallbackName != null ? fallbackName.Replace("Empowered ", "").Trim() : null;
+
+            foreach (var charMgr in characterInventories)
+            {
+                if (charMgr == null || charMgr.Inventory == null) continue;
+                for (int i = 0; i < charMgr.Inventory.SlotCount; i++)
+                {
+                    var slot = charMgr.Inventory.GetSlot(i);
+                    if (slot != null && slot.IsOccupied && slot.EquippedItem != null)
+                    {
+                        string itemId = slot.EquippedItem.Id;
+                        string itemName = slot.EquippedItem.ItemName;
+                        if ((!string.IsNullOrEmpty(artifactId) && itemId == artifactId) ||
+                            (!string.IsNullOrEmpty(cleanFallback) && (itemName == cleanFallback || itemName == "Empowered " + cleanFallback)))
+                        {
+                            charMgr.Unequip(i, out _);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves all stat modifiers provided by empowered (global aura) artifacts.
+        /// </summary>
+        public List<ItemStatModifierData> GetGlobalArtifactStatModifiers()
+        {
+            var list = new List<ItemStatModifierData>();
+            if (artifacts == null) return list;
+
+            for (int i = 0; i < artifacts.Count; i++)
+            {
+                var art = artifacts[i];
+                if (art != null && art.IsEmpowered && art.StatModifiers != null)
+                {
+                    list.AddRange(art.StatModifiers);
+                }
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Retrieves total power level granted by all empowered (global aura) artifacts.
+        /// </summary>
+        public int GetTotalEmpoweredArtifactPower()
+        {
+            int total = 0;
+            if (artifacts == null) return total;
+
+            for (int i = 0; i < artifacts.Count; i++)
+            {
+                var art = artifacts[i];
+                if (art != null && art.IsEmpowered)
+                {
+                    total += art.PowerLevel;
+                }
+            }
+            return total;
         }
 
         /// <summary>

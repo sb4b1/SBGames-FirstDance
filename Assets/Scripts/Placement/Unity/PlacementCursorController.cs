@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SBGames.Loop;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -25,13 +26,10 @@ namespace SBGames.Placement
         [SerializeField] private Color validColor = new Color(0.2f, 0.9f, 0.2f, 0.65f);
         [SerializeField] private Color invalidColor = new Color(0.95f, 0.15f, 0.15f, 0.65f);
 
-        [Header("Build Menu & Unit Catalogue")]
-        [Tooltip("Press G to open/close the Build Menu in game.")]
+        [Header("Build Menu & Monster Shop")]
+        [Tooltip("Press G to open/close the Build Menu / Monster Shop in game.")]
         [SerializeField] private bool isBuildMenuOpen = false;
-        [SerializeField] private List<UnitPlacementDefinitionSO> availableUnits = new();
-
-        [Header("Active Selection")]
-        [SerializeField] private UnitPlacementDefinitionSO activeUnitAsset;
+        [SerializeField] private SBGames.Shop.Unity.ShopPlacementCoordinator shopCoordinator;
 
         [Header("Debug / Quick Test Controls")]
         [Tooltip("Press Space to toggle between Build and Combat phases.")]
@@ -56,7 +54,7 @@ namespace SBGames.Placement
         public bool IsSellModeActive => isSellModeActive;
         public bool IsCursorOnGrid => isCursorOnGrid;
         public PlacementValidationResult CurrentValidationResult => currentValidationResult;
-        public IReadOnlyList<UnitPlacementDefinitionSO> AvailableUnits => availableUnits;
+        public SBGames.Shop.Unity.ShopPlacementCoordinator ShopCoordinator => shopCoordinator;
 
         private void Awake()
         {
@@ -69,16 +67,9 @@ namespace SBGames.Placement
 
         private void Start()
         {
-            // Auto-populate availableUnits if empty
-            if (availableUnits.Count == 0 && activeUnitAsset != null)
+            if (shopCoordinator == null)
             {
-                availableUnits.Add(activeUnitAsset);
-            }
-
-            // Only auto-select unit if Build Menu is open at Start
-            if (isBuildMenuOpen && activeUnitAsset != null)
-            {
-                SelectUnit(activeUnitAsset);
+                shopCoordinator = FindAnyObjectByType<SBGames.Shop.Unity.ShopPlacementCoordinator>();
             }
 
             if (DungeonPlacementManager.Instance != null)
@@ -352,18 +343,6 @@ namespace SBGames.Placement
 
                 ToggleBuildMenu();
             }
-
-            if (isBuildMenuOpen)
-            {
-                // Number hotkeys 1-9 to select units
-                for (int i = 0; i < availableUnits.Count && i < 9; i++)
-                {
-                    if (WasAlphaKeyPressed(i + 1))
-                    {
-                        SelectUnit(availableUnits[i]);
-                    }
-                }
-            }
         }
 
         /// <summary>
@@ -486,32 +465,6 @@ namespace SBGames.Placement
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
             return Input.GetKeyDown(KeyCode.E);
-#else
-            return false;
-#endif
-        }
-
-        private bool WasAlphaKeyPressed(int digit)
-        {
-#if ENABLE_INPUT_SYSTEM
-            if (Keyboard.current != null)
-            {
-                switch (digit)
-                {
-                    case 1: return Keyboard.current.digit1Key.wasPressedThisFrame;
-                    case 2: return Keyboard.current.digit2Key.wasPressedThisFrame;
-                    case 3: return Keyboard.current.digit3Key.wasPressedThisFrame;
-                    case 4: return Keyboard.current.digit4Key.wasPressedThisFrame;
-                    case 5: return Keyboard.current.digit5Key.wasPressedThisFrame;
-                    case 6: return Keyboard.current.digit6Key.wasPressedThisFrame;
-                    case 7: return Keyboard.current.digit7Key.wasPressedThisFrame;
-                    case 8: return Keyboard.current.digit8Key.wasPressedThisFrame;
-                    case 9: return Keyboard.current.digit9Key.wasPressedThisFrame;
-                }
-            }
-#endif
-#if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.Alpha0 + digit);
 #else
             return false;
 #endif
@@ -761,69 +714,148 @@ namespace SBGames.Placement
 
         private void DrawBuildMenu(int energy, int usedCap, int maxCap)
         {
-            float menuWidth = Mathf.Max(420f, availableUnits.Count * 170f + 30f);
-            menuWidth = Mathf.Min(menuWidth, Screen.width - 40f);
-            float menuHeight = 140f;
-            float menuX = (Screen.width - menuWidth) / 2f;
-            float menuY = Screen.height - menuHeight - 15f;
+            var coordinator = shopCoordinator != null ? shopCoordinator : SBGames.Shop.Unity.ShopPlacementCoordinator.Instance;
+            var shop = coordinator != null ? coordinator.Shop : null;
+
+            int slotCount = shop != null ? shop.Slots.Count : 5;
+            float panelWidth = Mathf.Min(880f, Screen.width - 30f);
+            float panelHeight = 175f;
+            float menuX = (Screen.width - panelWidth) / 2f;
+            float menuY = Screen.height - panelHeight - 15f;
 
             // Background tray
-            GUI.Box(new Rect(menuX, menuY, menuWidth, menuHeight), "");
+            GUI.Box(new Rect(menuX, menuY, panelWidth, panelHeight), "");
 
+            // Header bar
+            string roundInfo = shop != null ? $"Round {shop.CurrentRound} ({shop.CurrentPlayerRank.GetDisplayName()})" : "Planning Phase";
             string menuTitle = isSellModeActive
-                ? "<b>BUILD MENU</b>  [E] EXIT SELL MODE  |  Click units below to select for placement:"
-                : "<b>BUILD MENU</b>  —  Select a unit to place (1, 2, 3...):    [E] Sell Mode";
-            GUI.Label(new Rect(menuX + 15, menuY + 6, menuWidth - 30, 20), menuTitle);
+                ? $"<b><color=#FF5555>BUILD MENU (SELL MODE ACTIVE)</color></b>  |  Click placed units on grid to sell  |  Energy: <color=#FFD700><b>{energy} ⚡</b></color>  |  Cap: {usedCap}/{maxCap}"
+                : $"<b>BUILD MENU (MONSTER SHOP)</b>  |  {roundInfo}  |  Energy: <color=#FFD700><b>{energy} ⚡</b></color>  |  Cap: {usedCap}/{maxCap}";
+            GUI.Label(new Rect(menuX + 15, menuY + 6, panelWidth - 360, 24), menuTitle);
+
+            // Reroll button
+            if (shop != null && !isSellModeActive)
+            {
+                int rerollCost = shop.Config.ManualRerollCost;
+                bool canAffordReroll = energy >= rerollCost;
+                GUI.enabled = canAffordReroll;
+                if (GUI.Button(new Rect(menuX + panelWidth - 325f, menuY + 4f, 105f, 24f), $"Reroll ({rerollCost} ⚡)"))
+                {
+                    shop.TryRefresh(shop.CurrentRound, shop.CurrentPlayerRank, isManualReroll: true, out _);
+                }
+                GUI.enabled = true;
+            }
 
             // Sell Mode toggle button inside Build Menu
             string sellBtnText = isSellModeActive ? "<b>[E] Exit Sell Mode</b>" : "<b>[E] Sell Mode</b>";
             Color prevBg = GUI.backgroundColor;
             if (isSellModeActive)
                 GUI.backgroundColor = new Color(1f, 0.3f, 0.3f);
-            if (GUI.Button(new Rect(menuX + menuWidth - 145f, menuY + 4f, 135f, 24f), sellBtnText))
+            if (GUI.Button(new Rect(menuX + panelWidth - 215f, menuY + 4f, 125f, 24f), sellBtnText))
             {
                 HandleSellModeButton();
             }
             GUI.backgroundColor = prevBg;
 
-            // Horizontal card buttons
-            float cardWidth = 155f;
-            float cardHeight = 82f;
-            float startX = menuX + 15f;
-            float startY = menuY + 32f;
-
-            for (int i = 0; i < availableUnits.Count; i++)
+            // Close toggle button
+            if (GUI.Button(new Rect(menuX + panelWidth - 85f, menuY + 4f, 75f, 24f), "Close [G]"))
             {
-                var unit = availableUnits[i];
-                if (unit == null) continue;
+                ToggleBuildMenu();
+            }
 
-                float cardX = startX + i * (cardWidth + 10f);
-                if (cardX + cardWidth > menuX + menuWidth) break; // Avoid overflowing screen
+            if (shop == null)
+            {
+                GUI.Label(new Rect(menuX + 15, menuY + 50, panelWidth - 30, 30), "Monster Shop is initializing...", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+                return;
+            }
 
-                bool isSelected = currentUnit != null && currentUnit.UnitId == unit.UnitId;
-                bool canAfford = energy >= unit.BaseCost;
-                bool hasCapacity = (usedCap + unit.BaseCapacity) <= maxCap;
+            // Horizontal Monster Shop Cards
+            float cardSpacing = 8f;
+            float availableCardsWidth = panelWidth - 30f;
+            float cardWidth = (availableCardsWidth - (cardSpacing * (slotCount - 1))) / slotCount;
+            float cardHeight = 125f;
+            float cardY = menuY + 36f;
+            float startX = menuX + 15f;
 
-                string statusPrefix = isSelected ? "▶ <b>[PLACING]</b>\n" : "";
-                string cardText = statusPrefix + "<b>[" + (i + 1) + "] " + unit.DisplayName + "</b>\n" +
-                                  unit.BaseCost + " Energy  |  " + unit.BaseCapacity + " Cap";
+            for (int i = 0; i < slotCount; i++)
+            {
+                var slot = shop.Slots[i];
+                float cardX = startX + i * (cardWidth + cardSpacing);
+                Rect cardRect = new Rect(cardX, cardY, cardWidth, cardHeight);
 
                 Color origColor = GUI.backgroundColor;
+
+                if (slot.IsPurchased)
+                {
+                    GUI.backgroundColor = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+                    GUI.Box(cardRect, "");
+                    GUI.Label(new Rect(cardX + 5, cardY + 45, cardWidth - 10, 30), "<color=#888888><b>PURCHASED</b></color>", new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter });
+                    GUI.backgroundColor = origColor;
+                    continue;
+                }
+
+                if (slot.CurrentItem == null)
+                {
+                    GUI.backgroundColor = new Color(0.1f, 0.1f, 0.1f, 0.3f);
+                    GUI.Box(cardRect, "");
+                    GUI.backgroundColor = origColor;
+                    continue;
+                }
+
+                var item = slot.CurrentItem;
+                bool isSelected = currentUnit == item;
+                bool canAfford = energy >= item.Cost;
+                bool hasCapacity = (usedCap + item.BaseCapacity) <= maxCap;
+
                 if (isSelected)
                 {
-                    GUI.backgroundColor = new Color(0.3f, 1f, 0.4f);
+                    GUI.backgroundColor = new Color(0.3f, 1f, 0.4f, 0.95f);
                 }
-                else if (!canAfford || !hasCapacity)
+                else if (ColorUtility.TryParseHtmlString(item.Rank.GetColorHex(), out Color rankColor))
                 {
-                    GUI.backgroundColor = new Color(0.7f, 0.7f, 0.7f, 0.5f);
+                    GUI.backgroundColor = Color.Lerp(rankColor, Color.white, 0.25f);
                 }
 
-                if (GUI.Button(new Rect(cardX, startY, cardWidth, cardHeight), cardText))
-                {
-                    SelectUnit(unit);
-                }
-
+                GUI.Box(cardRect, "");
                 GUI.backgroundColor = origColor;
+
+                // Card info
+                string levelStr = item.Level > 1 ? $" <color=#FFD700><b>+{item.Level - 1}</b></color>" : "";
+                string title = $"<b>[{item.Rank}] {item.DisplayName}{levelStr}</b>";
+                GUI.Label(new Rect(cardX + 6, cardY + 4, cardWidth - 12, 20), title);
+
+                string statsStr = $"<size=10>HP: {item.Stats.MaxHealth:F0} | ATK: {item.Stats.Damage:F0}\nDEF: {item.Stats.Defense:F0} | SPD: {item.Stats.MoveSpeed:F1}</size>";
+                GUI.Label(new Rect(cardX + 6, cardY + 24, cardWidth - 12, 30), statsStr);
+
+                // Lock toggle button
+                string lockLabel = slot.IsLocked ? "<color=#FFCC00>🔒 Lock</color>" : "🔓 Lock";
+                if (GUI.Button(new Rect(cardX + 6, cardY + 58, (cardWidth - 14) * 0.45f, 22), lockLabel))
+                {
+                    shop.TryToggleLock(i, out _, out _);
+                }
+
+                // Cost & Cap label
+                string costCapStr = $"<size=10><color=#FFD700><b>{item.Cost}⚡</b></color> | {item.BaseCapacity}C</size>";
+                GUI.Label(new Rect(cardX + (cardWidth - 14) * 0.48f + 6, cardY + 60, (cardWidth - 14) * 0.52f, 22), costCapStr);
+
+                // Summon button
+                GUI.enabled = canAfford && hasCapacity && !isSellModeActive;
+                string buttonLabel = isSelected ? "Placing..." : "Summon";
+
+                if (GUI.Button(new Rect(cardX + 6, cardY + 86, cardWidth - 12, 30), buttonLabel))
+                {
+                    if (isSelected)
+                    {
+                        DeselectUnit();
+                        coordinator?.CancelPendingSummon();
+                    }
+                    else if (coordinator != null)
+                    {
+                        coordinator.SelectShopSlotForSummon(i);
+                    }
+                }
+
+                GUI.enabled = true;
             }
         }
 

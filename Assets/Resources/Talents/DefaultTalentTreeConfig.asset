@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f854b1dbdd09907458975cfdbef2530d, type: 3}
+  m_Name: DefaultTalentTreeConfig
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.Talents.TalentTreeConfigSO
+  treeName: Dungeon Master Talent Tree
+  talents:
+  - {fileID: 11400000, guid: 529f51af771e245489457d7e511d07fd, type: 2}
+  - {fileID: 11400000, guid: 6e5f0308cc6867d45b4052ce4568a8c4, type: 2}
+  - {fileID: 11400000, guid: f04066959e0a2224ab0287563f9ca964, type: 2}
+  - {fileID: 11400000, guid: ae8e27369412a174f879f6bbab3c24ee, type: 2}
+  - {fileID: 11400000, guid: 343ae906add620249bbca11fed7d74a7, type: 2}
+  - {fileID: 11400000, guid: a445201a9c000e04fa4d6e4e67812773, type: 2}
+  - {fileID: 11400000, guid: 8d3ccab0c5aaae240b5dad1048f459e9, type: 2}
+  - {fileID: 11400000, guid: d5d15d415ff7f8b46b6d03fc75393f25, type: 2}
+  - {fileID: 11400000, guid: 7684031fc07547f44aa7506ef70aaa92, type: 2}
+  - {fileID: 11400000, guid: 255d76c9351a3db45aa821918e72f2ff, type: 2}
+  - {fileID: 11400000, guid: 5139ea55ea50e424394e1427889f72cb, type: 2}
+  - {fileID: 11400000, guid: 3beed8ef7bca7704289a68bfc20de79b, type: 2}
+  - {fileID: 11400000, guid: d8370d06dd6d3364e9d5e57ea4236b08, type: 2}
+  - {fileID: 11400000, guid: b10fbc27cd24cc14cb9f8422bc68733c, type: 2}
+  - {fileID: 11400000, guid: b04e48e882e3691449efde0da4aee94f, type: 2}
+  - {fileID: 11400000, guid: dee39a272bd6781498efd64df4552100, type: 2}
+  - {fileID: 11400000, guid: 24359662832f6fc4b9aa74322f33b33a, type: 2}
+  - {fileID: 11400000, guid: 506f1818428b31940a5e685728135625, type: 2}
+  - {fileID: 11400000, guid: 09b68861b543a4c4e9c4343bc5f029eb, type: 2}
+  - {fileID: 11400000, guid: 5d0f7e71e78ae004eaf0a3f939c734fc, type: 2}
+  - {fileID: 11400000, guid: 40cd82e1f70014e439eeb80460507209, type: 2}
+  - {fileID: 11400000, guid: 99fef88f70a334c48b589e4c8a4e5e6a, type: 2}

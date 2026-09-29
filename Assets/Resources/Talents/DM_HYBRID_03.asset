@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f9eb0486f85c9849bc55474c1f4847d, type: 3}
+  m_Name: DM_HYBRID_03
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.Talents.TalentNodeSO
+  talentId: DM_HYBRID_03
+  displayName: Legion Sovereign
+  description: Minions near the Boss gain high crit chance and can sacrifice themselves to absorb lethal boss damage.
+  icon: {fileID: 0}
+  pillar: 4
+  tier: 4
+  talentType: 0
+  energyCost: 80
+  minimumRank: 3
+  prerequisites:
+  - {fileID: 11400000, guid: 8d3ccab0c5aaae240b5dad1048f459e9, type: 2}
+  - {fileID: 11400000, guid: 24359662832f6fc4b9aa74322f33b33a, type: 2}
+  prerequisiteLogic: 0
+  activeEnergyCost: 0
+  cooldownDuration: 0
+  playerModifierBonus: 0
+  dmSynergyPowerBonus: 0
+  customTag: 

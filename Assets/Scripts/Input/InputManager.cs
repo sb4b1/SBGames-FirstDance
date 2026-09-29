@@ -47,7 +47,9 @@ namespace SBGames.Input
             { UIButton.M, Key.M },
             { UIButton.Tab, Key.Tab },
             { UIButton.C, Key.C },
-            { UIButton.J, Key.J }
+            { UIButton.J, Key.J },
+            { UIButton.P, Key.P },
+            { UIButton.H, Key.H }
         };
 
         // Edge-case tracking
@@ -313,6 +315,14 @@ namespace SBGames.Input
         #endregion
 
         #region Window Management Queries & Utilities
+
+        /// <summary>
+        /// Returns true if a UI system or callback is registered to the specified button.
+        /// </summary>
+        public bool IsUISystemRegistered(UIButton button)
+        {
+            return _uiSystemRegistry.ContainsKey(button) || _callbackRegistry.ContainsKey(button);
+        }
 
         /// <summary>
         /// Returns true if the UI system registered to the given button is currently open.

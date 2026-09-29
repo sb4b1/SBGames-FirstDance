@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f9eb0486f85c9849bc55474c1f4847d, type: 3}
+  m_Name: DM_BOSS_05
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.Talents.TalentNodeSO
+  talentId: DM_BOSS_05
+  displayName: Soul Conduit
+  description: Infuses the Boss with DM Artifact energy, granting damage and protection per active relic.
+  icon: {fileID: 0}
+  pillar: 3
+  tier: 3
+  talentType: 0
+  energyCost: 60
+  minimumRank: 2
+  prerequisites:
+  - {fileID: 11400000, guid: b04e48e882e3691449efde0da4aee94f, type: 2}
+  - {fileID: 11400000, guid: dee39a272bd6781498efd64df4552100, type: 2}
+  prerequisiteLogic: 0
+  activeEnergyCost: 0
+  cooldownDuration: 0
+  playerModifierBonus: 0
+  dmSynergyPowerBonus: 0
+  customTag: 

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f9eb0486f85c9849bc55474c1f4847d, type: 3}
+  m_Name: DM_ASCENDANT_01
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.Talents.TalentNodeSO
+  talentId: DM_ASCENDANT_01
+  displayName: Dungeon Omnipotence
+  description: 'Active Power: Boosts dungeon defense power and planning allowance. Active cast executes a hero.'
+  icon: {fileID: 0}
+  pillar: 5
+  tier: 4
+  talentType: 1
+  energyCost: 100
+  minimumRank: 4
+  prerequisites:
+  - {fileID: 11400000, guid: d5d15d415ff7f8b46b6d03fc75393f25, type: 2}
+  - {fileID: 11400000, guid: d8370d06dd6d3364e9d5e57ea4236b08, type: 2}
+  - {fileID: 11400000, guid: 506f1818428b31940a5e685728135625, type: 2}
+  prerequisiteLogic: 0
+  activeEnergyCost: 25
+  cooldownDuration: 90
+  playerModifierBonus: 0
+  dmSynergyPowerBonus: 0
+  customTag: 
