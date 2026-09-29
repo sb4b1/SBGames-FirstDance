@@ -215,7 +215,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.UI.EscapeMenuUIController
   coreGameLoop: {fileID: 525693412}
-  dungeonMaster: {fileID: 525693413}
+  dungeonMaster: {fileID: 0}
   openOnSceneStart: 0
   pauseTimeWhileOpen: 1
 --- !u!114 &115202769
@@ -621,7 +621,6 @@ GameObject:
   m_Component:
   - component: {fileID: 525693411}
   - component: {fileID: 525693410}
-  - component: {fileID: 525693413}
   - component: {fileID: 525693412}
   m_Layer: 0
   m_Name: GameManager
@@ -655,6 +654,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1281072016}
   - {fileID: 115202767}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -670,7 +670,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4a40f9b937fc9b7479daf2353be1b2a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SBGames.Loop::SBGames.Loop.CoreGameLoop
-  dungeonMaster: {fileID: 525693413}
+  dungeonMaster: {fileID: 0}
   startingRound: 1
   planningEnergyAllowance: 15
   victoryEnergyBonus: 25
@@ -682,27 +682,6 @@ MonoBehaviour:
   debugTargetRound: 1
   debugTargetPhase: 1
   debugGameOverReason: 1
---- !u!114 &525693413
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 525693409}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c7bb9323d006ff345bfebf6fd1d2ce18, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: SBGames.Loop::SBGames.Loop.DungeonMaster
-  maxEssence: 100
-  currentEssence: 100
-  maxEnergy: 100
-  currentEnergy: 50
-  roundLossEssencePenalty: 25
-  essenceRecoveryEnergyCost: 20
-  essenceRecoveryAmount: 15
-  baseArtifactSacrificeEnergyReward: 25
-  artifacts: []
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -886,7 +865,7 @@ MonoBehaviour:
   startingResources: 99999
   maxCapacity: 20
   removalRefundRatio: 1
-  dungeonMaster: {fileID: 525693413}
+  dungeonMaster: {fileID: 0}
   coreGameLoop: {fileID: 525693412}
   initialPhase: 0
   unitsParent: {fileID: 0}
@@ -1089,6 +1068,102 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0e87db3413d4f7458eeace248aff5a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NormalAgentTypeFactory
+--- !u!1 &1281072015
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1281072016}
+  - component: {fileID: 1281072019}
+  - component: {fileID: 1281072018}
+  - component: {fileID: 1281072017}
+  m_Layer: 0
+  m_Name: DungeonManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1281072016
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281072015}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 525693411}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1281072017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281072015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f00ea39640706b342b7e7375a02ba5e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.DifficultyScaler
+  customConfig: {fileID: 0}
+  dungeonMaster: {fileID: 1281072019}
+  dungeonProgression: {fileID: 1281072018}
+  lastTotalDefensePower: 0
+  lastBalanceRatio: 0
+  lastEvaluatedTier: 1
+  lastRecommendedRank: 0
+--- !u!114 &1281072018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281072015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 105e48820e347a0459946bacfd29afc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.DungeonProgression
+  customConfig: {fileID: 0}
+  currentRank: 0
+  currentProgressionPoints: 0
+  currentAdventurerAttemptRank: 0
+  totalAttempts: 0
+  totalVictories: 0
+  totalDefeats: 0
+  currentWinStreak: 0
+  highestWinStreak: 0
+  coreGameLoop: {fileID: 525693412}
+--- !u!114 &1281072019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281072015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7bb9323d006ff345bfebf6fd1d2ce18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SBGames.Loop::SBGames.Loop.DungeonMaster
+  maxEssence: 100
+  currentEssence: 100
+  maxEnergy: 100
+  currentEnergy: 50
+  roundLossEssencePenalty: 25
+  essenceRecoveryEnergyCost: 20
+  essenceRecoveryAmount: 15
+  baseArtifactSacrificeEnergyReward: 25
+  artifacts: []
 --- !u!1001 &1315851427
 PrefabInstance:
   m_ObjectHideFlags: 0

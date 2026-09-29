@@ -95,7 +95,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         aiAugment.SetActive(value);
 
         agentStatus = value ? AgentStatus.Active : AgentStatus.Inactive;
-        ELogger.Log(this, nameof(AIActivation), value ? "Activate AI" : "Deactivate AI");
+        //ELogger.Log(this, nameof(AIActivation), value ? "Activate AI" : "Deactivate AI");
     }
 
     public void AddAIAugment()
