@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -28,6 +29,7 @@ using UnityEngine.InputSystem;
 ///  - DevTool.Profile   : Lightweight scoped profiling, frame timing, and memory diagnostics.
 ///  - DevTool.Time      : In-game timescale control, slow-motion, and frame stepping.
 ///  - DevTool.Assert    : Development assertions that strip cleanly in release builds.
+///  - DevTool.Loop      : Core game loop, combat simulation, round stepping, and DM resources.
 /// </summary>
 [DisallowMultipleComponent]
 [AddComponentMenu("SBGames/DevTool")]
@@ -52,10 +54,39 @@ public class DevTool : MonoBehaviour
 
     [Header("HUD Window Positioning")]
     [Tooltip("Initial position and dimension of the draggable HUD window.")]
-    [SerializeField] private Rect hudWindowRect = new Rect(20f, 20f, 440f, 350f);
+    [SerializeField] private Rect hudWindowRect = new Rect(20f, 20f, 480f, 380f);
 
     [Header("Monitored Characters")]
     [SerializeField] private List<CharacterList> characterLists = new();
+
+    [Header("Game Loop & Combat Controls")]
+    [Tooltip("Target round number to jump to via Inspector or HUD.")]
+    [SerializeField] private int debugTargetRound = 1;
+
+    [Tooltip("Target game phase to force via Inspector.")]
+    [SerializeField] private GamePhase debugTargetPhase = GamePhase.Planning;
+
+    [Tooltip("Target Game Over reason when testing defeat conditions.")]
+    [SerializeField] private GameOverReason debugGameOverReason = GameOverReason.EssenceDepleted;
+
+    [Tooltip("Adventurer kill count when running battle simulation.")]
+    [SerializeField] private int debugSimulateKills = 3;
+
+    [Tooltip("Adventurer retreat count when running battle simulation.")]
+    [SerializeField] private int debugSimulateRetreats = 1;
+
+    [Tooltip("Energy amount to grant / deduct in debug operations.")]
+    [SerializeField] private int debugEnergyDelta = 25;
+
+    [Tooltip("Essence amount to grant / deduct in debug operations.")]
+    [SerializeField] private int debugEssenceDelta = 10;
+
+    [Header("Frame Rate & Performance Settings")]
+    [Tooltip("Target frame rate cap (-1 for uncapped / platform default, or specific values like 30, 60, 120, 144, 240).")]
+    [SerializeField] private int targetFrameRate = -1;
+
+    [Tooltip("Enable VSync. Note: When VSync is enabled (>0), Application.targetFrameRate is ignored by Unity.")]
+    [SerializeField] private bool enableVSync = false;
 
     #endregion
 
@@ -63,8 +94,9 @@ public class DevTool : MonoBehaviour
 
     private bool cmNullChecked = false;
     private int selectedTab = 0;
-    private readonly string[] tabLabels = { "Status & Memory", "Time Controls", "Characters", "Gizmo Config" };
+    private readonly string[] tabLabels = { "Status & Memory", "Time Controls", "Game Loop", "Characters", "Gizmo Config" };
     private Vector2 characterScrollPos;
+    private Vector2 gameLoopScrollPos;
     private float fpsAccumulator = 0f;
     private int fpsFrameCount = 0;
     private float currentFps = 60f;
@@ -83,6 +115,38 @@ public class DevTool : MonoBehaviour
         {
             Instance = this;
         }
+
+        ApplyFrameRateSettings();
+    }
+
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+        {
+            ApplyFrameRateSettings();
+        }
+    }
+
+    public void ApplyFrameRateSettings()
+    {
+        Time.SetVSync(enableVSync);
+        if (!enableVSync)
+        {
+            Time.SetTargetFPS(targetFrameRate, false);
+        }
+    }
+
+    public void SetTargetFPS(int fps)
+    {
+        targetFrameRate = fps;
+        enableVSync = false;
+        Time.SetTargetFPS(fps, true);
+    }
+
+    public void SetVSync(bool enabled)
+    {
+        enableVSync = enabled;
+        Time.SetVSync(enabled);
     }
 
     private void OnEnable()
@@ -240,6 +304,131 @@ public class DevTool : MonoBehaviour
 
     #endregion
 
+    #region Inspector Debug: Game Loop & Combat
+
+    [ContextMenu("Debug/Game Loop/Start Game")]
+    [Button(true)]
+    public void DebugStartGame()
+    {
+        Loop.StartGame();
+    }
+
+    [ContextMenu("Debug/Game Loop/Start Planning Phase")]
+    [Button(true)]
+    public void DebugStartPlanningPhase()
+    {
+        Loop.StartPlanning();
+    }
+
+    [ContextMenu("Debug/Game Loop/Start Battle Phase")]
+    [Button(true)]
+    public void DebugStartBattlePhase()
+    {
+        Loop.StartBattle();
+    }
+
+    [ContextMenu("Debug/Game Loop/Next Round")]
+    [Button(true)]
+    public void DebugNextRound()
+    {
+        Loop.NextRound();
+    }
+
+    [ContextMenu("Debug/Game Loop/Previous Round")]
+    [Button(true)]
+    public void DebugPreviousRound()
+    {
+        Loop.PreviousRound();
+    }
+
+    [ContextMenu("Debug/Game Loop/Jump To Target Round")]
+    [Button(true)]
+    public void DebugJumpToTargetRound()
+    {
+        Loop.JumpToRound(debugTargetRound);
+    }
+
+    [ContextMenu("Debug/Game Loop/Simulate Victory")]
+    [Button(true)]
+    public void DebugSimulateVictory()
+    {
+        Loop.WinBattle(debugSimulateKills, debugSimulateRetreats);
+    }
+
+    [ContextMenu("Debug/Game Loop/Simulate Defeat")]
+    [Button(true)]
+    public void DebugSimulateDefeat()
+    {
+        Loop.LoseBattle();
+    }
+
+    [ContextMenu("Debug/Game Loop/Kill All Adventurers")]
+    [Button(true)]
+    public void DebugKillAllAdventurers()
+    {
+        Loop.KillAllAdventurers();
+    }
+
+    [ContextMenu("Debug/Game Loop/Kill Boss")]
+    [Button(true)]
+    public void DebugKillBoss()
+    {
+        Loop.KillBoss();
+    }
+
+    [ContextMenu("Debug/Game Loop/Acknowledge Results & Proceed")]
+    [Button(true)]
+    public void DebugAcknowledgeAndProceed()
+    {
+        Loop.AcknowledgeResults();
+    }
+
+    [ContextMenu("Debug/Game Loop/Add Energy")]
+    [Button(true)]
+    public void DebugAddEnergy()
+    {
+        Loop.AddEnergy(debugEnergyDelta);
+    }
+
+    [ContextMenu("Debug/Game Loop/Add Essence")]
+    [Button(true)]
+    public void DebugAddEssence()
+    {
+        Loop.AddEssence(debugEssenceDelta);
+    }
+
+    [ContextMenu("Debug/Game Loop/Trigger Game Over")]
+    [Button(true)]
+    public void DebugTriggerGameOver()
+    {
+        Loop.TriggerGameOver(debugGameOverReason);
+    }
+
+    [ContextMenu("Debug/Game Loop/Reset Game Loop")]
+    [Button(true)]
+    public void DebugResetGameLoop()
+    {
+        Loop.ResetGame();
+    }
+
+    [ContextMenu("Debug/Performance/Apply Target FPS Settings")]
+    [Button(true)]
+    public void DebugApplyFpsSettings()
+    {
+        ApplyFrameRateSettings();
+    }
+
+    [ContextMenu("Debug/Performance/Set 60 FPS")]
+    public void DebugSet60Fps() => SetTargetFPS(60);
+
+    [ContextMenu("Debug/Performance/Set 120 FPS")]
+    public void DebugSet120Fps() => SetTargetFPS(120);
+
+    [ContextMenu("Debug/Performance/Set Uncapped FPS")]
+    public void DebugSetUncappedFps() => SetTargetFPS(-1);
+
+    #endregion
+
     #region On-Screen Runtime Debug Overlay (OnGUI)
 
     private void OnGUI()
@@ -251,8 +440,8 @@ public class DevTool : MonoBehaviour
             hudWindowRect,
             DrawHUDWindow,
             $"<b>SBGames DevTool</b>  [Drag to Move]  |  FPS: {currentFps:0.0}",
-            GUILayout.Width(440f),
-            GUILayout.Height(350f)
+            GUILayout.Width(480f),
+            GUILayout.Height(380f)
         );
 
         // Keep window within screen boundaries
@@ -282,9 +471,12 @@ public class DevTool : MonoBehaviour
                 DrawTimeTab();
                 break;
             case 2:
-                DrawCharactersTab();
+                DrawGameLoopTab();
                 break;
             case 3:
+                DrawCharactersTab();
+                break;
+            case 4:
                 DrawGizmoConfigTab();
                 break;
         }
@@ -295,6 +487,7 @@ public class DevTool : MonoBehaviour
 
     private void DrawStatusTab()
     {
+        GUILayout.Label($"<b>FPS:</b> {currentFps:0.0} (Target: {(Application.targetFrameRate <= 0 ? "Uncapped" : Application.targetFrameRate.ToString())} | VSync: {(QualitySettings.vSyncCount > 0 ? "ON" : "OFF")})");
         GUILayout.Label($"<b>Engine TimeScale:</b> {UnityEngine.Time.timeScale:0.00}");
         GUILayout.Label($"<b>Delta Time:</b> {UnityEngine.Time.deltaTime * 1000f:0.0} ms");
         GUILayout.Label($"<b>Allocated Memory:</b> {Profile.GetAllocatedMemoryMB():0.0} MB");
@@ -326,6 +519,117 @@ public class DevTool : MonoBehaviour
         {
             Time.StepOneFrame();
         }
+
+        GUILayout.Space(10f);
+        GUILayout.Label($"<b>Target Frame Rate Cap:</b> {(Application.targetFrameRate <= 0 ? "Uncapped (-1)" : Application.targetFrameRate + " FPS")}");
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Uncapped")) SetTargetFPS(-1);
+        if (GUILayout.Button("30")) SetTargetFPS(30);
+        if (GUILayout.Button("60")) SetTargetFPS(60);
+        if (GUILayout.Button("120")) SetTargetFPS(120);
+        if (GUILayout.Button("144")) SetTargetFPS(144);
+        if (GUILayout.Button("240")) SetTargetFPS(240);
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(4f);
+        bool currentVsync = QualitySettings.vSyncCount > 0;
+        bool newVsync = GUILayout.Toggle(currentVsync, " Enable VSync (Locks to Monitor Refresh)");
+        if (newVsync != currentVsync)
+        {
+            SetVSync(newVsync);
+        }
+    }
+
+    private void DrawGameLoopTab()
+    {
+        var loop = Loop.GetGameLoop();
+        var combat = Loop.GetCombatResultHandler();
+        var dm = Loop.GetDungeonMaster();
+
+        gameLoopScrollPos = GUILayout.BeginScrollView(gameLoopScrollPos, GUILayout.Height(280f));
+
+        // 1. Status Section
+        GUILayout.Label("<b>[ Game Loop State ]</b>");
+        if (loop != null)
+        {
+            GUILayout.Label($"Phase: <b>{loop.CurrentPhase}</b> | Round: <b>{loop.CurrentRound}</b> | IsGameOver: <b>{loop.IsGameOver}</b> {(loop.IsGameOver ? $"({loop.ReasonForGameOver})" : "")}");
+        }
+        else
+        {
+            GUILayout.Label("<color=yellow>CoreGameLoop instance not found in scene.</color>");
+        }
+
+        if (dm != null)
+        {
+            GUILayout.Label($"DM Essence: <b>{dm.Essence}/{dm.MaxEssence}</b> | Energy: <b>{dm.Energy}/{dm.MaxEnergy}</b> | Artifacts: <b>{dm.ArtifactCount}</b>");
+        }
+
+        if (combat != null)
+        {
+            GUILayout.Label($"Combat State: <b>{combat.CurrentCombatState}</b> | Active Units: <b>{combat.ActiveAdventurersCount}/{combat.TotalAdventurersCount}</b> | Boss Alive: <b>{combat.IsBossAlive}</b>");
+        }
+
+        GUILayout.Space(6f);
+
+        // 2. Round & Phase Flow Controls
+        GUILayout.Label("<b>[ Phase & Round Controls ]</b>");
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Start Game")) Loop.StartGame();
+        if (GUILayout.Button("Planning Phase")) Loop.StartPlanning();
+        if (GUILayout.Button("Battle Phase")) Loop.StartBattle();
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("◀ Prev Round")) Loop.PreviousRound();
+        if (GUILayout.Button("Next Round (+Energy) ▶")) Loop.NextRound();
+        if (GUILayout.Button("Reset Loop")) Loop.ResetGame();
+        GUILayout.EndHorizontal();
+
+        // Round Jump row
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Jump to Round:", GUILayout.Width(100f));
+        if (int.TryParse(GUILayout.TextField(debugTargetRound.ToString(), GUILayout.Width(50f)), out int parsedRound))
+        {
+            debugTargetRound = Mathf.Max(1, parsedRound);
+        }
+        if (GUILayout.Button("Jump", GUILayout.Width(60f)))
+        {
+            Loop.JumpToRound(debugTargetRound);
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6f);
+
+        // 3. Combat Simulation Controls
+        GUILayout.Label("<b>[ Combat Simulation & Actions ]</b>");
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Simulate Win (3K/1R)")) Loop.WinBattle(debugSimulateKills, debugSimulateRetreats);
+        if (GUILayout.Button("Simulate Defeat")) Loop.LoseBattle();
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Kill All Adventurers")) Loop.KillAllAdventurers();
+        if (GUILayout.Button("Kill Final Boss")) Loop.KillBoss();
+        if (GUILayout.Button("Acknowledge & Advance")) Loop.AcknowledgeResults();
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6f);
+
+        // 4. Dungeon Master Resources
+        GUILayout.Label("<b>[ Dungeon Master Resources ]</b>");
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("+10 Energy")) Loop.AddEnergy(10);
+        if (GUILayout.Button("+50 Energy")) Loop.AddEnergy(50);
+        if (GUILayout.Button("+10 Essence")) Loop.AddEssence(10);
+        if (GUILayout.Button("-10 Essence")) Loop.AddEssence(-10);
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Trigger Game Over (Essence 0)")) Loop.TriggerGameOver(GameOverReason.EssenceDepleted);
+        if (GUILayout.Button("Trigger Game Over (No Artifacts)")) Loop.TriggerGameOver(GameOverReason.ArtifactsLost);
+        GUILayout.EndHorizontal();
+
+        GUILayout.EndScrollView();
     }
 
     private void DrawCharactersTab()
@@ -746,6 +1050,34 @@ public class DevTool : MonoBehaviour
                 Log.Dev("DevTool.Time", $"Stepped physics simulation by {frameTime * 1000f:0.0} ms");
             }
         }
+
+        public static int TargetFPS
+        {
+            get => Application.targetFrameRate;
+            set => SetTargetFPS(value);
+        }
+
+        public static bool VSync
+        {
+            get => QualitySettings.vSyncCount > 0;
+            set => SetVSync(value);
+        }
+
+        public static void SetTargetFPS(int targetFps, bool disableVSyncIfCapped = true)
+        {
+            if (disableVSyncIfCapped && targetFps > 0)
+            {
+                QualitySettings.vSyncCount = 0;
+            }
+            Application.targetFrameRate = targetFps;
+            Log.Dev("DevTool.Time", $"Target FPS set to {(targetFps <= 0 ? "Uncapped (-1)" : targetFps.ToString())} (VSync: {QualitySettings.vSyncCount})");
+        }
+
+        public static void SetVSync(bool enabled)
+        {
+            QualitySettings.vSyncCount = enabled ? 1 : 0;
+            Log.Dev("DevTool.Time", $"VSync set to {(enabled ? "ON (1)" : "OFF (0)")}");
+        }
     }
 
     #endregion
@@ -779,6 +1111,351 @@ public class DevTool : MonoBehaviour
         public static void Fail(string message = "Fatal assertion hit")
         {
             Log.Error("DevTool.Assert", "Fail", message);
+        }
+    }
+
+    #endregion
+
+    #region Static Domain: DevTool.Loop (Game Loop & Combat Debugging)
+
+    /// <summary>
+    /// Centralized Game Loop, Combat Simulation, and Dungeon Master runtime debugging utilities.
+    /// Provides auto-discovery of CoreGameLoop, CombatResultHandler, and DungeonMaster across scenes.
+    /// </summary>
+    public static class Loop
+    {
+        private static CoreGameLoop cachedLoop;
+        private static CombatResultHandler cachedCombat;
+        private static DungeonMaster cachedDM;
+
+        public static CoreGameLoop GetGameLoop()
+        {
+            if (cachedLoop == null)
+            {
+                cachedLoop = UnityEngine.Object.FindAnyObjectByType<CoreGameLoop>();
+            }
+            return cachedLoop;
+        }
+
+        public static CombatResultHandler GetCombatResultHandler()
+        {
+            if (cachedCombat == null)
+            {
+                cachedCombat = UnityEngine.Object.FindAnyObjectByType<CombatResultHandler>();
+            }
+            return cachedCombat;
+        }
+
+        public static DungeonMaster GetDungeonMaster()
+        {
+            if (cachedDM == null)
+            {
+                cachedDM = UnityEngine.Object.FindAnyObjectByType<DungeonMaster>();
+            }
+            return cachedDM;
+        }
+
+        public static void StartGame()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "StartGame", "Starting game loop...");
+                loop.StartGame();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "StartGame", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void StartPlanning()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "StartPlanning", "Switching to Planning phase.");
+                loop.DebugStartPlanningPhase();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "StartPlanning", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void StartBattle()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "StartBattle", "Switching to Battle phase.");
+                loop.DebugStartBattlePhase();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "StartBattle", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void NextRound()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "NextRound", $"Advancing from Round {loop.CurrentRound} to Round {loop.CurrentRound + 1}.");
+                loop.DebugNextRound();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "NextRound", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void PreviousRound()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "PreviousRound", $"Reverting from Round {loop.CurrentRound}.");
+                loop.DebugPreviousRound();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "PreviousRound", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void JumpToRound(int targetRound)
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "JumpToRound", $"Jumping to Round {targetRound}.");
+                loop.DebugSetRound(targetRound, true);
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "JumpToRound", "No CoreGameLoop found in scene.");
+            }
+        }
+
+        public static void WinBattle(int kills = 3, int retreats = 1)
+        {
+            var loop = GetGameLoop();
+            if (loop != null && loop.CurrentPhase != GamePhase.Battle)
+            {
+                Log.Info("DevTool.Loop", "WinBattle", "Not currently in Battle phase; forcing Battle phase first.");
+                loop.DebugStartBattlePhase();
+            }
+
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                Log.Info("DevTool.Loop", "WinBattle", $"Simulating Victory with {kills} kills and {retreats} retreats via CombatResultHandler.");
+                combat.DebugSimulateVictory(kills, retreats);
+            }
+            else
+            {
+                if (loop != null)
+                {
+                    Log.Info("DevTool.Loop", "WinBattle", "No CombatResultHandler found; resolving directly via CoreGameLoop.");
+                    loop.DebugWinBattle();
+                }
+                else
+                {
+                    Log.Warning("DevTool.Loop", "WinBattle", "Neither CombatResultHandler nor CoreGameLoop found in scene.");
+                }
+            }
+        }
+
+        public static void LoseBattle()
+        {
+            var loop = GetGameLoop();
+            if (loop != null && loop.CurrentPhase != GamePhase.Battle)
+            {
+                Log.Info("DevTool.Loop", "LoseBattle", "Not currently in Battle phase; forcing Battle phase first.");
+                loop.DebugStartBattlePhase();
+            }
+
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                Log.Info("DevTool.Loop", "LoseBattle", "Simulating Defeat (Boss Death) via CombatResultHandler.");
+                combat.DebugSimulateDefeat();
+            }
+            else
+            {
+                if (loop != null)
+                {
+                    Log.Info("DevTool.Loop", "LoseBattle", "No CombatResultHandler found; resolving directly via CoreGameLoop.");
+                    loop.DebugLoseBattle();
+                }
+                else
+                {
+                    Log.Warning("DevTool.Loop", "LoseBattle", "Neither CombatResultHandler nor CoreGameLoop found in scene.");
+                }
+            }
+        }
+
+        public static void KillAllAdventurers()
+        {
+            var loop = GetGameLoop();
+            if (loop != null && loop.CurrentPhase != GamePhase.Battle)
+            {
+                Log.Info("DevTool.Loop", "KillAllAdventurers", "Not currently in Battle phase; forcing Battle phase first.");
+                loop.DebugStartBattlePhase();
+            }
+
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                if (combat.CurrentCombatState != CombatState.CombatActive)
+                {
+                    combat.BeginCombat(loop != null ? loop.CurrentRound : 1);
+                }
+
+                var tracked = combat.TrackedAdventurers;
+                var keys = new List<string>(tracked.Keys);
+                foreach (var id in keys)
+                {
+                    combat.ReportAdventurerDeath(id);
+                }
+                Log.Info("DevTool.Loop", "KillAllAdventurers", $"Reported death for {keys.Count} registered adventurers.");
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "KillAllAdventurers", "No CombatResultHandler found in scene.");
+            }
+        }
+
+        public static void KillBoss()
+        {
+            var loop = GetGameLoop();
+            if (loop != null && loop.CurrentPhase != GamePhase.Battle)
+            {
+                Log.Info("DevTool.Loop", "KillBoss", "Not currently in Battle phase; forcing Battle phase first.");
+                loop.DebugStartBattlePhase();
+            }
+
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                if (combat.CurrentCombatState != CombatState.CombatActive)
+                {
+                    combat.BeginCombat(loop != null ? loop.CurrentRound : 1);
+                }
+
+                Log.Info("DevTool.Loop", "KillBoss", "Reporting Boss Death via CombatResultHandler.");
+                combat.ReportBossDeath();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "KillBoss", "No CombatResultHandler found in scene.");
+            }
+        }
+
+        public static void AcknowledgeResults()
+        {
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                Log.Info("DevTool.Loop", "AcknowledgeResults", "Acknowledging combat results and proceeding to next phase.");
+                combat.AcknowledgeResultsAndProceed();
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "AcknowledgeResults", "No CombatResultHandler found in scene.");
+            }
+        }
+
+        public static void AddEnergy(int amount)
+        {
+            var dm = GetDungeonMaster();
+            if (dm != null)
+            {
+                if (amount >= 0)
+                {
+                    dm.GainEnergy(amount);
+                    Log.Info("DevTool.Loop", "AddEnergy", $"Added {amount} Energy. Current: {dm.Energy}/{dm.MaxEnergy}");
+                }
+                else
+                {
+                    dm.SpendEnergy(-amount);
+                    Log.Info("DevTool.Loop", "AddEnergy", $"Spent {-amount} Energy. Current: {dm.Energy}/{dm.MaxEnergy}");
+                }
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "AddEnergy", "No DungeonMaster found in scene.");
+            }
+        }
+
+        public static void AddEssence(int amount)
+        {
+            var dm = GetDungeonMaster();
+            if (dm != null)
+            {
+                if (amount >= 0)
+                {
+                    dm.RecoverEssence(amount, 0);
+                    Log.Info("DevTool.Loop", "AddEssence", $"Restored {amount} Essence. Current: {dm.Essence}/{dm.MaxEssence}");
+                }
+                else
+                {
+                    dm.LoseEssence(-amount);
+                    Log.Info("DevTool.Loop", "AddEssence", $"Reduced {-amount} Essence. Current: {dm.Essence}/{dm.MaxEssence}");
+                }
+            }
+            else
+            {
+                Log.Warning("DevTool.Loop", "AddEssence", "No DungeonMaster found in scene.");
+            }
+        }
+
+        public static void TriggerGameOver(GameOverReason reason = GameOverReason.EssenceDepleted)
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Warning("DevTool.Loop", "TriggerGameOver", $"Triggering Game Over with reason: {reason}");
+                loop.DebugTriggerGameOver(reason);
+            }
+            else
+            {
+                var dm = GetDungeonMaster();
+                if (dm != null)
+                {
+                    if (reason == GameOverReason.ArtifactsLost)
+                    {
+                        dm.ClearArtifacts();
+                    }
+                    else
+                    {
+                        dm.LoseEssence(dm.Essence);
+                    }
+                }
+                else
+                {
+                    Log.Warning("DevTool.Loop", "TriggerGameOver", "No CoreGameLoop or DungeonMaster found in scene.");
+                }
+            }
+        }
+
+        public static void ResetGame()
+        {
+            var loop = GetGameLoop();
+            if (loop != null)
+            {
+                Log.Info("DevTool.Loop", "ResetGame", "Resetting CoreGameLoop...");
+                loop.DebugResetGame();
+            }
+
+            var combat = GetCombatResultHandler();
+            if (combat != null)
+            {
+                Log.Info("DevTool.Loop", "ResetGame", "Resetting CombatResultHandler...");
+                combat.ResetCombatState();
+            }
         }
     }
 

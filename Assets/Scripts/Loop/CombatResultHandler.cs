@@ -773,6 +773,13 @@ namespace SBGames.Loop
                 effectiveRetreats = 1;
             }
 
+            // Safety check: Ensure CoreGameLoop is in Battle phase
+            if (coreGameLoop != null && coreGameLoop.CurrentPhase != GamePhase.Battle)
+            {
+                Debug.Log("[CombatResultHandler Debug] Not in Battle phase; forcing CoreGameLoop to Battle phase.");
+                coreGameLoop.DebugStartBattlePhase();
+            }
+
             Debug.Log($"[CombatResultHandler Debug] Simulating Victory with {effectiveKills} kills and {effectiveRetreats} retreats...");
 
             if (currentCombatState != CombatState.CombatActive)
@@ -833,6 +840,13 @@ namespace SBGames.Loop
         [Button]
         public void DebugSimulateDefeat()
         {
+            // Safety check: Ensure CoreGameLoop is in Battle phase
+            if (coreGameLoop != null && coreGameLoop.CurrentPhase != GamePhase.Battle)
+            {
+                Debug.Log("[CombatResultHandler Debug] Not in Battle phase; forcing CoreGameLoop to Battle phase.");
+                coreGameLoop.DebugStartBattlePhase();
+            }
+
             Debug.Log("[CombatResultHandler Debug] Simulating Player Defeat (Boss Death)...");
             BeginCombat(currentRound);
 
@@ -844,6 +858,13 @@ namespace SBGames.Loop
         [Button]
         public void DebugSimulateSimultaneous()
         {
+            // Safety check: Ensure CoreGameLoop is in Battle phase
+            if (coreGameLoop != null && coreGameLoop.CurrentPhase != GamePhase.Battle)
+            {
+                Debug.Log("[CombatResultHandler Debug] Not in Battle phase; forcing CoreGameLoop to Battle phase.");
+                coreGameLoop.DebugStartBattlePhase();
+            }
+
             Debug.Log("[CombatResultHandler Debug] Simulating simultaneous Boss Death + Adventurer Wipe...");
             BeginCombat(currentRound);
 

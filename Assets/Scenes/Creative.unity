@@ -5343,7 +5343,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69329fa4736363040a1fd1b89e04f460, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DevTool
+  enableOverlayHotkey: 1
+  showOnScreenHUD: 0
+  overlayToggleKey: 282
+  overlayToggleKeyAlt: 96
+  hudWindowRect:
+    serializedVersion: 2
+    x: 20
+    y: 20
+    width: 440
+    height: 350
   characterLists: []
+  debugTargetRound: 1
+  debugTargetPhase: 1
+  debugGameOverReason: 1
+  debugSimulateKills: 3
+  debugSimulateRetreats: 1
+  debugEnergyDelta: 25
+  debugEssenceDelta: 10
+  targetFrameRate: 60
+  enableVSync: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
