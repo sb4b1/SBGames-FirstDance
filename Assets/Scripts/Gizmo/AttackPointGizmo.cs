@@ -9,7 +9,6 @@ public class AttackPointGizmo : MonoBehaviour
     {
         if (attackPoint == null) return;
 
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(attackPoint.transform.position, attackRadius);
+        DevTool.Gizmo.DrawWireSphere(attackPoint.position, attackRadius, Color.red);
     }
 }

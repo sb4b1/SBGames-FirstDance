@@ -673,6 +673,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SBGames.Loop::SBGames.Loop.CoreGameLoop
   dungeonMaster: {fileID: 0}
+  fameSystem: {fileID: 0}
   startingRound: 1
   planningEnergyAllowance: 15
   victoryEnergyBonus: 25
@@ -1232,6 +1233,7 @@ MonoBehaviour:
   currentWinStreak: 0
   highestWinStreak: 0
   coreGameLoop: {fileID: 525693412}
+  fameSystem: {fileID: 0}
 --- !u!114 &1281072019
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1247,7 +1249,7 @@ MonoBehaviour:
   maxEssence: 100
   currentEssence: 100
   maxEnergy: 99999
-  currentEnergy: 99999
+  currentEnergy: 99769
   roundLossEssencePenalty: 25
   essenceRecoveryEnergyCost: 20
   essenceRecoveryAmount: 15

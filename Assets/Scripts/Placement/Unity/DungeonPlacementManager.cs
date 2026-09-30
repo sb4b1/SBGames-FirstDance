@@ -62,7 +62,17 @@ namespace SBGames.Placement
         public UnityEvent<string> onPlacementFailed;
 
         // Core system instances
-        public DungeonPlacementSystem System { get; private set; }
+        private DungeonPlacementSystem _system;
+        public DungeonPlacementSystem System
+        {
+            get
+            {
+                if (_system == null) InitializeSystem();
+                return _system;
+            }
+            private set => _system = value;
+        }
+
         public DungeonMaster DungeonMaster => System?.DungeonMaster ?? dungeonMaster;
         public int CurrentEnergy => DungeonMaster != null ? DungeonMaster.Energy : 0;
         public ICapacityPool CapacityPool => System?.CapacityPool;
@@ -74,7 +84,8 @@ namespace SBGames.Placement
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(gameObject);
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
                 return;
             }
             Instance = this;
@@ -87,8 +98,9 @@ namespace SBGames.Placement
             }
         }
 
-        private void InitializeSystem()
+        public void InitializeSystem()
         {
+            if (_system != null) return;
             if (dungeonMaster == null) dungeonMaster = FindAnyObjectByType<SBGames.Loop.DungeonMaster>();
             if (coreGameLoop == null) coreGameLoop = FindAnyObjectByType<SBGames.Loop.CoreGameLoop>();
 
@@ -131,6 +143,11 @@ namespace SBGames.Placement
 
         private void OnDestroy()
         {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+
             if (dungeonMaster != null)
             {
                 dungeonMaster.OnEnergyChanged -= HandleDungeonMasterEnergyChanged;
@@ -156,8 +173,8 @@ namespace SBGames.Placement
         {
             if (PhaseManager == null) return;
 
-            // Planning phase unlocks building; all other phases lock placement
-            var targetDungeonPhase = (loopPhase == SBGames.Loop.GamePhase.Planning)
+            // Planning and NotStarted phases unlock building; Battle locks placement
+            var targetDungeonPhase = (loopPhase == SBGames.Loop.GamePhase.Planning || loopPhase == SBGames.Loop.GamePhase.NotStarted)
                 ? DungeonPhase.BuildPhase
                 : DungeonPhase.CombatPhase;
 

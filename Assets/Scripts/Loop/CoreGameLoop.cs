@@ -103,6 +103,9 @@ namespace SBGames.Loop
         [Tooltip("Reference to the Dungeon Master data container.")]
         [SerializeField] private DungeonMaster dungeonMaster;
 
+        [Tooltip("Optional reference to DungeonFameSystem for reward scaling.")]
+        [SerializeField] private DungeonFameSystem fameSystem;
+
         [Header("Round & Phase Configuration")]
         [Tooltip("Starting round index.")]
         [SerializeField] private int startingRound = 1;
@@ -143,6 +146,7 @@ namespace SBGames.Loop
         public GamePhase CurrentPhase => currentPhase;
         public int CurrentRound => currentRound;
         public DungeonMaster DM => dungeonMaster;
+        public DungeonFameSystem FameSystem { get => fameSystem; set => fameSystem = value; }
         public bool IsGameOver => currentPhase == GamePhase.GameOver;
         public GameOverReason ReasonForGameOver => gameOverReason;
         public bool CanPerformPlanningActions => currentPhase == GamePhase.Planning;
@@ -157,11 +161,11 @@ namespace SBGames.Loop
         {
             if (dungeonMaster == null)
             {
-                dungeonMaster = GetComponent<DungeonMaster>();
-                if (dungeonMaster == null)
-                {
-                    dungeonMaster = FindAnyObjectByType<DungeonMaster>();
-                }
+                dungeonMaster = GetComponent<DungeonMaster>() ?? FindAnyObjectByType<DungeonMaster>();
+            }
+            if (fameSystem == null)
+            {
+                fameSystem = GetComponent<DungeonFameSystem>() ?? FindAnyObjectByType<DungeonFameSystem>();
             }
         }
 
@@ -197,7 +201,8 @@ namespace SBGames.Loop
             int initialRound = 1,
             int planningAllowance = 15,
             int victoryBonus = 25,
-            int maxRoundLimit = 0)
+            int maxRoundLimit = 0,
+            DungeonFameSystem fame = null)
         {
             if (dungeonMaster != null)
             {
@@ -205,6 +210,8 @@ namespace SBGames.Loop
             }
 
             dungeonMaster = dm;
+            fameSystem = fame;
+
             if (dungeonMaster != null)
             {
                 dungeonMaster.OnDefeated += HandleDungeonMasterDefeated;
@@ -325,14 +332,36 @@ namespace SBGames.Loop
             if (result.Outcome == BattleOutcome.Victory)
             {
                 // Win: All adventurers died or retreated
-                energyAwarded = result.EnergyReward ?? victoryEnergyBonus;
+                int baseEnergy = result.EnergyReward ?? victoryEnergyBonus;
+                if (fameSystem != null && !result.EnergyReward.HasValue)
+                {
+                    var prog = GetComponent<DungeonProgression>() ?? FindAnyObjectByType<DungeonProgression>();
+                    DungeonRank dRank = prog != null ? prog.CurrentRank : DungeonRank.E;
+                    DungeonRank aRank = prog != null ? prog.CurrentAdventurerAttemptRank : dRank;
+                    energyAwarded = fameSystem.CalculateScaledEnergyReward(baseEnergy, dRank, aRank);
+                }
+                else
+                {
+                    energyAwarded = baseEnergy;
+                }
+
                 dungeonMaster.GainEnergy(energyAwarded);
             }
             else
             {
                 // Loss: Dungeon cleared by adventurers
                 int prevEssence = dungeonMaster.Essence;
-                dungeonMaster.ApplyRoundLossPenalty(result.EssenceDamage);
+                int? lossPenalty = result.EssenceDamage;
+
+                if (!lossPenalty.HasValue && fameSystem != null)
+                {
+                    var prog = GetComponent<DungeonProgression>() ?? FindAnyObjectByType<DungeonProgression>();
+                    DungeonRank dRank = prog != null ? prog.CurrentRank : DungeonRank.E;
+                    DungeonRank aRank = prog != null ? prog.CurrentAdventurerAttemptRank : dRank;
+                    lossPenalty = fameSystem.CalculateScaledBreachPenalty(dungeonMaster.RoundLossEssencePenalty, dRank, aRank);
+                }
+
+                dungeonMaster.ApplyRoundLossPenalty(lossPenalty);
                 essenceDeducted = Mathf.Max(0, prevEssence - dungeonMaster.Essence);
             }
 

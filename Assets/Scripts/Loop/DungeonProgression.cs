@@ -87,9 +87,12 @@ namespace SBGames.Loop
         [Tooltip("Highest consecutive victory streak achieved in this run.")]
         [SerializeField, ReadOnly] private int highestWinStreak = 0;
 
-        [Header("Optional Loop Integration")]
+        [Header("Optional Loop & Fame Integration")]
         [Tooltip("Optional reference to CoreGameLoop to automatically trigger attempt selection on round start.")]
         [SerializeField] private CoreGameLoop coreGameLoop;
+
+        [Tooltip("Optional reference to DungeonFameSystem to apply fame-driven probability modulation and reward scaling.")]
+        [SerializeField] private DungeonFameSystem fameSystem;
 
         // Per-rank stats lookup table
         private readonly Dictionary<DungeonRank, RankProgressionStats> _rankStats = new();
@@ -98,6 +101,9 @@ namespace SBGames.Loop
 
         /// <summary>The active dungeon rank tier.</summary>
         public DungeonRank CurrentRank => currentRank;
+
+        /// <summary>Optional reference to the active DungeonFameSystem.</summary>
+        public DungeonFameSystem FameSystem { get => fameSystem; set => fameSystem = value; }
 
         /// <summary>Current adventurer rank attempting this dungeon round.</summary>
         public DungeonRank CurrentAdventurerAttemptRank => currentAdventurerAttemptRank;
@@ -166,11 +172,11 @@ namespace SBGames.Loop
             InitializeRankStats();
             if (coreGameLoop == null)
             {
-                coreGameLoop = GetComponent<CoreGameLoop>();
-                if (coreGameLoop == null)
-                {
-                    coreGameLoop = FindAnyObjectByType<CoreGameLoop>();
-                }
+                coreGameLoop = GetComponent<CoreGameLoop>() ?? FindAnyObjectByType<CoreGameLoop>();
+            }
+            if (fameSystem == null)
+            {
+                fameSystem = GetComponent<DungeonFameSystem>() ?? FindAnyObjectByType<DungeonFameSystem>();
             }
         }
 
@@ -198,10 +204,12 @@ namespace SBGames.Loop
         /// <param name="startingRank">The initial gate rank.</param>
         /// <param name="config">Optional configuration ScriptableObject.</param>
         /// <param name="loop">Optional CoreGameLoop reference.</param>
+        /// <param name="fame">Optional DungeonFameSystem reference.</param>
         public void Initialize(
             DungeonRank startingRank = DungeonRank.E,
             DungeonProgressionConfigSO config = null,
-            CoreGameLoop loop = null)
+            CoreGameLoop loop = null,
+            DungeonFameSystem fame = null)
         {
             InitializeRankStats();
 
@@ -213,6 +221,7 @@ namespace SBGames.Loop
 
             customConfig = config;
             coreGameLoop = loop;
+            fameSystem = fame;
 
             if (coreGameLoop != null)
             {
@@ -239,11 +248,21 @@ namespace SBGames.Loop
             customConfig = config;
         }
 
+        /// <summary>
+        /// Sets or replaces the active DungeonFameSystem reference at runtime.
+        /// </summary>
+        /// <param name="fame">The new DungeonFameSystem instance.</param>
+        public void SetFameSystem(DungeonFameSystem fame)
+        {
+            fameSystem = fame;
+        }
+
         #region Cross-Rank Probability Engine
 
         /// <summary>
         /// Calculates the normalized probability distribution for all six ranks attempting a dungeon of the given rank.
-        /// Normalizes weights across all valid ranks to account for boundary clamping (e.g. at Rank E or Rank S).
+        /// Normalizes weights across all valid ranks to account for boundary clamping (e.g. at Rank E or Rank S)
+        /// and incorporates Fame Tier probability modulation.
         /// </summary>
         /// <param name="dungeonRank">The dungeon rank to evaluate.</param>
         /// <returns>A float array of size 6 where index corresponds to <see cref="DungeonRank"/> enum value.</returns>
@@ -253,12 +272,18 @@ namespace SBGames.Loop
             float[] probabilities = new float[DungeonRankExtensions.RankCount];
             float totalWeight = 0f;
 
-            // 1. Accumulate raw relative weights for each rank
+            // 1. Accumulate raw relative weights for each rank and apply fame boosts
             for (int r = 0; r < DungeonRankExtensions.RankCount; r++)
             {
                 var candidateRank = (DungeonRank)r;
                 int delta = (int)candidateRank - (int)dungeonRank;
                 float rawWeight = config.GetRawWeightForDelta(delta);
+
+                if (fameSystem != null)
+                {
+                    rawWeight += fameSystem.GetProbabilityBonusForDelta(delta);
+                }
+
                 probabilities[r] = Mathf.Max(0f, rawWeight);
                 totalWeight += probabilities[r];
             }
@@ -381,7 +406,10 @@ namespace SBGames.Loop
                 int rankDelta = (int)attemptedRank - (int)currentRank;
                 float crossRankBonus = rankDelta > 0 ? 1.0f + (rankDelta * 0.5f) : 1.0f;
 
-                pointsGained = Mathf.RoundToInt(baseXp * streakBonus * diffMult * crossRankBonus);
+                // Fame XP multiplier
+                float fameXpMultiplier = fameSystem != null ? fameSystem.GetActiveDefinition().XpRewardMultiplier : 1.0f;
+
+                pointsGained = Mathf.RoundToInt(baseXp * streakBonus * diffMult * crossRankBonus * fameXpMultiplier);
                 AddProgressionPoints(pointsGained);
             }
             else

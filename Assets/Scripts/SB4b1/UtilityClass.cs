@@ -73,118 +73,91 @@ namespace SB4b1.GameMath
 
 namespace SB4b1.Logging
 {
+    /// <summary>
+    /// Game runtime logger. Delegates to consolidated DevTool.Log.
+    /// </summary>
     public static class GLogger // Game Logger
     {
-        public static bool EnableLogs = true;
-        public static bool EnableDevLogs = true;
-
-        private static readonly StringBuilder sb = new(128);
-
-        public static void Log(object tag, object sender, object message)
+        public static bool EnableLogs
         {
-            if (!EnableLogs) return;
-            UnityEngine.Debug.Log(Format(tag, sender, message));
+            get => DevTool.Log.EnableLogs;
+            set => DevTool.Log.EnableLogs = value;
         }
 
-        public static void Dev(object message)
+        public static bool EnableDevLogs
         {
-            if (!EnableDevLogs) return;
-            UnityEngine.Debug.Log(message);
+            get => DevTool.Log.EnableDevLogs;
+            set => DevTool.Log.EnableDevLogs = value;
         }
 
-        public static void Warning(object tag, object sender, object message)
-        {
-            if (!EnableLogs) return;
-            UnityEngine.Debug.LogWarning(Format(tag, sender, message));
-        }
+        public static void Log(object tag, object sender, object message) =>
+            DevTool.Log.Info(tag, sender, message);
 
-        public static void Error(object tag, object sender, object message)
-        {
-            UnityEngine.Debug.LogError(Format(tag, sender, message));
-        }
+        public static void Dev(object message) =>
+            DevTool.Log.Dev("DEV", "Game", message);
 
-        private static string Format(object tag, object sender, object message)
-        {
-            sb.Clear();
-            sb.Append('[').Append(tag).Append('/').Append(sender).Append("] ");
-            sb.Append(message);
-            return sb.ToString();
-        }
+        public static void Warning(object tag, object sender, object message) =>
+            DevTool.Log.Warning(tag, sender, message);
+
+        public static void Error(object tag, object sender, object message) =>
+            DevTool.Log.Error(tag, sender, message);
+
+        public static string Format(object tag, object sender, object message) =>
+            DevTool.Log.Format(tag, sender, message);
     }
 }
 
 namespace SB4b1.Logging
 {
+    /// <summary>
+    /// Editor-only logger. Delegates to consolidated DevTool.Log.
+    /// </summary>
     public static class ELogger // Editor Logger
     {
         [Conditional("UNITY_EDITOR")]
-        public static void Log(object message)
-        {
-            UnityEngine.Debug.Log(Format(message));
-        }
+        public static void Log(object message) =>
+            DevTool.Log.Info(message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Log(object sender, object message)
-        {
-            UnityEngine.Debug.Log(Format(sender, message));
-        }
+        public static void Log(object sender, object message) =>
+            DevTool.Log.Info(sender, message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Log(object tag, object sender, object message)
-        {
-            UnityEngine.Debug.Log(Format(tag, sender, message));
-        }
+        public static void Log(object tag, object sender, object message) =>
+            DevTool.Log.Info(tag, sender, message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Warning(object message)
-        {
-            UnityEngine.Debug.LogWarning(Format(message));
-        }
+        public static void Warning(object message) =>
+            DevTool.Log.Warning(message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Warning(object sender, object message)
-        {
-            UnityEngine.Debug.LogWarning(Format(sender, message));
-        }
+        public static void Warning(object sender, object message) =>
+            DevTool.Log.Warning(sender, message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Warning(object tag, object sender, object message)
-        {
-            UnityEngine.Debug.LogWarning(Format(tag, sender, message));
-        }
+        public static void Warning(object tag, object sender, object message) =>
+            DevTool.Log.Warning(tag, sender, message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Error(object message)
-        {
-            UnityEngine.Debug.LogError(Format(message));
-        }
+        public static void Error(object message) =>
+            DevTool.Log.Error(message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Error(object sender, object message)
-        {
-            UnityEngine.Debug.LogError(Format(sender, message));
-        }
+        public static void Error(object sender, object message) =>
+            DevTool.Log.Error(sender, message);
 
         [Conditional("UNITY_EDITOR")]
-        public static void Error(object tag, object sender, object message)
-        {
-            UnityEngine.Debug.LogError(Format(tag, sender, message));
-        }
+        public static void Error(object tag, object sender, object message) =>
+            DevTool.Log.Error(tag, sender, message);
 
-        private static string Format(object message)
-        {
-            return $"[{message}";
-        }
+        public static string Format(object message) =>
+            DevTool.Log.Format(message);
 
-        private static string Format(object sender, object message)
-        {
-            return $"[{sender}] {message}";
-        }
+        public static string Format(object sender, object message) =>
+            DevTool.Log.Format(sender, message);
 
-        private static string Format(object tag, object sender, object message)
-        {
-            return $"[{tag}/{sender}] {message}";
-        }
+        public static string Format(object tag, object sender, object message) =>
+            DevTool.Log.Format(tag, sender, message);
     }
 }
 

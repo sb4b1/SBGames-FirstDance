@@ -9,7 +9,6 @@ public class SkillSpawnPointGizmo : MonoBehaviour
     {
         if (skillSpawnPoint == null) return;
 
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(skillSpawnPoint.transform.position, spawnRadius);
+        DevTool.Gizmo.DrawWireSphere(skillSpawnPoint.position, spawnRadius, Color.cyan);
     }
 }

@@ -307,6 +307,19 @@ namespace SBGames.Loop
         }
 
         /// <summary>
+        /// Directly adds an artifact to the Dungeon Master's collection (e.g. from rare drops or rewards).
+        /// </summary>
+        public void AddArtifact(Artifact artifact)
+        {
+            if (artifact == null) return;
+            if (!artifacts.Contains(artifact))
+            {
+                artifacts.Add(artifact);
+                OnArtifactForged?.Invoke(artifact);
+            }
+        }
+
+        /// <summary>
         /// Empowers an existing artifact by spending energy to make its effect global and increase its power level.
         /// The first empower turns its effect into a passive global aura and adds the 'Empowered ' prefix.
         /// Subsequent empowerments require the 'DM_ARTIFACT_OVERCHARGE' talent unlocked in DMTalentTreeManager.
