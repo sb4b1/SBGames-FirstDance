@@ -1,3 +1,4 @@
+using SBGames.Database;
 using UnityEngine;
 
 public class GameServices : MonoBehaviour
@@ -9,6 +10,8 @@ public class GameServices : MonoBehaviour
     public static CharacterRuntimeDatabase CharacterRuntimeDatabase { get;  set; }
 
     public static UtilitySkillRuntimeDatabase UtilitySkillRuntimeDatabase { get; set; }
+
+    public static MasterGameDatabaseSO MasterGameDatabase { get; set; }
 
     private void Awake()
     {

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class UtilitySkillRuntimeDatabase : MonoBehaviour
 {
-    [SerializeField] private UtilitySkillDatabase database;
+    [SerializeField] private UtilitySkillDatabaseSO database;
 
     private Dictionary<string, UtilitySkillEntry> utilSkillDict;
 

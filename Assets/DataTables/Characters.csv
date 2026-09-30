@@ -1,0 +1,3 @@
+Id,CharacterName,MaxLife,MaxMana,Movespeed,Damage,AttackRange,AttackTimeInterval,DefaultSkillIds
+MONSTER_N001,,100,50,5,10,1,1,
+MONSTER_N002,,100,50,5,10,1,1,

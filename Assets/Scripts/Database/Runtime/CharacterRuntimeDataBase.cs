@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
+using SBGames.Database;
 using UnityEngine;
 
 public class CharacterRuntimeDatabase : MonoBehaviour
 {
-    [SerializeField] private CharacterDatabase database;
+    [SerializeField] private CharacterDatabaseSO database;
 
     private Dictionary<string, CharacterEntry> characterDict;
 

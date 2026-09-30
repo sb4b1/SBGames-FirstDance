@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SBGames.Database;
 using SBGames.Loop;
 using SBGames.Loop.Integration;
 using SBGames.Placement;
@@ -27,6 +28,7 @@ namespace SBGames.Shop.Unity
         [SerializeField] private CoreGameLoop coreGameLoop;
 
         [Header("Shop Settings")]
+        [SerializeField] private CharacterDatabaseSO characterDatabase;
         [SerializeField] private ShopConfig shopConfig = new ShopConfig(5, 2, 0.5f);
         [SerializeField] private bool autoRefreshOnPlanningPhase = true;
 
@@ -100,11 +102,17 @@ namespace SBGames.Shop.Unity
             if (cursorController == null) cursorController = FindAnyObjectByType<PlacementCursorController>();
             if (dungeonMaster == null) dungeonMaster = FindAnyObjectByType<DungeonMaster>();
             if (coreGameLoop == null) coreGameLoop = FindAnyObjectByType<CoreGameLoop>();
+            if (characterDatabase == null) characterDatabase = Resources.Load<CharacterDatabaseSO>("Database/CharacterDatabase");
         }
 
         private void InitializeShop()
         {
-            Catalog = new MockMonsterCatalog();
+            var mockCatalog = new MockMonsterCatalog();
+            if (characterDatabase != null)
+            {
+                mockCatalog.ImportFromCharacterDatabase(characterDatabase);
+            }
+            Catalog = mockCatalog;
 
             // Create shared wallet connected directly to DungeonMaster Energy
             if (dungeonMaster != null)

@@ -457,6 +457,194 @@ namespace SBGames.Shop.Core
 
         #endregion
 
+        #region Catalog & Inventory Queries
+
+        /// <summary>
+        /// Searches the monster catalog for a template with the specified archetype identifier.
+        /// </summary>
+        /// <param name="archetypeId">The unique monster archetype ID.</param>
+        /// <returns>The matching <see cref="MonsterTemplate"/> if found, or null.</returns>
+        public MonsterTemplate FindMonsterInCatalog(string archetypeId)
+        {
+            if (string.IsNullOrEmpty(archetypeId))
+                return null;
+
+            return Catalog?.GetTemplateById(archetypeId);
+        }
+
+        /// <summary>
+        /// Attempts to find a monster template in the catalog by its archetype identifier.
+        /// </summary>
+        /// <param name="archetypeId">The unique monster archetype ID.</param>
+        /// <param name="template">The resolved monster template, or null if not found.</param>
+        /// <returns>True if the monster was found in the catalog, false otherwise.</returns>
+        public bool TryFindMonsterInCatalog(string archetypeId, out MonsterTemplate template)
+        {
+            template = FindMonsterInCatalog(archetypeId);
+            return template != null;
+        }
+
+        /// <summary>
+        /// Checks whether a monster archetype exists in the catalog.
+        /// </summary>
+        public bool HasMonsterInCatalog(string archetypeId)
+        {
+            return TryFindMonsterInCatalog(archetypeId, out _);
+        }
+
+        /// <summary>
+        /// Retrieves all monster templates registered in the catalog for a specific rank tier.
+        /// </summary>
+        public IReadOnlyList<MonsterTemplate> GetCatalogMonstersForRank(DungeonRank rank)
+        {
+            if (Catalog == null)
+                return Array.Empty<MonsterTemplate>();
+
+            return Catalog.GetTemplatesForRank(rank) ?? Array.Empty<MonsterTemplate>();
+        }
+
+        /// <summary>
+        /// Checks if the catalog contains templates for a specified rank tier.
+        /// </summary>
+        public bool HasCatalogMonstersForRank(DungeonRank rank)
+        {
+            return Catalog != null && Catalog.HasTemplatesForRank(rank);
+        }
+
+        /// <summary>
+        /// Searches across all rank tiers in the catalog for all monsters matching a given predicate condition.
+        /// </summary>
+        /// <param name="predicate">Filter function evaluated against each monster template in the catalog.</param>
+        /// <returns>A collection of matching <see cref="MonsterTemplate"/> instances.</returns>
+        public IEnumerable<MonsterTemplate> FindMonstersInCatalog(Func<MonsterTemplate, bool> predicate)
+        {
+            if (predicate == null || Catalog == null)
+                yield break;
+
+            foreach (DungeonRank rank in Enum.GetValues(typeof(DungeonRank)))
+            {
+                var templates = Catalog.GetTemplatesForRank(rank);
+                if (templates == null) continue;
+
+                for (int i = 0; i < templates.Count; i++)
+                {
+                    var template = templates[i];
+                    if (template != null && predicate(template))
+                    {
+                        yield return template;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Searches the catalog and returns the first monster template matching a given predicate condition.
+        /// </summary>
+        public MonsterTemplate FindFirstMonsterInCatalog(Func<MonsterTemplate, bool> predicate)
+        {
+            if (predicate == null || Catalog == null)
+                return null;
+
+            foreach (DungeonRank rank in Enum.GetValues(typeof(DungeonRank)))
+            {
+                var templates = Catalog.GetTemplatesForRank(rank);
+                if (templates == null) continue;
+
+                for (int i = 0; i < templates.Count; i++)
+                {
+                    var template = templates[i];
+                    if (template != null && predicate(template))
+                    {
+                        return template;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="MonsterShopItem"/> directly from a catalog archetype template and level.
+        /// </summary>
+        /// <param name="archetypeId">The unique monster archetype ID in the catalog.</param>
+        /// <param name="level">Spawn level for stat and cost scaling (default 1).</param>
+        /// <returns>The newly created shop item.</returns>
+        /// <exception cref="KeyNotFoundException">Thrown if the archetype ID is not present in the catalog.</exception>
+        public MonsterShopItem CreateShopItemFromCatalog(string archetypeId, int level = 1)
+        {
+            if (!TryFindMonsterInCatalog(archetypeId, out var template))
+            {
+                throw new KeyNotFoundException($"Monster archetype '{archetypeId}' was not found in the shop catalog.");
+            }
+
+            return MonsterShopItem.CreateFromTemplate(template, level, Config.LevelCostMultiplier);
+        }
+
+        /// <summary>
+        /// Safely attempts to create a <see cref="MonsterShopItem"/> from a catalog archetype template and level.
+        /// </summary>
+        public bool TryCreateShopItemFromCatalog(string archetypeId, int level, out MonsterShopItem shopItem)
+        {
+            if (TryFindMonsterInCatalog(archetypeId, out var template))
+            {
+                shopItem = MonsterShopItem.CreateFromTemplate(template, level, Config.LevelCostMultiplier);
+                return true;
+            }
+
+            shopItem = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Manually populates a specific shop slot with a monster looked up from the catalog.
+        /// </summary>
+        /// <param name="slotIndex">Index of the slot to populate.</param>
+        /// <param name="archetypeId">Archetype ID of the monster in the catalog.</param>
+        /// <param name="level">Target level of the monster offer.</param>
+        /// <returns>True if the slot was successfully populated, false if index is out of range or archetype was not found.</returns>
+        public bool TryPopulateSlotFromCatalog(int slotIndex, string archetypeId, int level = 1)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Count)
+                return false;
+
+            if (!TryCreateShopItemFromCatalog(archetypeId, level, out var item))
+                return false;
+
+            _slots[slotIndex].Populate(item);
+            return true;
+        }
+
+        /// <summary>
+        /// Searches the active shop slots for an offer matching the specified archetype ID.
+        /// </summary>
+        /// <param name="archetypeId">Archetype ID to find.</param>
+        /// <param name="slotIndex">The slot index if found, or -1.</param>
+        /// <param name="slot">The slot instance if found, or null.</param>
+        /// <returns>True if a slot with the monster is currently available in the shop.</returns>
+        public bool TryFindSlotWithMonster(string archetypeId, out int slotIndex, out ShopSlot slot)
+        {
+            slotIndex = -1;
+            slot = null;
+
+            if (string.IsNullOrEmpty(archetypeId))
+                return false;
+
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var s = _slots[i];
+                if (s.HasAvailableItem && string.Equals(s.CurrentItem.ArchetypeId, archetypeId, StringComparison.OrdinalIgnoreCase))
+                {
+                    slotIndex = i;
+                    slot = s;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        #endregion
+
         #region Query Helpers
 
         /// <summary>

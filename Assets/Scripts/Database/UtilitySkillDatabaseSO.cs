@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "SBGames/Database/UtilitySkill Database")]
-public class UtilitySkillDatabase : ScriptableObject
+public class UtilitySkillDatabaseSO : ScriptableObject
 {
     public List<UtilitySkillEntry> utilSkills;
 }

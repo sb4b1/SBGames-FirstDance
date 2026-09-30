@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SBGames.Database;
 using SBGames.Loop;
 using SBGames.Shop.Data;
+using UnityEngine;
 
 namespace SBGames.Shop.Mock
 {
@@ -75,6 +77,42 @@ namespace SBGames.Shop.Mock
             }
         }
 
+        /// <summary>
+        /// Imports monster entries from a CharacterDatabaseSO into this catalog.
+        /// </summary>
+        public void ImportFromCharacterDatabase(CharacterDatabaseSO characterDb, DungeonRank defaultRank = DungeonRank.D, int defaultCost = 3)
+        {
+            if (characterDb == null || characterDb.Characters == null) return;
+
+            foreach (var entry in characterDb.Characters)
+            {
+                if (entry == null || string.IsNullOrWhiteSpace(entry.id)) continue;
+
+                float maxHealth = entry.baseStats != null ? entry.baseStats.MaxLife : 100f;
+                float damage = entry.baseStats != null ? entry.baseStats.Damage : 10f;
+                float attackInterval = entry.baseStats != null ? entry.baseStats.AttackTimeInterval : 1.0f;
+                float moveSpeed = entry.baseStats != null ? entry.baseStats.Movespeed : 5.0f;
+                float defense = 2f;
+                GameObject prefab = entry.GetPrefabDirect();
+                string name = string.IsNullOrWhiteSpace(entry.characterName) ? entry.id : entry.characterName;
+
+                var template = new MonsterTemplate(
+                    archetypeId: entry.id,
+                    displayName: name,
+                    baseRank: defaultRank,
+                    baseCost: defaultCost,
+                    baseMaxHealth: maxHealth,
+                    baseDamage: damage,
+                    attackInterval: attackInterval,
+                    moveSpeed: moveSpeed,
+                    baseDefense: defense,
+                    prefab: prefab
+                );
+
+                RegisterTemplate(template);
+            }
+        }
+
         private void PopulateDefaultCatalog()
         {
             // Rank E (Cost: 2)
@@ -113,6 +151,28 @@ namespace SBGames.Shop.Mock
             ));
 
             // Rank D (Cost: 3)
+            RegisterTemplate(new MonsterTemplate(
+                archetypeId: "MONSTER_N001",
+                displayName: "MONSTER_N001",
+                baseRank: DungeonRank.D,
+                baseCost: 3,
+                baseMaxHealth: 100f,
+                baseDamage: 10f,
+                attackInterval: 1.0f,
+                moveSpeed: 5.0f,
+                baseDefense: 2f
+            ));
+            RegisterTemplate(new MonsterTemplate(
+                archetypeId: "MONSTER_N002",
+                displayName: "MONSTER_N002",
+                baseRank: DungeonRank.D,
+                baseCost: 3,
+                baseMaxHealth: 100f,
+                baseDamage: 10f,
+                attackInterval: 1.0f,
+                moveSpeed: 5.0f,
+                baseDefense: 2f
+            ));
             RegisterTemplate(new MonsterTemplate(
                 archetypeId: "skeleton_warrior",
                 displayName: "Skeleton Warrior",

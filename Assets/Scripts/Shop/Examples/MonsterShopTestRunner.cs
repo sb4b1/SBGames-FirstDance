@@ -46,6 +46,7 @@ namespace SBGames.Shop.Examples
             TestSlotLockingAcrossRefreshes();
             TestPhaseLockingRestrictions();
             TestManualRerolls();
+            TestCatalogLookupsAndDirectSpawning();
             TestDistributionSimulation(rounds: Mathf.Max(10, simulatedRounds));
 
             Debug.Log("==================== ALL MONSTER SHOP TESTS COMPLETED SUCCESSFULLY ====================");
@@ -205,9 +206,53 @@ namespace SBGames.Shop.Examples
             Assert(_wallet.CurrentResources == balanceBefore - rerollCost, "Manual reroll must deduct Config.ManualRerollCost.");
         }
 
+        private void TestCatalogLookupsAndDirectSpawning()
+        {
+            Debug.Log("\n--- Test 6: Catalog Lookups & Direct Item Creation ---");
+
+            // Direct ID lookup
+            var goblin = _shop.FindMonsterInCatalog("goblin_scout");
+            Assert(goblin != null, "Goblin scout should exist in catalog.");
+            Assert(goblin.DisplayName == "Goblin Scout", "Goblin name should match.");
+
+            bool found = _shop.TryFindMonsterInCatalog("void_monarch", out var monarch);
+            Assert(found && monarch != null, "Void monarch should be found via TryFindMonsterInCatalog.");
+            Assert(monarch.BaseRank == DungeonRank.S, "Void monarch must be Rank S.");
+
+            Assert(_shop.HasMonsterInCatalog("bat_cave"), "Catalog should have 'bat_cave'.");
+            Assert(_shop.HasMonsterInCatalog("MONSTER_N001"), "Catalog must have 'MONSTER_N001'.");
+            var n001 = _shop.FindMonsterInCatalog("MONSTER_N001");
+            Assert(n001 != null && n001.BaseRank == DungeonRank.D, "MONSTER_N001 must be Rank D.");
+            Assert(!_shop.HasMonsterInCatalog("non_existent_monster"), "Catalog should not have unknown monster.");
+
+            // Rank queries
+            var rankAMonsters = _shop.GetCatalogMonstersForRank(DungeonRank.A);
+            Assert(rankAMonsters.Count == 3, "Rank A should have 3 archetypes registered in mock catalog.");
+
+            // Predicate search
+            var dragon = _shop.FindFirstMonsterInCatalog(t => t.ArchetypeId.Contains("dragon"));
+            Assert(dragon != null && dragon.ArchetypeId == "ancient_red_dragon", "Predicate search should locate ancient red dragon.");
+
+            // Direct item creation from catalog
+            var createdItem = _shop.CreateShopItemFromCatalog("skeleton_warrior", level: 2);
+            Assert(createdItem != null, "Item should be created from catalog.");
+            Assert(createdItem.Level == 2, "Created item level should be 2.");
+            Assert(createdItem.Rank == DungeonRank.D, "Created item rank should be D.");
+
+            // Slot direct population from catalog
+            bool populated = _shop.TryPopulateSlotFromCatalog(0, "death_knight", level: 3);
+            Assert(populated, "Populating slot 0 from catalog should succeed.");
+            Assert(_shop.Slots[0].CurrentItem.ArchetypeId == "death_knight", "Slot 0 must contain death_knight.");
+            Assert(_shop.Slots[0].CurrentItem.Level == 3, "Slot 0 item level must be 3.");
+
+            // Slot lookup
+            bool slotFound = _shop.TryFindSlotWithMonster("death_knight", out int slotIndex, out var slot);
+            Assert(slotFound && slotIndex == 0 && slot != null, "TryFindSlotWithMonster should find slot 0.");
+        }
+
         private void TestDistributionSimulation(int rounds)
         {
-            Debug.Log($"\n--- Test 6: Statistical Distribution Simulation ({rounds} Rounds) ---");
+            Debug.Log($"\n--- Test 7: Statistical Distribution Simulation ({rounds} Rounds) ---");
 
             var earlyRankCounts = new Dictionary<DungeonRank, int>();
             var lateRankCounts = new Dictionary<DungeonRank, int>();
