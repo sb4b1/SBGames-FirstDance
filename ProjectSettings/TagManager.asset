@@ -7,6 +7,9 @@ TagManager:
   - AI_Augment
   - Faction_01
   - Faction_02
+  - Adventurer
+  - Monster
+  - Boss
   layers:
   - Default
   - TransparentFX

@@ -150,10 +150,9 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 638713114}
-  - {fileID: 1281072016}
   - {fileID: 115202767}
-  - {fileID: 975895129}
   - {fileID: 1426391255}
+  - {fileID: 975895129}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &23237166
@@ -625,6 +624,7 @@ GameObject:
   - component: {fileID: 525693411}
   - component: {fileID: 525693410}
   - component: {fileID: 525693412}
+  - component: {fileID: 525693413}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -656,7 +656,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1281072016}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &525693412
@@ -683,6 +684,35 @@ MonoBehaviour:
   debugTargetRound: 1
   debugTargetPhase: 1
   debugGameOverReason: 1
+--- !u!114 &525693413
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 525693409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a40e15ec857947e458f2af024c456d47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Loop.CombatResultHandler
+  coreGameLoop: {fileID: 525693412}
+  dungeonMaster: {fileID: 1281072019}
+  autoTrackOnBattlePhase: 1
+  autoDiscoverUnitsOnStart: 1
+  defaultBossHealth: 1000
+  currentCombatState: 0
+  currentRound: 1
+  combatStartTime: 0
+  combatEndTime: 0
+  combatDuration: 0
+  totalAdventurersCount: 0
+  defeatedAdventurersCount: 0
+  retreatedAdventurersCount: 0
+  activeAdventurersCount: 0
+  isBossAlive: 1
+  debugKills: 3
+  debugRetreats: 1
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -902,6 +932,7 @@ MonoBehaviour:
   cursorController: {fileID: 638713115}
   dungeonMaster: {fileID: 1281072019}
   coreGameLoop: {fileID: 525693412}
+  characterDatabase: {fileID: 0}
   shopConfig:
     slotCount: 5
     manualRerollCost: 2
@@ -1158,7 +1189,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 23237165}
+  m_Father: {fileID: 525693411}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1281072017
 MonoBehaviour:
@@ -5319,8 +5350,8 @@ SceneRoots:
   - {fileID: 619394802}
   - {fileID: 23237165}
   - {fileID: 342473173}
-  - {fileID: 525693411}
   - {fileID: 313346443}
+  - {fileID: 525693411}
   - {fileID: 263831876}
   - {fileID: 871039829}
   - {fileID: 1767258328}
