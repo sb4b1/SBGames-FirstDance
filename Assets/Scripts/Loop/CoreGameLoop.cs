@@ -240,6 +240,9 @@ namespace SBGames.Loop
             currentRound = startingRound;
             gameOverReason = GameOverReason.None;
 
+            // Ensure fresh run has starting artifact spawned
+            dungeonMaster.SpawnStartingArtifactIfNeeded();
+
             // Check if DM is already defeated on startup
             if (CheckAndTriggerGameOver()) return;
 

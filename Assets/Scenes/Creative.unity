@@ -945,6 +945,54 @@ MonoBehaviour:
   onShopRefreshed:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &765988091
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 765988092}
+  - component: {fileID: 765988093}
+  m_Layer: 0
+  m_Name: InventoryManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &765988092
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 765988091}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &765988093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 765988091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8275d95332ed9ec439b62e5328770b71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Core.InventoryManager
+  defaultCapacity: 24
+  itemDatabase: {fileID: 11400000, guid: 30a5277af0036b0478e3ae017b19305d, type: 2}
+  persistAcrossScenes: 0
+  enforceCombatPhaseLock: 1
 --- !u!1 &871039828
 GameObject:
   m_ObjectHideFlags: 0
@@ -5186,7 +5234,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d72c9c728cd4ceb4c9005208fac50013, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.UI.InventoryUIController
-  userInventory: {fileID: 0}
+  inventoryManager: {fileID: 0}
   characters: []
 --- !u!114 &1777165900
 MonoBehaviour:
@@ -5364,7 +5412,6 @@ MonoBehaviour:
   debugEnergyDelta: 25
   debugEssenceDelta: 10
   debugItemAsset: {fileID: 0}
-  debugItemId: pot_health
   debugSpawnAmount: 1
   targetFrameRate: 60
   enableVSync: 0
@@ -5377,6 +5424,7 @@ SceneRoots:
   - {fileID: 23237165}
   - {fileID: 342473173}
   - {fileID: 313346443}
+  - {fileID: 765988092}
   - {fileID: 525693411}
   - {fileID: 263831876}
   - {fileID: 871039829}

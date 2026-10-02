@@ -7,7 +7,7 @@ using SBGames.Database.Runtime;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
 using SBGames.Inventory.Core.Effects;
-using SBGames.Inventory.User;
+using SBGames.Inventory.Data;
 using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -88,8 +88,8 @@ public class DevTool : MonoBehaviour
     [SerializeField] private int debugEssenceDelta = 10;
 
     [Header("Item & Inventory Spawner")]
-    [Tooltip("Target ItemDefinition asset to spawn via Inspector.")]
-    [SerializeField] private ItemDefinition debugItemAsset;
+    [Tooltip("Target ItemDataSO asset to spawn via Inspector.")]
+    [SerializeField] private ItemDataSO debugItemAsset;
 
     [Tooltip("Quantity of items to spawn.")]
     [SerializeField, Min(1)] private int debugSpawnAmount = 1;
@@ -115,7 +115,7 @@ public class DevTool : MonoBehaviour
     private int itemCategoryIndex = 0;
     private readonly string[] itemCategoryTabs = { "All", "Artifacts", "Runes", "Consumables", "Other" };
     private string itemSearchFilter = "";
-    private List<ItemDefinition> scannedDatabaseItems = new();
+    private List<ItemDataSO> scannedDatabaseItems = new();
     private bool isDatabaseScanned = false;
     private float fpsAccumulator = 0f;
     private int fpsFrameCount = 0;
@@ -850,14 +850,14 @@ public class DevTool : MonoBehaviour
             Item.ClearUserInventory();
         }
 
-        if (userInv != null && userInv.Inventory != null)
+        if (userInv != null)
         {
             GUILayout.Space(4f);
             GUILayout.BeginVertical("box");
             bool anyOccupied = false;
             for (int i = 0; i < userInv.Capacity; i++)
             {
-                var slot = userInv.Inventory.GetSlot(i);
+                var slot = userInv.GetSlot(i);
                 if (slot != null && !slot.IsEmpty)
                 {
                     anyOccupied = true;
@@ -1682,19 +1682,19 @@ public class DevTool : MonoBehaviour
 
     /// <summary>
     /// Centralized Item Spawning, runtime item generation, and Artifact Inventory synchronization utilities.
-    /// Provides auto-discovery of UserInventoryManager, CharacterInventoryManager instances, and DungeonMaster.
+    /// Provides auto-discovery of InventoryManager, CharacterInventoryManager instances, and DungeonMaster.
     /// </summary>
     public static class Item
     {
-        private static UserInventoryManager cachedUserInventory;
+        private static InventoryManager cachedUserInventory;
         private static DungeonMaster cachedDM;
-        private static List<ItemDefinition> cachedScannedItems;
+        private static List<ItemDataSO> cachedScannedItems;
 
-        public static UserInventoryManager GetUserInventory()
+        public static InventoryManager GetUserInventory()
         {
             if (cachedUserInventory == null)
             {
-                cachedUserInventory = UnityEngine.Object.FindAnyObjectByType<UserInventoryManager>();
+                cachedUserInventory = InventoryManager.Instance ?? UnityEngine.Object.FindAnyObjectByType<InventoryManager>();
             }
             return cachedUserInventory;
         }
@@ -1709,16 +1709,16 @@ public class DevTool : MonoBehaviour
         }
 
         /// <summary>
-        /// Scans GameRegistry, Resources, and Editor AssetDatabase to discover all ItemDefinition assets.
+        /// Scans GameRegistry, Resources, and Editor AssetDatabase to discover all ItemDataSO assets.
         /// </summary>
-        public static List<ItemDefinition> ScanDatabaseItems(bool forceRescan = false)
+        public static List<ItemDataSO> ScanDatabaseItems(bool forceRescan = false)
         {
             if (cachedScannedItems != null && !forceRescan)
             {
                 return cachedScannedItems;
             }
 
-            var list = new List<ItemDefinition>();
+            var list = new List<ItemDataSO>();
             var addedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // 1. Scan via GameRegistry / MasterGameDatabase
@@ -1745,7 +1745,7 @@ public class DevTool : MonoBehaviour
             // 2. Scan via Resources
             try
             {
-                var resourcesItems = Resources.LoadAll<ItemDefinition>("");
+                var resourcesItems = Resources.LoadAll<ItemDataSO>("");
                 if (resourcesItems != null)
                 {
                     foreach (var item in resourcesItems)
@@ -1764,14 +1764,14 @@ public class DevTool : MonoBehaviour
             }
 
 #if UNITY_EDITOR
-            // 3. Editor-only AssetDatabase scan to find all ItemDefinition assets across the project
+            // 3. Editor-only AssetDatabase scan to find all ItemDataSO assets across the project
             try
             {
-                string[] guids = AssetDatabase.FindAssets("t:ItemDefinition");
+                string[] guids = AssetDatabase.FindAssets("t:ItemDataSO");
                 foreach (var guid in guids)
                 {
                     string path = AssetDatabase.GUIDToAssetPath(guid);
-                    var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
+                    var item = AssetDatabase.LoadAssetAtPath<ItemDataSO>(path);
                     if (item != null && !string.IsNullOrWhiteSpace(item.Id) && !addedIds.Contains(item.Id))
                     {
                         list.Add(item);
@@ -1786,44 +1786,45 @@ public class DevTool : MonoBehaviour
 #endif
 
             cachedScannedItems = list;
-            Log.Info("DevTool.Item", "Scan", $"Scanned database: Found {list.Count} unique ItemDefinitions.");
+            Log.Info("DevTool.Item", "Scan", $"Scanned database: Found {list.Count} unique ItemDataSO items.");
             return list;
         }
 
         /// <summary>
-        /// Spawns the specified ItemDefinition into the player's UserInventoryManager.
+        /// Spawns the specified ItemDataSO into the player's InventoryManager.
         /// </summary>
-        public static bool Spawn(ItemDefinition item, int count = 1)
+        public static bool Spawn(ItemDataSO item, int count = 1)
         {
             if (item == null)
             {
-                Log.Warning("DevTool.Item", "Spawn", "Cannot spawn null ItemDefinition.");
+                Log.Warning("DevTool.Item", "Spawn", "Cannot spawn null ItemDataSO.");
                 return false;
             }
 
             var userInv = GetUserInventory();
             if (userInv == null)
             {
-                Log.Warning("DevTool.Item", "Spawn", "No UserInventoryManager instance found in the scene.");
+                Log.Warning("DevTool.Item", "Spawn", "No InventoryManager instance found in the scene.");
                 return false;
             }
 
-            int leftover = userInv.AddItem(item, count);
-            int added = count - leftover;
-            if (added > 0)
+            var result = userInv.AddItem(item, count);
+            if (result.IsSuccess)
             {
-                Log.Info("DevTool.Item", "Spawn", $"Successfully added {added}x '{item.ItemName}' (ID: {item.Id}) to User Inventory. (Leftover: {leftover})");
+                int added = result.QuantityAffected;
+                int leftover = count - added;
+                Log.Info("DevTool.Item", "Spawn", $"Successfully added {added}x '{item.ItemName}' (ID: {item.Id}) to Inventory. (Leftover: {leftover})");
                 return true;
             }
             else
             {
-                Log.Warning("DevTool.Item", "Spawn", $"User Inventory is full! Could not add '{item.ItemName}'.");
+                Log.Warning("DevTool.Item", "Spawn", $"Could not add '{item.ItemName}': {result.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// Attempts to look up an item by ID from GameRegistry and spawns it into UserInventoryManager.
+        /// Attempts to look up an item by ID from GameRegistry and spawns it into InventoryManager.
         /// </summary>
         public static bool SpawnById(string itemId, int count = 1)
         {
@@ -1853,14 +1854,14 @@ public class DevTool : MonoBehaviour
         public static void ClearUserInventory()
         {
             var userInv = GetUserInventory();
-            if (userInv != null && userInv.Inventory != null)
+            if (userInv != null)
             {
-                userInv.Inventory.Clear();
-                Log.Info("DevTool.Item", "Clear", "Cleared all slots in UserInventoryManager.");
+                userInv.Clear();
+                Log.Info("DevTool.Item", "Clear", "Cleared all slots in InventoryManager.");
             }
             else
             {
-                Log.Warning("DevTool.Item", "Clear", "No active UserInventoryManager found to clear.");
+                Log.Warning("DevTool.Item", "Clear", "No active InventoryManager found to clear.");
             }
         }
 
@@ -1893,25 +1894,25 @@ public class DevTool : MonoBehaviour
             };
 
             var userInv = GetUserInventory();
-            if (userInv != null && userInv.Inventory != null)
+            if (userInv != null)
             {
                 report.UserInventoryCapacity = userInv.Capacity;
                 for (int i = 0; i < userInv.Capacity; i++)
                 {
-                    var slot = userInv.Inventory.GetSlot(i);
-                    if (slot != null && !slot.IsEmpty)
+                    var slot = userInv.GetSlot(i);
+                    if (slot != null && !slot.IsEmpty && slot.ItemData != null)
                     {
-                        report.UserInventoryTotalItems += slot.Amount;
-                        if (slot.Item.ItemType == ItemType.Artifact)
+                        report.UserInventoryTotalItems += slot.Quantity;
+                        if (slot.ItemData.ItemType == ItemType.Artifact)
                         {
-                            report.UserInventoryArtifacts += slot.Amount;
-                            report.UserArtifactNames.Add(slot.Item.ItemName);
+                            report.UserInventoryArtifacts += slot.Quantity;
+                            report.UserArtifactNames.Add(slot.ItemData.ItemName);
                         }
                     }
                 }
             }
 
-            var charManagers = UnityEngine.Object.FindObjectsByType<CharacterInventoryManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var charManagers = UnityEngine.Object.FindObjectsByType<CharacterInventoryManager>(FindObjectsInactive.Include);
             if (charManagers != null)
             {
                 foreach (var cm in charManagers)

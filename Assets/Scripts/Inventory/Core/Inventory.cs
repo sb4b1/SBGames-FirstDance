@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SBGames.Inventory.Data;
 
 namespace SBGames.Inventory.Core
 {
@@ -51,7 +52,7 @@ namespace SBGames.Inventory.Core
         /// <summary>
         /// Determines if the inventory has sufficient space to accept the given item and quantity.
         /// </summary>
-        public bool CanAddItem(ItemDefinition item, int amount = 1)
+        public bool CanAddItem(ItemDataSO item, int amount = 1)
         {
             if (item == null || amount <= 0) return false;
 
@@ -88,7 +89,7 @@ namespace SBGames.Inventory.Core
         /// Fills existing non-full stacks first, then populates empty slots.
         /// Returns any leftover amount that could not fit (0 if all added).
         /// </summary>
-        public int AddItem(ItemDefinition item, int amount = 1)
+        public int AddItem(ItemDataSO item, int amount = 1)
         {
             if (item == null || amount <= 0) return amount;
 
@@ -138,7 +139,7 @@ namespace SBGames.Inventory.Core
         /// Removes a specified quantity of an item across all slots containing it.
         /// Returns the actual total quantity removed.
         /// </summary>
-        public int RemoveItem(ItemDefinition item, int amount = 1)
+        public int RemoveItem(ItemDataSO item, int amount = 1)
         {
             if (item == null || amount <= 0) return 0;
 
@@ -169,7 +170,6 @@ namespace SBGames.Inventory.Core
 
         /// <summary>
         /// Removes a quantity from a specific slot index.
-        /// Returns the actual amount removed.
         /// </summary>
         public int RemoveItemAt(int slotIndex, int amount = 1)
         {
@@ -202,7 +202,7 @@ namespace SBGames.Inventory.Core
             // Case 1: Target is empty -> move
             if (toSlot.IsEmpty)
             {
-                toSlot.Set(fromSlot.Item, fromSlot.Amount);
+                toSlot.Set(fromSlot.ItemInstance, fromSlot.Amount);
                 fromSlot.Clear();
                 NotifySlotChanged(fromIndex);
                 NotifySlotChanged(toIndex);
@@ -211,7 +211,7 @@ namespace SBGames.Inventory.Core
             }
 
             // Case 2: Target is the same item and stackable -> merge
-            if (toSlot.CanStackWith(fromSlot.Item))
+            if (toSlot.CanStackWith(fromSlot.ItemInstance))
             {
                 int leftover = toSlot.AddAmount(fromSlot.Amount);
                 if (leftover == 0)
@@ -220,7 +220,7 @@ namespace SBGames.Inventory.Core
                 }
                 else
                 {
-                    fromSlot.Set(fromSlot.Item, leftover);
+                    fromSlot.Set(fromSlot.ItemInstance, leftover);
                 }
 
                 NotifySlotChanged(fromIndex);
@@ -246,11 +246,11 @@ namespace SBGames.Inventory.Core
             var slotA = _slots[indexA];
             var slotB = _slots[indexB];
 
-            var tempItem = slotA.Item;
+            var tempInst = slotA.ItemInstance;
             int tempAmount = slotA.Amount;
 
-            slotA.Set(slotB.Item, slotB.Amount);
-            slotB.Set(tempItem, tempAmount);
+            slotA.Set(slotB.ItemInstance, slotB.Amount);
+            slotB.Set(tempInst, tempAmount);
 
             NotifySlotChanged(indexA);
             NotifySlotChanged(indexB);
@@ -260,7 +260,7 @@ namespace SBGames.Inventory.Core
         /// <summary>
         /// Counts the total quantity of an item present in the inventory.
         /// </summary>
-        public int CountItem(ItemDefinition item)
+        public int CountItem(ItemDataSO item)
         {
             if (item == null) return 0;
             int count = 0;
@@ -277,7 +277,7 @@ namespace SBGames.Inventory.Core
         /// <summary>
         /// Checks if the inventory contains at least the specified amount of an item.
         /// </summary>
-        public bool HasItem(ItemDefinition item, int amount = 1)
+        public bool HasItem(ItemDataSO item, int amount = 1)
         {
             return CountItem(item) >= amount;
         }
@@ -285,7 +285,7 @@ namespace SBGames.Inventory.Core
         /// <summary>
         /// Finds the first slot index containing the specified item, or -1 if not found.
         /// </summary>
-        public int FindFirstSlotIndex(ItemDefinition item)
+        public int FindFirstSlotIndex(ItemDataSO item)
         {
             if (item == null) return -1;
             for (int i = 0; i < _slots.Length; i++)

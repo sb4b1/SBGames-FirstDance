@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEditor;
 using UnityEngine;
 
@@ -27,7 +27,7 @@ namespace SBGames.Database.Editor
 
             // 1. Rebuild Item Database
             var itemDb = GetOrCreateCatalog<ItemDatabaseSO>("ItemDatabase", DatabaseFolder);
-            var items = FindAllAssets<ItemDefinition>();
+            var items = FindAllAssets<ItemDataSO>();
             itemDb.SetItemsEditor(items);
             EditorUtility.SetDirty(itemDb);
             validationErrors += ValidateUniqueIds(items.Select(i => (i.Id, (UnityEngine.Object)i)), "Item");

@@ -32,6 +32,9 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public bool IsCastingSkill { get; private set; }
     public bool HasAI { get; private set; }
 
+    public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
+    public AnimationController AnimController => animController != null ? animController : (animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>());
+
     private void Awake()
     {
         aiAugment = ComponentUtil.GetChildGameObjectByTag(this.gameObject, "AI_Augment");
@@ -39,24 +42,12 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
         if (statsManager == null)
         {
-            ELogger.Warning(this, nameof(Awake), "CharacterStatsManager reference is missing! Attempting to find in children...");
-            statsManager = GetComponent<CharacterStatsManager>();
-
-            if (statsManager == null)
-            {
-                ELogger.Error(this, nameof(Awake), "CharacterStatsManager not found Please assign it in the inspector.");
-            }
+            statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
         }
 
         if (animController == null)
         {
-            ELogger.Warning(this, nameof(Awake), "AnimationController reference is missing! Attempting to find in children...");
-            animController = GetComponentInChildren<AnimationController>();
-
-            if (animController == null)
-            {
-                ELogger.Error(this, nameof(Awake), "AnimationController not found Please assign it in the inspector.");
-            }
+            animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>();
         }
     }
 
@@ -64,10 +55,12 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     {
         OnSpawn();
 
-        
-        bool activeAI = aiAugment.activeSelf;
-        AIActivation(true);
-        DelayAction(0.1f, () => AIActivation(activeAI));
+        if (aiAugment != null)
+        {
+            bool activeAI = aiAugment.activeSelf;
+            AIActivation(true);
+            DelayAction(0.1f, () => AIActivation(activeAI));
+        }
     }
 
     // =========================

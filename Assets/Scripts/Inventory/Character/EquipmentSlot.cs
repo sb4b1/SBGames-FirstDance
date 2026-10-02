@@ -1,5 +1,6 @@
 using System;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 
 namespace SBGames.Inventory.Character
 {
@@ -12,7 +13,7 @@ namespace SBGames.Inventory.Character
     {
         public string SlotName { get; }
         public EquipmentSlotType SlotType { get; }
-        public ItemDefinition EquippedItem { get; private set; }
+        public ItemDataSO EquippedItem { get; private set; }
 
         public bool IsOccupied => EquippedItem != null;
         public bool IsEmpty => !IsOccupied;
@@ -27,7 +28,7 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Validates whether an item can be equipped into this slot.
         /// </summary>
-        public bool CanEquip(ItemDefinition item, out string failureReason)
+        public bool CanEquip(ItemDataSO item, out string failureReason)
         {
             if (item == null)
             {
@@ -37,7 +38,7 @@ namespace SBGames.Inventory.Character
 
             if (!item.IsEquippable)
             {
-                failureReason = $"{item.ItemName} is not an equippable item.";
+                failureReason = $"{item.DisplayName} is not an equippable item.";
                 return false;
             }
 
@@ -54,7 +55,7 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Equips the item into this slot, outputting any previously equipped item.
         /// </summary>
-        public bool Equip(ItemDefinition item, out ItemDefinition previousItem)
+        public bool Equip(ItemDataSO item, out ItemDataSO previousItem)
         {
             if (!CanEquip(item, out _))
             {
@@ -77,7 +78,7 @@ namespace SBGames.Inventory.Character
         /// Clears the currently equipped item without unequip restrictions.
         /// Used for internal item replacement or rune deletion.
         /// </summary>
-        public bool Clear(out ItemDefinition clearedItem)
+        public bool Clear(out ItemDataSO clearedItem)
         {
             if (!IsOccupied)
             {
@@ -94,7 +95,7 @@ namespace SBGames.Inventory.Character
         /// Unequips the currently equipped item, returning it and leaving the slot empty.
         /// Fails if the slot contains a Rune (runes cannot be unequipped).
         /// </summary>
-        public bool Unequip(out ItemDefinition unequippedItem)
+        public bool Unequip(out ItemDataSO unequippedItem)
         {
             if (!CanUnequip)
             {

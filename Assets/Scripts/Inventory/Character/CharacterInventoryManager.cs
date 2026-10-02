@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using SBGames.Inventory.Stats;
 using UnityEngine;
 
@@ -47,8 +48,9 @@ namespace SBGames.Inventory.Character
         }
 
         public event Action OnEquipmentOrStatsChanged;
-        public event Action<CharacterInventoryManager, ItemDefinition, Vector3> OnArtifactDropped;
-        public static event Action<CharacterInventoryManager, ItemDefinition, Vector3> OnAnyArtifactDropped;
+        public static event Action<CharacterInventoryManager> OnAnyEquipmentChanged;
+        public event Action<CharacterInventoryManager, ItemDataSO, Vector3> OnArtifactDropped;
+        public static event Action<CharacterInventoryManager, ItemDataSO, Vector3> OnAnyArtifactDropped;
 
         private void Awake()
         {
@@ -115,7 +117,11 @@ namespace SBGames.Inventory.Character
                 _statBinder.OnStatsChanged += () => OnEquipmentOrStatsChanged?.Invoke();
             }
 
-            _inventory.OnEquipmentChanged += () => OnEquipmentOrStatsChanged?.Invoke();
+            _inventory.OnEquipmentChanged += () =>
+            {
+                OnEquipmentOrStatsChanged?.Invoke();
+                OnAnyEquipmentChanged?.Invoke(this);
+            };
         }
 
         /// <summary>
@@ -123,9 +129,9 @@ namespace SBGames.Inventory.Character
         /// </summary>
         public bool Equip(
             int slotIndex,
-            ItemDefinition item,
-            out ItemDefinition displacedItem,
-            out ItemDefinition destroyedRune,
+            ItemDataSO item,
+            out ItemDataSO displacedItem,
+            out ItemDataSO destroyedRune,
             bool confirmDestroyRune = true)
         {
             displacedItem = null;
@@ -140,7 +146,7 @@ namespace SBGames.Inventory.Character
         /// Unequips the item from the specified equipment slot.
         /// Fails if the item is a Rune (runes cannot be unequipped).
         /// </summary>
-        public bool Unequip(int slotIndex, out ItemDefinition unequippedItem)
+        public bool Unequip(int slotIndex, out ItemDataSO unequippedItem)
         {
             unequippedItem = null;
             if (_inventory == null) return false;
@@ -152,7 +158,7 @@ namespace SBGames.Inventory.Character
         /// Deletes/destroys the rune in the specified slot.
         /// Runes cannot be unequipped back to inventory; they can only be deleted or replaced.
         /// </summary>
-        public bool DestroyRune(int slotIndex, out ItemDefinition destroyedRune)
+        public bool DestroyRune(int slotIndex, out ItemDataSO destroyedRune)
         {
             destroyedRune = null;
             if (_inventory == null) return false;
@@ -163,7 +169,7 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Gets the item currently equipped in the specified slot.
         /// </summary>
-        public ItemDefinition GetEquippedItem(int slotIndex)
+        public ItemDataSO GetEquippedItem(int slotIndex)
         {
             return _inventory?.GetSlot(slotIndex)?.EquippedItem;
         }
@@ -175,9 +181,9 @@ namespace SBGames.Inventory.Character
         /// </summary>
         /// <param name="dropChance">Override drop chance between 0 and 1. If negative, uses artifactDropChance.</param>
         /// <returns>List of unequipped artifacts that dropped.</returns>
-        public List<ItemDefinition> TryDropEquippedArtifacts(float dropChance = -1f)
+        public List<ItemDataSO> TryDropEquippedArtifacts(float dropChance = -1f)
         {
-            var droppedArtifacts = new List<ItemDefinition>();
+            var droppedArtifacts = new List<ItemDataSO>();
             if (_inventory == null) return droppedArtifacts;
 
             float effectiveChance = dropChance >= 0f ? Mathf.Clamp01(dropChance) : artifactDropChance;

@@ -3,8 +3,9 @@ using SBGames.Input;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
 using SBGames.Inventory.Core.Effects;
+using SBGames.Inventory.Data;
 using SBGames.Inventory.Stats;
-using SBGames.Inventory.User;
+using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -23,7 +24,8 @@ namespace SBGames.Inventory.UI
     public class InventoryUIController : MonoBehaviour, IToggleableUI
     {
         [Header("References")]
-        [SerializeField] private UserInventoryManager userInventory;
+        [SerializeField] private InventoryManager inventoryManager;
+        [SerializeField] private DungeonMaster dungeonMaster;
         [SerializeField] private List<CharacterInventoryManager> characters = new();
 
         private UIDocument _uiDocument;
@@ -40,28 +42,33 @@ namespace SBGames.Inventory.UI
         private VisualElement _modalBox;
 
         // Test item templates for quick prototyping
-        private ItemDefinition _potionItem;
-        private ItemDefinition _manaItem;
-        private ItemDefinition _atkRuneItem;
-        private ItemDefinition _critRuneItem;
-        private ItemDefinition _speedArtifactItem;
+        private ItemDataSO _potionItem;
+        private ItemDataSO _manaItem;
+        private ItemDataSO _atkRuneItem;
+        private ItemDataSO _critRuneItem;
+        private ItemDataSO _speedArtifactItem;
 
         private void Awake()
         {
             _uiDocument = GetComponent<UIDocument>();
-            CreateTestItemDefinitions();
+            CreateTestItemData();
         }
 
         private void Start()
         {
-            if (userInventory == null)
+            if (inventoryManager == null)
             {
-                userInventory = FindAnyObjectByType<UserInventoryManager>();
-                if (userInventory == null)
+                inventoryManager = InventoryManager.Instance != null ? InventoryManager.Instance : FindAnyObjectByType<InventoryManager>();
+                if (inventoryManager == null)
                 {
-                    var userGo = new GameObject("[UserInventoryManager]");
-                    userInventory = userGo.AddComponent<UserInventoryManager>();
+                    var userGo = new GameObject("[InventoryManager]");
+                    inventoryManager = userGo.AddComponent<InventoryManager>();
                 }
+            }
+
+            if (dungeonMaster == null)
+            {
+                dungeonMaster = DungeonMaster.Instance != null ? DungeonMaster.Instance : FindAnyObjectByType<DungeonMaster>();
             }
 
             if (characters == null || characters.Count == 0)
@@ -158,10 +165,29 @@ namespace SBGames.Inventory.UI
 
         private void BindEvents()
         {
-            if (userInventory != null)
+            if (inventoryManager != null)
             {
-                userInventory.OnInventoryChanged -= RefreshInventoryUI;
-                userInventory.OnInventoryChanged += RefreshInventoryUI;
+                inventoryManager.OnInventoryChanged -= RefreshInventoryUI;
+                inventoryManager.OnInventoryChanged += RefreshInventoryUI;
+            }
+
+            if (dungeonMaster == null)
+            {
+                dungeonMaster = DungeonMaster.Instance != null ? DungeonMaster.Instance : FindAnyObjectByType<DungeonMaster>();
+            }
+
+            if (dungeonMaster != null)
+            {
+                dungeonMaster.OnArtifactEmpowered -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactEmpowered += HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactUnempowered -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactUnempowered += HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactForged -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactForged += HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactRemoved -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactRemoved += HandleArtifactStateChanged;
+                dungeonMaster.OnInventorySynced -= RefreshAll;
+                dungeonMaster.OnInventorySynced += RefreshAll;
             }
 
             if (_selectedCharacter != null)
@@ -179,9 +205,18 @@ namespace SBGames.Inventory.UI
 
         private void UnbindEvents()
         {
-            if (userInventory != null)
+            if (inventoryManager != null)
             {
-                userInventory.OnInventoryChanged -= RefreshInventoryUI;
+                inventoryManager.OnInventoryChanged -= RefreshInventoryUI;
+            }
+
+            if (dungeonMaster != null)
+            {
+                dungeonMaster.OnArtifactEmpowered -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactUnempowered -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactForged -= HandleArtifactStateChanged;
+                dungeonMaster.OnArtifactRemoved -= HandleArtifactStateChanged;
+                dungeonMaster.OnInventorySynced -= RefreshAll;
             }
 
             if (_selectedCharacter != null)
@@ -192,6 +227,11 @@ namespace SBGames.Inventory.UI
                     _selectedCharacter.StatsManager.OnLifeChanged -= OnLifeChangedHandler;
                 }
             }
+        }
+
+        private void HandleArtifactStateChanged(Artifact _)
+        {
+            RefreshAll();
         }
 
         private void OnLifeChangedHandler(float current, float max)
@@ -408,31 +448,31 @@ namespace SBGames.Inventory.UI
 
             AddActionButton(toolbar, "+ Potion (x3)", () =>
             {
-                userInventory.AddItem(_potionItem, 3);
+                inventoryManager.AddItem(_potionItem, 3);
                 SetStatus("Added 3x Health Potions.");
             });
 
             AddActionButton(toolbar, "+ Mana (x2)", () =>
             {
-                userInventory.AddItem(_manaItem, 2);
+                inventoryManager.AddItem(_manaItem, 2);
                 SetStatus("Added 2x Mana Potions.");
             });
 
             AddActionButton(toolbar, "+ Atk Rune (+10 Flat, +15% Add)", () =>
             {
-                userInventory.AddItem(_atkRuneItem, 1);
+                inventoryManager.AddItem(_atkRuneItem, 1);
                 SetStatus("Added Fierce Attack Rune.");
             });
 
             AddActionButton(toolbar, "+ Crit Rune (+12% Crit)", () =>
             {
-                userInventory.AddItem(_critRuneItem, 1);
+                inventoryManager.AddItem(_critRuneItem, 1);
                 SetStatus("Added Sharp Crit Rune.");
             });
 
             AddActionButton(toolbar, "+ Speed Artifact (+2.5 Flat, +20% Mult)", () =>
             {
-                userInventory.AddItem(_speedArtifactItem, 1);
+                inventoryManager.AddItem(_speedArtifactItem, 1);
                 SetStatus("Added Windwalker Boots Artifact.");
             });
 
@@ -462,6 +502,12 @@ namespace SBGames.Inventory.UI
 
         public void RefreshAll()
         {
+            if (dungeonMaster == null)
+            {
+                dungeonMaster = DungeonMaster.Instance != null ? DungeonMaster.Instance : FindAnyObjectByType<DungeonMaster>();
+            }
+            dungeonMaster?.SyncWithInventory();
+
             RefreshCharacterUI();
             RefreshInventoryUI();
         }
@@ -483,11 +529,25 @@ namespace SBGames.Inventory.UI
                 return;
             }
 
+            var activeEmpowered = dungeonMaster != null ? dungeonMaster.GetActiveEmpoweredArtifact() : null;
             var charInv = _selectedCharacter.Inventory;
             for (int i = 0; i < charInv.SlotCount; i++)
             {
                 int slotIndex = i;
                 var slot = charInv.GetSlot(i);
+
+                bool isEmpoweredSlot = false;
+                if (activeEmpowered != null && slot.IsOccupied && slot.EquippedItem != null &&
+                    (slot.SlotType == EquipmentSlotType.Artifact || slot.EquippedItem.ItemType == ItemType.Artifact))
+                {
+                    string equipInstId = $"equip_{_selectedCharacter.GetEntityId()}_{slotIndex}_{slot.EquippedItem.Id}";
+                    if (activeEmpowered.SourceInstanceId == equipInstId ||
+                        activeEmpowered.Id == equipInstId ||
+                        (activeEmpowered.IsEmpowered && (slot.EquippedItem.Id == activeEmpowered.Id || slot.EquippedItem.Id == activeEmpowered.ItemDefinitionId)))
+                    {
+                        isEmpoweredSlot = true;
+                    }
+                }
 
                 var row = new VisualElement();
                 row.style.flexDirection = FlexDirection.Row;
@@ -496,15 +556,17 @@ namespace SBGames.Inventory.UI
                 row.style.paddingTop = 3;
                 row.style.paddingBottom = 3;
                 row.style.marginBottom = 2;
-                row.style.backgroundColor = new Color(0.14f, 0.14f, 0.17f);
+                row.style.backgroundColor = isEmpoweredSlot ? new Color(0.24f, 0.20f, 0.10f) : new Color(0.14f, 0.14f, 0.17f);
                 row.style.paddingLeft = 6;
                 row.style.paddingRight = 6;
 
                 string slotTitle = $"[{slot.SlotType}] {slot.SlotName}: ";
-                string itemText = slot.IsOccupied ? $"{slot.EquippedItem.ItemName}" : "<Empty>";
+                string badgeStr = isEmpoweredSlot ? " [★ EMPOWERED]" : "";
+                string itemText = slot.IsOccupied ? $"{slot.EquippedItem.ItemName}{badgeStr}" : "<Empty>";
 
                 var label = new Label($"{slotTitle} {itemText}");
-                label.style.color = slot.IsOccupied ? new Color(1f, 0.85f, 0.4f) : new Color(0.5f, 0.5f, 0.55f);
+                label.style.color = isEmpoweredSlot ? new Color(1f, 0.85f, 0.2f) : (slot.IsOccupied ? new Color(1f, 0.85f, 0.4f) : new Color(0.5f, 0.5f, 0.55f));
+                label.style.unityFontStyleAndWeight = isEmpoweredSlot ? FontStyle.Bold : FontStyle.Normal;
                 row.Add(label);
 
                 if (slot.IsOccupied)
@@ -513,7 +575,7 @@ namespace SBGames.Inventory.UI
                     {
                         var unequipBtn = new Button(() =>
                         {
-                            if (userInventory.UnequipFromCharacter(_selectedCharacter, slotIndex, out string msg))
+                            if (inventoryManager.UnequipFromCharacter(_selectedCharacter, slotIndex, out string msg))
                             {
                                 SetStatus(msg);
                             }
@@ -544,7 +606,7 @@ namespace SBGames.Inventory.UI
 
                         var deleteBtn = new Button(() =>
                         {
-                            if (userInventory.DestroyRuneFromCharacter(_selectedCharacter, slotIndex, out string msg))
+                            if (inventoryManager.DestroyRuneFromCharacter(_selectedCharacter, slotIndex, out string msg))
                             {
                                 SetStatus(msg);
                             }
@@ -629,17 +691,16 @@ namespace SBGames.Inventory.UI
             if (_inventoryScrollView == null) return;
             _inventoryScrollView.Clear();
 
-            if (userInventory == null || userInventory.Inventory == null)
+            if (inventoryManager == null)
             {
-                _inventoryScrollView.Add(new Label("User inventory uninitialized."));
+                _inventoryScrollView.Add(new Label("Inventory manager uninitialized."));
                 return;
             }
 
-            var inv = userInventory.Inventory;
-            for (int i = 0; i < inv.Capacity; i++)
+            for (int i = 0; i < inventoryManager.Capacity; i++)
             {
                 int slotIndex = i;
-                var slot = inv.GetSlot(i);
+                var slot = inventoryManager.GetSlot(i);
 
                 if (slot == null || slot.IsEmpty || slot.Item == null) continue;
 
@@ -651,6 +712,22 @@ namespace SBGames.Inventory.UI
                 bool isConsumable = slot.Item.IsConsumable;
                 bool isEquippable = slot.Item.IsEquippable;
 
+                var activeEmpowered = dungeonMaster != null ? dungeonMaster.GetActiveEmpoweredArtifact() : null;
+                bool isEmpoweredArtifact = false;
+                if (activeEmpowered != null && slot.Item != null && slot.Item.ItemType == ItemType.Artifact)
+                {
+                    string slotInstId = slot.ItemInstance != null && !string.IsNullOrEmpty(slot.ItemInstance.InstanceID)
+                        ? slot.ItemInstance.InstanceID
+                        : $"inv_{slotIndex}_{slot.Item.Id}";
+
+                    if (activeEmpowered.SourceInstanceId == slotInstId ||
+                        activeEmpowered.Id == slotInstId ||
+                        (slot.ItemInstance != null && (activeEmpowered.SourceInstanceId == slot.ItemInstance.InstanceID || activeEmpowered.Id == slot.ItemInstance.InstanceID)))
+                    {
+                        isEmpoweredArtifact = true;
+                    }
+                }
+
                 var itemRow = new VisualElement();
                 itemRow.style.flexDirection = FlexDirection.Row;
                 itemRow.style.justifyContent = Justify.SpaceBetween;
@@ -660,15 +737,17 @@ namespace SBGames.Inventory.UI
                 itemRow.style.paddingTop = 4;
                 itemRow.style.paddingBottom = 4;
                 itemRow.style.marginBottom = 3;
-                itemRow.style.backgroundColor = new Color(0.14f, 0.14f, 0.17f);
+                itemRow.style.backgroundColor = isEmpoweredArtifact ? new Color(0.24f, 0.20f, 0.10f) : new Color(0.14f, 0.14f, 0.17f);
                 itemRow.style.borderTopLeftRadius = 4;
                 itemRow.style.borderTopRightRadius = 4;
                 itemRow.style.borderBottomLeftRadius = 4;
                 itemRow.style.borderBottomRightRadius = 4;
 
-                string labelText = $"[{slotIndex}] {itemName} x{itemAmount} ({itemTypeStr})";
+                string badgeStr = isEmpoweredArtifact ? " [★ EMPOWERED]" : "";
+                string labelText = $"[{slotIndex}] {itemName} x{itemAmount} ({itemTypeStr}){badgeStr}";
                 var itemLabel = new Label(labelText);
-                itemLabel.style.color = Color.white;
+                itemLabel.style.color = isEmpoweredArtifact ? new Color(1f, 0.85f, 0.2f) : Color.white;
+                itemLabel.style.unityFontStyleAndWeight = isEmpoweredArtifact ? FontStyle.Bold : FontStyle.Normal;
                 itemLabel.style.flexGrow = 1;
                 itemRow.Add(itemLabel);
 
@@ -681,7 +760,7 @@ namespace SBGames.Inventory.UI
                 {
                     var useBtn = new Button(() =>
                     {
-                        if (userInventory.ConsumeItem(slotIndex, _selectedCharacter, out string msg))
+                        if (inventoryManager.ConsumeItem(slotIndex, _selectedCharacter, out string msg))
                         {
                             SetStatus(msg);
                         }
@@ -714,7 +793,7 @@ namespace SBGames.Inventory.UI
                             return;
                         }
 
-                        bool success = userInventory.EquipToCharacter(
+                        bool success = inventoryManager.EquipToCharacter(
                             slotIndex,
                             _selectedCharacter,
                             -1,
@@ -738,7 +817,7 @@ namespace SBGames.Inventory.UI
                 // Drop 1 button
                 var dropBtn = new Button(() =>
                 {
-                    userInventory.RemoveItemAt(slotIndex, 1);
+                    inventoryManager.RemoveItemAt(slotIndex, 1);
                     SetStatus($"Dropped 1x {itemName}.");
                 })
                 { text = "Drop" };
@@ -762,7 +841,7 @@ namespace SBGames.Inventory.UI
 
         #region Mockup Item Creation
 
-        private void CreateTestItemDefinitions()
+        private void CreateTestItemData()
         {
             var healEffect = ScriptableObject.CreateInstance<RestoreHealthEffect>();
             healEffect.HealAmount = 35f;
@@ -770,7 +849,7 @@ namespace SBGames.Inventory.UI
             var manaEffect = ScriptableObject.CreateInstance<RestoreManaEffect>();
             manaEffect.ManaAmount = 25f;
 
-            _potionItem = ItemDefinition.CreateRuntimeInstance(
+            _potionItem = ItemDataSO.CreateRuntimeInstance(
                 id: "item_health_potion",
                 itemName: "Health Potion",
                 itemType: ItemType.Consumable,
@@ -778,7 +857,7 @@ namespace SBGames.Inventory.UI
                 maxStack: 99,
                 effect: healEffect);
 
-            _manaItem = ItemDefinition.CreateRuntimeInstance(
+            _manaItem = ItemDataSO.CreateRuntimeInstance(
                 id: "item_mana_potion",
                 itemName: "Mana Potion",
                 itemType: ItemType.Consumable,
@@ -786,7 +865,7 @@ namespace SBGames.Inventory.UI
                 maxStack: 99,
                 effect: manaEffect);
 
-            _atkRuneItem = ItemDefinition.CreateRuntimeInstance(
+            _atkRuneItem = ItemDataSO.CreateRuntimeInstance(
                 id: "rune_fierce_strike",
                 itemName: "Fierce Attack Rune",
                 itemType: ItemType.Rune,
@@ -798,7 +877,7 @@ namespace SBGames.Inventory.UI
                     new ItemStatModifierData(StatType.Attack, 0.15f, StatModType.PercentAdd)
                 });
 
-            _critRuneItem = ItemDefinition.CreateRuntimeInstance(
+            _critRuneItem = ItemDataSO.CreateRuntimeInstance(
                 id: "rune_sharp_eye",
                 itemName: "Sharp Crit Rune",
                 itemType: ItemType.Rune,
@@ -809,7 +888,7 @@ namespace SBGames.Inventory.UI
                     new ItemStatModifierData(StatType.CritChance, 0.12f, StatModType.Flat)
                 });
 
-            _speedArtifactItem = ItemDefinition.CreateRuntimeInstance(
+            _speedArtifactItem = ItemDataSO.CreateRuntimeInstance(
                 id: "artifact_wind_boots",
                 itemName: "Windwalker Boots",
                 itemType: ItemType.Artifact,
@@ -876,7 +955,7 @@ namespace SBGames.Inventory.UI
         /// <summary>
         /// Prompts the user to select which Rune Slot on the active character to inscribe the rune into.
         /// </summary>
-        private void ShowInscribeSlotSelectionModal(int userSlotIndex, ItemDefinition runeItem)
+        private void ShowInscribeSlotSelectionModal(int userSlotIndex, ItemDataSO runeItem)
         {
             if (_selectedCharacter == null || _selectedCharacter.Inventory == null)
             {
@@ -925,7 +1004,7 @@ namespace SBGames.Inventory.UI
                     {
                         // Slot is empty -> Inscribe directly
                         HideModal();
-                        bool success = userInventory.EquipToCharacter(
+                        bool success = inventoryManager.EquipToCharacter(
                             userSlotIndex,
                             _selectedCharacter,
                             targetSlotIndex,
@@ -990,9 +1069,9 @@ namespace SBGames.Inventory.UI
         /// </summary>
         private void ShowInscribeConfirmationModal(
             int userSlotIndex,
-            ItemDefinition newRune,
+            ItemDataSO newRune,
             int targetSlotIndex,
-            ItemDefinition oldRune,
+            ItemDataSO oldRune,
             string slotName)
         {
             _modalBox.Clear();
@@ -1068,7 +1147,7 @@ namespace SBGames.Inventory.UI
             var confirmBtn = new Button(() =>
             {
                 HideModal();
-                bool success = userInventory.EquipToCharacter(
+                bool success = inventoryManager.EquipToCharacter(
                     userSlotIndex,
                     _selectedCharacter,
                     targetSlotIndex,
@@ -1103,7 +1182,7 @@ namespace SBGames.Inventory.UI
         /// </summary>
         private void ShowPickRuneForSlotModal(int targetSlotIndex, EquipmentSlot slot)
         {
-            if (userInventory == null || userInventory.Inventory == null) return;
+            if (inventoryManager == null) return;
 
             _modalBox.Clear();
             _modalOverlay.style.display = DisplayStyle.Flex;
@@ -1129,12 +1208,11 @@ namespace SBGames.Inventory.UI
             runeList.style.marginBottom = 12;
 
             int availableRuneCount = 0;
-            var inv = userInventory.Inventory;
-            for (int i = 0; i < inv.Capacity; i++)
+            for (int i = 0; i < inventoryManager.Capacity; i++)
             {
                 int userSlotIndex = i;
-                var userSlot = inv.GetSlot(i);
-                if (userSlot.IsEmpty || userSlot.Item.ItemType != ItemType.Rune) continue;
+                var userSlot = inventoryManager.GetSlot(i);
+                if (userSlot == null || userSlot.IsEmpty || userSlot.Item == null || userSlot.Item.ItemType != ItemType.Rune) continue;
 
                 availableRuneCount++;
                 var runeItem = userSlot.Item;
@@ -1148,7 +1226,7 @@ namespace SBGames.Inventory.UI
                     else
                     {
                         HideModal();
-                        bool success = userInventory.EquipToCharacter(
+                        bool success = inventoryManager.EquipToCharacter(
                             userSlotIndex,
                             _selectedCharacter,
                             targetSlotIndex,

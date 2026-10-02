@@ -2,7 +2,6 @@
 using SBGames.Input;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.UI;
-using SBGames.Inventory.User;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -27,13 +26,13 @@ namespace SBGames.Inventory.Editor
                 Undo.RegisterCreatedObjectUndo(inputGo, "Create InputManager");
             }
 
-            // 2. Setup UserInventoryManager
-            var userInv = Object.FindAnyObjectByType<UserInventoryManager>();
-            if (userInv == null)
+            // 2. Setup InventoryManager
+            var invMgr = Object.FindAnyObjectByType<SBGames.Inventory.Core.InventoryManager>();
+            if (invMgr == null)
             {
-                var userInvGo = new GameObject("[UserInventoryManager]");
-                userInv = userInvGo.AddComponent<UserInventoryManager>();
-                Undo.RegisterCreatedObjectUndo(userInvGo, "Create UserInventoryManager");
+                var invGo = new GameObject("[InventoryManager]");
+                invMgr = invGo.AddComponent<SBGames.Inventory.Core.InventoryManager>();
+                Undo.RegisterCreatedObjectUndo(invGo, "Create InventoryManager");
             }
 
             // 3. Setup CharacterInventoryManager on any Character in the scene
@@ -59,7 +58,7 @@ namespace SBGames.Inventory.Editor
             }
 
             Selection.activeGameObject = uiController.gameObject;
-            Debug.Log("<color=green>[SBGames] Inventory & InputManager setup successfully! Press PLAY and hit 'B' to toggle the inventory.</color>");
+            Debug.Log("<color=green>[SBGames] Unified Inventory & InputManager setup successfully! Press PLAY and hit 'B' to toggle the inventory.</color>");
         }
     }
 }

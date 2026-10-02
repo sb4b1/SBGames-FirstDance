@@ -4,6 +4,7 @@ using NUnit.Framework;
 using SBGames.Database;
 using SBGames.Database.Runtime;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEngine;
 
 namespace SBGames.Tests
@@ -16,21 +17,21 @@ namespace SBGames.Tests
         private CharacterDatabaseSO _charDb;
         private MasterGameDatabaseSO _masterDb;
 
-        private ItemDefinition _potion;
-        private ItemDefinition _runeFire;
-        private ItemDefinition _artifactRelic;
+        private ItemDataSO _potion;
+        private ItemDataSO _runeFire;
+        private ItemDataSO _artifactRelic;
         private SkillData _fireballSkill;
         private CharacterEntry _heroChar;
 
         [SetUp]
         public void Setup()
         {
-            _potion = ItemDefinition.CreateRuntimeInstance("potion_health", "Health Potion", ItemType.Consumable, maxStack: 10);
-            _runeFire = ItemDefinition.CreateRuntimeInstance("rune_fire", "Fire Rune", ItemType.Rune);
-            _artifactRelic = ItemDefinition.CreateRuntimeInstance("artifact_chalice", "Sacred Chalice", ItemType.Artifact);
+            _potion = ItemDataSO.CreateRuntimeInstance("potion_health", "Health Potion", ItemType.Consumable, maxStack: 10);
+            _runeFire = ItemDataSO.CreateRuntimeInstance("rune_fire", "Fire Rune", ItemType.Rune);
+            _artifactRelic = ItemDataSO.CreateRuntimeInstance("artifact_chalice", "Sacred Chalice", ItemType.Artifact);
 
             _itemDb = ScriptableObject.CreateInstance<ItemDatabaseSO>();
-            _itemDb.SetItemsEditor(new List<ItemDefinition> { _potion, _runeFire, _artifactRelic });
+            _itemDb.SetItemsEditor(new List<ItemDataSO> { _potion, _runeFire, _artifactRelic });
             _itemDb.Initialize();
 
             _fireballSkill = ScriptableObject.CreateInstance<SkillData>();

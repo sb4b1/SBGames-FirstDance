@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEngine;
 
 namespace SBGames.Database.Runtime
@@ -52,7 +52,7 @@ namespace SBGames.Database.Runtime
 
         #region Item Queries
 
-        public static ItemDefinition GetItem(string id)
+        public static ItemDataSO GetItem(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -76,7 +76,7 @@ namespace SBGames.Database.Runtime
             return item;
         }
 
-        public static bool TryGetItem(string id, out ItemDefinition item)
+        public static bool TryGetItem(string id, out ItemDataSO item)
         {
             item = null;
             if (string.IsNullOrWhiteSpace(id)) return false;
@@ -87,24 +87,24 @@ namespace SBGames.Database.Runtime
             return db.TryGet(id, out item);
         }
 
-        public static IEnumerable<ItemDefinition> GetAllItems()
+        public static IEnumerable<ItemDataSO> GetAllItems()
         {
-            return ActiveDatabase?.Items?.Items ?? Enumerable.Empty<ItemDefinition>();
+            return ActiveDatabase?.Items?.Items ?? Enumerable.Empty<ItemDataSO>();
         }
 
-        public static IEnumerable<ItemDefinition> GetRunes()
+        public static IEnumerable<ItemDataSO> GetRunes()
         {
-            return ActiveDatabase?.Items?.GetRunes() ?? Enumerable.Empty<ItemDefinition>();
+            return ActiveDatabase?.Items?.GetRunes() ?? Enumerable.Empty<ItemDataSO>();
         }
 
-        public static IEnumerable<ItemDefinition> GetArtifacts()
+        public static IEnumerable<ItemDataSO> GetArtifacts()
         {
-            return ActiveDatabase?.Items?.GetArtifacts() ?? Enumerable.Empty<ItemDefinition>();
+            return ActiveDatabase?.Items?.GetArtifacts() ?? Enumerable.Empty<ItemDataSO>();
         }
 
-        public static IEnumerable<ItemDefinition> GetConsumables()
+        public static IEnumerable<ItemDataSO> GetConsumables()
         {
-            return ActiveDatabase?.Items?.GetConsumables() ?? Enumerable.Empty<ItemDefinition>();
+            return ActiveDatabase?.Items?.GetConsumables() ?? Enumerable.Empty<ItemDataSO>();
         }
 
         #endregion

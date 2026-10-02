@@ -449,6 +449,7 @@ namespace SBGames.Loop.UI
         public void RefreshUI()
         {
             if (dungeonMaster == null) EnsureDependencies();
+            dungeonMaster?.SyncWithInventory();
 
             // Header Stats
             if (headerStatsLabel != null)
@@ -505,7 +506,8 @@ namespace SBGames.Loop.UI
                 card.style.borderBottomRightRadius = 6;
 
                 var infoGroup = new VisualElement();
-                var nameLbl = new Label($"💎 {art.ArtifactName}");
+                string badgeText = !string.IsNullOrEmpty(art.LocationBadge) ? $" {art.LocationBadge}" : "";
+                var nameLbl = new Label($"💎 {art.ArtifactName}{badgeText}");
                 nameLbl.style.fontSize = 12;
                 nameLbl.style.unityFontStyleAndWeight = FontStyle.Bold;
                 nameLbl.style.color = new Color(0.9f, 0.85f, 0.6f);

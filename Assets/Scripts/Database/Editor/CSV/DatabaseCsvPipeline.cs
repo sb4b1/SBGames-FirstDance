@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using SBGames.Database.CSV;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEditor;
 using UnityEngine;
 
@@ -72,14 +73,14 @@ namespace SBGames.Database.Editor.CSV
 
         public static void ExportItemsCsv()
         {
-            var itemGuids = AssetDatabase.FindAssets("t:ItemDefinition");
+            var itemGuids = AssetDatabase.FindAssets("t:ItemDataSO");
             var headers = new[] { "Id", "ItemName", "Description", "ItemType", "EquippableSlotType", "MaxStack" };
             var rows = new List<Dictionary<string, string>>();
 
             foreach (var guid in itemGuids)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
-                var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
+                var item = AssetDatabase.LoadAssetAtPath<ItemDataSO>(path);
                 if (item == null) continue;
 
                 var row = new Dictionary<string, string>
@@ -114,12 +115,12 @@ namespace SBGames.Database.Editor.CSV
             EnsureDirectory(DefaultItemAssetFolder);
 
             // Index existing assets by ID
-            var existingItems = new Dictionary<string, ItemDefinition>(StringComparer.OrdinalIgnoreCase);
-            var itemGuids = AssetDatabase.FindAssets("t:ItemDefinition");
+            var existingItems = new Dictionary<string, ItemDataSO>(StringComparer.OrdinalIgnoreCase);
+            var itemGuids = AssetDatabase.FindAssets("t:ItemDataSO");
             foreach (var guid in itemGuids)
             {
                 var p = AssetDatabase.GUIDToAssetPath(guid);
-                var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(p);
+                var item = AssetDatabase.LoadAssetAtPath<ItemDataSO>(p);
                 if (item != null && !string.IsNullOrWhiteSpace(item.Id))
                 {
                     existingItems[item.Id] = item;
@@ -131,11 +132,11 @@ namespace SBGames.Database.Editor.CSV
             {
                 if (!row.TryGetValue("Id", out var id) || string.IsNullOrWhiteSpace(id)) continue;
 
-                ItemDefinition targetItem;
+                ItemDataSO targetItem;
                 if (!existingItems.TryGetValue(id, out targetItem))
                 {
                     // Create new asset
-                    targetItem = ScriptableObject.CreateInstance<ItemDefinition>();
+                    targetItem = ScriptableObject.CreateInstance<ItemDataSO>();
                     string assetPath = $"{DefaultItemAssetFolder}/{SanitizeFilename(id)}.asset";
                     AssetDatabase.CreateAsset(targetItem, assetPath);
                     existingItems[id] = targetItem;

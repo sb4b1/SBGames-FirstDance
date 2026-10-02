@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEditor;
 using UnityEngine;
 
@@ -149,7 +150,7 @@ namespace SBGames.Database.Editor
             for (int i = 0; i < listProp.arraySize; i++)
             {
                 var element = listProp.GetArrayElementAtIndex(i);
-                var item = element.objectReferenceValue as ItemDefinition;
+                var item = element.objectReferenceValue as ItemDataSO;
 
                 if (!string.IsNullOrEmpty(_searchFilter))
                 {
@@ -220,10 +221,10 @@ namespace SBGames.Database.Editor
 
         private void SortList(SerializedProperty listProp)
         {
-            var list = new List<ItemDefinition>();
+            var list = new List<ItemDataSO>();
             for (int i = 0; i < listProp.arraySize; i++)
             {
-                var item = listProp.GetArrayElementAtIndex(i).objectReferenceValue as ItemDefinition;
+                var item = listProp.GetArrayElementAtIndex(i).objectReferenceValue as ItemDataSO;
                 if (item != null) list.Add(item);
             }
 

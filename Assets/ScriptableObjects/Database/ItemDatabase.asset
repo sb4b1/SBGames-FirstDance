@@ -13,11 +13,13 @@ MonoBehaviour:
   m_Name: ItemDatabase
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.ItemDatabaseSO
   artifacts:
-  - {fileID: 11400000, guid: 0cbf1ddc869fcc34696ec9f5157babb0, type: 2}
+  - {fileID: 11400000, guid: 7608e2bc7f5ca5548ac74c522fcf28a7, type: 2}
+  - {fileID: 11400000, guid: 7e2a0dfc0c67f0b4e8a48770fe303a03, type: 2}
   runes:
-  - {fileID: 11400000, guid: bc3d0d972d6710b4da1e4737d0dd9bc3, type: 2}
+  - {fileID: 11400000, guid: 4dc20b23764d10f418355736bb8d4071, type: 2}
   consumables: []
   otherItems: []
   items:
-  - {fileID: 11400000, guid: 0cbf1ddc869fcc34696ec9f5157babb0, type: 2}
-  - {fileID: 11400000, guid: bc3d0d972d6710b4da1e4737d0dd9bc3, type: 2}
+  - {fileID: 11400000, guid: 7608e2bc7f5ca5548ac74c522fcf28a7, type: 2}
+  - {fileID: 11400000, guid: 7e2a0dfc0c67f0b4e8a48770fe303a03, type: 2}
+  - {fileID: 11400000, guid: 4dc20b23764d10f418355736bb8d4071, type: 2}

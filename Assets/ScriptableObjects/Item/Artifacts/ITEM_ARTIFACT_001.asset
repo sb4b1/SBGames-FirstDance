@@ -9,15 +9,22 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f75d8ddb8727044458cb90acec8ac7cb, type: 3}
-  m_Name: Brown_Boots
-  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Core.ItemDefinition
-  id: ITEM_ARTIFACT_001
-  itemName: Brown_Boots
+  m_Script: {fileID: 11500000, guid: 437b9cba77243de488681b3e7f844111, type: 3}
+  m_Name: ITEM_ARTIFACT_001
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Data.ItemDataSO
+  itemID: ITEM_ARTIFACT_001
+  displayName: Brown boots
   icon: {fileID: -6959437438076263862, guid: 3883a2d2139bf284d8fc91d31ad888d2, type: 3}
   description: 
   itemType: 2
   equippableSlotType: 2
+  baseValue: 10
+  isStackable: 0
   maxStack: 1
-  statModifiers: []
+  maxSockets: 0
+  statModifiers:
+  - StatType: 4
+    Value: 0.1
+    ModType: 200
+    OrderOverride: 0
   consumableEffect: {fileID: 0}

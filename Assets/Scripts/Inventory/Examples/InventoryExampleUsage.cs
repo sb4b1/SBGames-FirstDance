@@ -2,8 +2,8 @@ using System.Text;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
 using SBGames.Inventory.Core.Effects;
+using SBGames.Inventory.Data;
 using SBGames.Inventory.Stats;
-using SBGames.Inventory.User;
 using UnityEngine;
 
 namespace SBGames.Inventory.Examples
@@ -72,8 +72,8 @@ namespace SBGames.Inventory.Examples
             log.AppendLine("\n[Test 1] User Inventory Stacking & Capacity Limits");
             var inv = new Core.Inventory(capacity: 3);
 
-            var potion = ItemDefinition.CreateRuntimeInstance("pot_hp", "Health Potion", ItemType.Consumable, maxStack: 5);
-            var sword = ItemDefinition.CreateRuntimeInstance("sword", "Iron Sword", ItemType.Misc, maxStack: 1);
+            var potion = ItemDataSO.CreateRuntimeInstance("pot_hp", "Health Potion", ItemType.Consumable, maxStack: 5);
+            var sword = ItemDataSO.CreateRuntimeInstance("sword", "Iron Sword", ItemType.Misc, maxStack: 1);
 
             // Add 3 potions -> should go into slot 0
             bool ok = true;
@@ -121,7 +121,7 @@ namespace SBGames.Inventory.Examples
             ok &= Assert(Mathf.Approximately(statsManager.Damage.Value, 20f), $"Initial damage is 20 (got {statsManager.Damage.Value})", log);
 
             // Create Rune: +10 Flat Damage, +20% PercentAdd Damage
-            var atkRune = ItemDefinition.CreateRuntimeInstance(
+            var atkRune = ItemDataSO.CreateRuntimeInstance(
                 "rune_atk",
                 "Great Rune of Might",
                 ItemType.Rune,
@@ -164,8 +164,8 @@ namespace SBGames.Inventory.Examples
             var charInv = new CharacterInventory();
 
             // Artifacts
-            var bootsA = ItemDefinition.CreateRuntimeInstance("bootsA", "Boots of Swiftness", ItemType.Artifact, EquipmentSlotType.Artifact);
-            var bootsB = ItemDefinition.CreateRuntimeInstance("bootsB", "Boots of Haste", ItemType.Artifact, EquipmentSlotType.Artifact);
+            var bootsA = ItemDataSO.CreateRuntimeInstance("bootsA", "Boots of Swiftness", ItemType.Artifact, EquipmentSlotType.Artifact);
+            var bootsB = ItemDataSO.CreateRuntimeInstance("bootsB", "Boots of Haste", ItemType.Artifact, EquipmentSlotType.Artifact);
 
             // Slot 4 is Artifact Slot
             int artifactSlot = 4;
@@ -179,8 +179,8 @@ namespace SBGames.Inventory.Examples
             ok &= Assert(charInv.GetSlot(artifactSlot).EquippedItem == bootsB, "Boots B is now equipped", log);
 
             // Runes
-            var runeA = ItemDefinition.CreateRuntimeInstance("runeA", "Fire Rune", ItemType.Rune, EquipmentSlotType.Rune);
-            var runeB = ItemDefinition.CreateRuntimeInstance("runeB", "Ice Rune", ItemType.Rune, EquipmentSlotType.Rune);
+            var runeA = ItemDataSO.CreateRuntimeInstance("runeA", "Fire Rune", ItemType.Rune, EquipmentSlotType.Rune);
+            var runeB = ItemDataSO.CreateRuntimeInstance("runeB", "Ice Rune", ItemType.Rune, EquipmentSlotType.Rune);
 
             int runeSlot = 0;
             charInv.Equip(runeSlot, runeA, out _, out _);
@@ -221,11 +221,11 @@ namespace SBGames.Inventory.Examples
 
             var healEffect = ScriptableObject.CreateInstance<RestoreHealthEffect>();
             healEffect.HealAmount = 30f;
-            var potion = ItemDefinition.CreateRuntimeInstance("pot_hp", "Health Potion", ItemType.Consumable, effect: healEffect);
+            var potion = ItemDataSO.CreateRuntimeInstance("pot_hp", "Health Potion", ItemType.Consumable, effect: healEffect);
 
             var userGo = new GameObject("[TestUserInv]");
-            var userInv = userGo.AddComponent<UserInventoryManager>();
-            userInv.InitializeInventory();
+            var userInv = userGo.AddComponent<InventoryManager>();
+            userInv.InitializeInventory(10);
             userInv.AddItem(potion, 2);
 
             var charInvMgr = charGo.AddComponent<CharacterInventoryManager>();
@@ -235,7 +235,7 @@ namespace SBGames.Inventory.Examples
             bool consumedAtFull = userInv.ConsumeItem(0, charInvMgr, out string msgFull);
             bool ok = true;
             ok &= Assert(!consumedAtFull, "Cannot consume potion at full life (item preserved)", log);
-            ok &= Assert(userInv.Inventory.GetSlot(0).Amount == 2, "Potion count remains 2", log);
+            ok &= Assert(userInv.GetSlot(0).Quantity == 2, "Potion count remains 2", log);
 
             // Deal 50 damage
             stats.TakeDamage(50f);
@@ -245,7 +245,7 @@ namespace SBGames.Inventory.Examples
             bool consumedDamaged = userInv.ConsumeItem(0, charInvMgr, out string msgDamaged);
             ok &= Assert(consumedDamaged, "Potion consumed successfully when injured", log);
             ok &= Assert(Mathf.Approximately(stats.Life, 80f), "Life healed by 30 (life is now 80)", log);
-            ok &= Assert(userInv.Inventory.GetSlot(0).Amount == 1, "Potion quantity decremented to 1", log);
+            ok &= Assert(userInv.GetSlot(0).Quantity == 1, "Potion quantity decremented to 1", log);
 
             DestroyImmediate(charGo);
             DestroyImmediate(userGo);
@@ -266,7 +266,7 @@ namespace SBGames.Inventory.Examples
             var charInv = new CharacterInventory();
             var binder = new CharacterEquipmentStatBinder(charInv, stats);
 
-            var rune = ItemDefinition.CreateRuntimeInstance(
+            var rune = ItemDataSO.CreateRuntimeInstance(
                 "rune_atk",
                 "Combat Rune",
                 ItemType.Rune,

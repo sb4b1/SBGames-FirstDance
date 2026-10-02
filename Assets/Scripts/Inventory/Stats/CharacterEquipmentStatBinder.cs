@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 using UnityEngine;
 
 namespace SBGames.Inventory.Stats
@@ -39,7 +40,7 @@ namespace SBGames.Inventory.Stats
         /// <summary>
         /// Applies stat modifiers for an equipped item.
         /// </summary>
-        private void HandleItemEquipped(int slotIndex, EquipmentSlot slot, ItemDefinition item)
+        private void HandleItemEquipped(int slotIndex, EquipmentSlot slot, ItemDataSO item)
         {
             if (item == null || _statsManager == null) return;
 
@@ -50,7 +51,7 @@ namespace SBGames.Inventory.Stats
         /// <summary>
         /// Removes all stat modifiers originating from the unequipped item.
         /// </summary>
-        private void HandleItemUnequipped(int slotIndex, EquipmentSlot slot, ItemDefinition item)
+        private void HandleItemUnequipped(int slotIndex, EquipmentSlot slot, ItemDataSO item)
         {
             if (item == null || _statsManager == null) return;
 
@@ -58,7 +59,7 @@ namespace SBGames.Inventory.Stats
             OnStatsChanged?.Invoke();
         }
 
-        private void ApplyModifiersFromItem(ItemDefinition item)
+        private void ApplyModifiersFromItem(ItemDataSO item)
         {
             IReadOnlyList<ItemStatModifierData> modifiers = item.StatModifiers;
             if (modifiers == null || modifiers.Count == 0) return;
@@ -75,7 +76,7 @@ namespace SBGames.Inventory.Stats
             }
         }
 
-        private void RemoveModifiersFromItem(ItemDefinition item)
+        private void RemoveModifiersFromItem(ItemDataSO item)
         {
             IReadOnlyList<ItemStatModifierData> modifiers = item.StatModifiers;
             if (modifiers == null || modifiers.Count == 0) return;

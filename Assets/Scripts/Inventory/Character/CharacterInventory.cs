@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SBGames.Inventory.Core;
+using SBGames.Inventory.Data;
 
 namespace SBGames.Inventory.Character
 {
@@ -22,17 +23,17 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Fired when an item is equipped: (slotIndex, slot, equippedItem).
         /// </summary>
-        public event Action<int, EquipmentSlot, ItemDefinition> OnItemEquipped;
+        public event Action<int, EquipmentSlot, ItemDataSO> OnItemEquipped;
 
         /// <summary>
         /// Fired when an item is unequipped: (slotIndex, slot, unequippedItem).
         /// </summary>
-        public event Action<int, EquipmentSlot, ItemDefinition> OnItemUnequipped;
+        public event Action<int, EquipmentSlot, ItemDataSO> OnItemUnequipped;
 
         /// <summary>
         /// Fired when an item (such as a rune) is destroyed / deleted: (slotIndex, slot, destroyedItem).
         /// </summary>
-        public event Action<int, EquipmentSlot, ItemDefinition> OnItemDestroyed;
+        public event Action<int, EquipmentSlot, ItemDataSO> OnItemDestroyed;
 
         /// <summary>
         /// Fired when any slot's equipped state changes: (slotIndex, slot).
@@ -82,7 +83,7 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Checks if an item can be equipped into the specified slot index.
         /// </summary>
-        public bool CanEquip(int slotIndex, ItemDefinition item, out string failureReason)
+        public bool CanEquip(int slotIndex, ItemDataSO item, out string failureReason)
         {
             var slot = GetSlot(slotIndex);
             if (slot == null)
@@ -97,7 +98,7 @@ namespace SBGames.Inventory.Character
         /// <summary>
         /// Finds the first empty slot suitable for the specified item, or -1 if none found.
         /// </summary>
-        public int FindFirstAvailableSlot(ItemDefinition item)
+        public int FindFirstAvailableSlot(ItemDataSO item)
         {
             if (item == null || !item.IsEquippable) return -1;
 
@@ -119,9 +120,9 @@ namespace SBGames.Inventory.Character
         /// </summary>
         public bool Equip(
             int slotIndex,
-            ItemDefinition item,
-            out ItemDefinition displacedItem,
-            out ItemDefinition destroyedRune,
+            ItemDataSO item,
+            out ItemDataSO displacedItem,
+            out ItemDataSO destroyedRune,
             bool confirmDestroyRune = true)
         {
             displacedItem = null;
@@ -181,7 +182,7 @@ namespace SBGames.Inventory.Character
         /// Unequips the item in the specified slot, returning it in unequippedItem.
         /// Runes cannot be unequipped; returns false for runes.
         /// </summary>
-        public bool Unequip(int slotIndex, out ItemDefinition unequippedItem)
+        public bool Unequip(int slotIndex, out ItemDataSO unequippedItem)
         {
             unequippedItem = null;
             var slot = GetSlot(slotIndex);
@@ -202,7 +203,7 @@ namespace SBGames.Inventory.Character
         /// Deletes/destroys the rune currently equipped in the specified slot.
         /// Runes cannot be unequipped back to inventory; they can only be deleted or replaced.
         /// </summary>
-        public bool DestroyRune(int slotIndex, out ItemDefinition destroyedRune)
+        public bool DestroyRune(int slotIndex, out ItemDataSO destroyedRune)
         {
             destroyedRune = null;
             var slot = GetSlot(slotIndex);
@@ -229,9 +230,9 @@ namespace SBGames.Inventory.Character
         /// Unequips all unequipped items from slots that allow unequipping (e.g. Artifacts).
         /// Runes cannot be unequipped and remain in their slots.
         /// </summary>
-        public List<ItemDefinition> UnequipAll()
+        public List<ItemDataSO> UnequipAll()
         {
-            var unequipped = new List<ItemDefinition>();
+            var unequipped = new List<ItemDataSO>();
             for (int i = 0; i < _slots.Count; i++)
             {
                 if (_slots[i].IsOccupied && _slots[i].CanUnequip && Unequip(i, out var item))
