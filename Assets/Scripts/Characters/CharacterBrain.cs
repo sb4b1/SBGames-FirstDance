@@ -77,13 +77,19 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public void OnSpawn()
     {
         // Register this character when spawned
-        CharacterManager.Instance.RegisterCharacter(this);
+        if (CharacterManager.Instance != null)
+        {
+            CharacterManager.Instance.RegisterCharacter(this);
+        }
     }
 
     public void OnDespawn()
     {
         // Unregister this character when despawned
-        CharacterManager.Instance.UnregisterCharacter(this);
+        if (CharacterManager.Instance != null)
+        {
+            CharacterManager.Instance.UnregisterCharacter(this);
+        }
     }
 
     // =========================

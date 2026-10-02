@@ -12,17 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23eac72d5e58baf48b76b02207da9428, type: 3}
   m_Name: CharacterDatabase
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.CharacterDatabaseSO
-  characters:
-  - id: MONSTER_N001
-    characterName: MONSTER_N001
-    prefab: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-    baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
-    defaultSkillIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
+  characters: []

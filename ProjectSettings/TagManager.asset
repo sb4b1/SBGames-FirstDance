@@ -53,6 +53,9 @@ TagManager:
   - name: Character
     uniqueID: 4229403911
     locked: 0
+  - name: Item
+    uniqueID: 3523003903
+    locked: 0
   - name: SkillFX
     uniqueID: 1230265923
     locked: 0

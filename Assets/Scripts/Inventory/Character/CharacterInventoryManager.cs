@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Core;
 using SBGames.Inventory.Stats;
@@ -18,6 +19,10 @@ namespace SBGames.Inventory.Character
         [Header("Character Identity")]
         [SerializeField] private string characterDisplayName = "Hero";
 
+        [Header("Drop Settings")]
+        [SerializeField, Range(0f, 1f)] private float artifactDropChance = 0.5f;
+        [SerializeField] private bool autoDropOnDeath = true;
+
         [Header("Dependencies")]
         [SerializeField] private CharacterStatsManager statsManager;
 
@@ -29,7 +34,21 @@ namespace SBGames.Inventory.Character
         public CharacterInventory Inventory => _inventory;
         public CharacterEquipmentStatBinder StatBinder => _statBinder;
 
+        public float ArtifactDropChance
+        {
+            get => artifactDropChance;
+            set => artifactDropChance = Mathf.Clamp01(value);
+        }
+
+        public bool AutoDropOnDeath
+        {
+            get => autoDropOnDeath;
+            set => autoDropOnDeath = value;
+        }
+
         public event Action OnEquipmentOrStatsChanged;
+        public event Action<CharacterInventoryManager, ItemDefinition, Vector3> OnArtifactDropped;
+        public static event Action<CharacterInventoryManager, ItemDefinition, Vector3> OnAnyArtifactDropped;
 
         private void Awake()
         {
@@ -43,7 +62,36 @@ namespace SBGames.Inventory.Character
 
         private void OnDestroy()
         {
+            if (statsManager != null)
+            {
+                statsManager.OnCharacterDeath -= HandleCharacterDeath;
+            }
             _statBinder?.Dispose();
+        }
+
+        private void OnEnable()
+        {
+            if (StatsManager != null)
+            {
+                StatsManager.OnCharacterDeath -= HandleCharacterDeath;
+                StatsManager.OnCharacterDeath += HandleCharacterDeath;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (statsManager != null)
+            {
+                statsManager.OnCharacterDeath -= HandleCharacterDeath;
+            }
+        }
+
+        private void HandleCharacterDeath(CharacterStatsManager stats)
+        {
+            if (autoDropOnDeath)
+            {
+                TryDropEquippedArtifacts();
+            }
         }
 
         public void InitializeInventory()
@@ -60,6 +108,9 @@ namespace SBGames.Inventory.Character
 
             if (statsManager != null)
             {
+                statsManager.OnCharacterDeath -= HandleCharacterDeath;
+                statsManager.OnCharacterDeath += HandleCharacterDeath;
+
                 _statBinder = new CharacterEquipmentStatBinder(_inventory, statsManager);
                 _statBinder.OnStatsChanged += () => OnEquipmentOrStatsChanged?.Invoke();
             }
@@ -115,6 +166,43 @@ namespace SBGames.Inventory.Character
         public ItemDefinition GetEquippedItem(int slotIndex)
         {
             return _inventory?.GetSlot(slotIndex)?.EquippedItem;
+        }
+
+        /// <summary>
+        /// Evaluates and drops equipped artifacts based on drop chance.
+        /// If dropChance is negative (default), uses the configured artifactDropChance field.
+        /// Successfully dropped artifacts are unequipped from the character and broadcast via drop events.
+        /// </summary>
+        /// <param name="dropChance">Override drop chance between 0 and 1. If negative, uses artifactDropChance.</param>
+        /// <returns>List of unequipped artifacts that dropped.</returns>
+        public List<ItemDefinition> TryDropEquippedArtifacts(float dropChance = -1f)
+        {
+            var droppedArtifacts = new List<ItemDefinition>();
+            if (_inventory == null) return droppedArtifacts;
+
+            float effectiveChance = dropChance >= 0f ? Mathf.Clamp01(dropChance) : artifactDropChance;
+            Vector3 dropPos = transform.position;
+
+            for (int i = 0; i < _inventory.SlotCount; i++)
+            {
+                var slot = _inventory.GetSlot(i);
+                if (slot == null || !slot.IsOccupied || slot.SlotType != EquipmentSlotType.Artifact)
+                {
+                    continue;
+                }
+
+                if (UnityEngine.Random.value <= effectiveChance)
+                {
+                    if (_inventory.Unequip(i, out var unequippedItem) && unequippedItem != null)
+                    {
+                        droppedArtifacts.Add(unequippedItem);
+                        OnArtifactDropped?.Invoke(this, unequippedItem, dropPos);
+                        OnAnyArtifactDropped?.Invoke(this, unequippedItem, dropPos);
+                    }
+                }
+            }
+
+            return droppedArtifacts;
         }
     }
 }

@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using SBGames.Database.Runtime;
+using SBGames.Inventory.Character;
+using SBGames.Inventory.Core;
+using SBGames.Inventory.Core.Effects;
+using SBGames.Inventory.User;
 using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -30,6 +35,7 @@ using UnityEngine.InputSystem;
 ///  - DevTool.Time      : In-game timescale control, slow-motion, and frame stepping.
 ///  - DevTool.Assert    : Development assertions that strip cleanly in release builds.
 ///  - DevTool.Loop      : Core game loop, combat simulation, round stepping, and DM resources.
+///  - DevTool.Item      : Item spawning, preset catalog, and UserInventory/DungeonMaster artifact sync diagnostics.
 /// </summary>
 [DisallowMultipleComponent]
 [AddComponentMenu("SBGames/DevTool")]
@@ -81,6 +87,13 @@ public class DevTool : MonoBehaviour
     [Tooltip("Essence amount to grant / deduct in debug operations.")]
     [SerializeField] private int debugEssenceDelta = 10;
 
+    [Header("Item & Inventory Spawner")]
+    [Tooltip("Target ItemDefinition asset to spawn via Inspector.")]
+    [SerializeField] private ItemDefinition debugItemAsset;
+
+    [Tooltip("Quantity of items to spawn.")]
+    [SerializeField, Min(1)] private int debugSpawnAmount = 1;
+
     [Header("Frame Rate & Performance Settings")]
     [Tooltip("Target frame rate cap (-1 for uncapped / platform default, or specific values like 30, 60, 120, 144, 240).")]
     [SerializeField] private int targetFrameRate = -1;
@@ -94,9 +107,16 @@ public class DevTool : MonoBehaviour
 
     private bool cmNullChecked = false;
     private int selectedTab = 0;
-    private readonly string[] tabLabels = { "Status & Memory", "Time Controls", "Game Loop", "Characters", "Gizmo Config" };
+    private readonly string[] tabLabels = { "Status & Memory", "Time Controls", "Game Loop", "Characters", "Items & Sync", "Gizmo Config" };
     private Vector2 characterScrollPos;
     private Vector2 gameLoopScrollPos;
+    private Vector2 itemScrollPos;
+    private Vector2 itemBrowserScrollPos;
+    private int itemCategoryIndex = 0;
+    private readonly string[] itemCategoryTabs = { "All", "Artifacts", "Runes", "Consumables", "Other" };
+    private string itemSearchFilter = "";
+    private List<ItemDefinition> scannedDatabaseItems = new();
+    private bool isDatabaseScanned = false;
     private float fpsAccumulator = 0f;
     private int fpsFrameCount = 0;
     private float currentFps = 60f;
@@ -429,6 +449,41 @@ public class DevTool : MonoBehaviour
 
     #endregion
 
+    #region Inspector Debug: Items & Inventory Spawner
+
+    [ContextMenu("Debug/Items/Scan Database Items")]
+    [Button(true)]
+    public void DebugScanDatabase()
+    {
+        var items = Item.ScanDatabaseItems(true);
+        scannedDatabaseItems = items;
+        isDatabaseScanned = true;
+    }
+
+    [ContextMenu("Debug/Items/Spawn Item Asset")]
+    [Button(true)]
+    public void DebugSpawnItemAsset()
+    {
+        if (debugItemAsset != null)
+        {
+            Item.Spawn(debugItemAsset, debugSpawnAmount);
+        }
+        else
+        {
+            Log.Warning("DevTool.Item", this, "DebugItemAsset is not assigned in the Inspector.");
+        }
+    }
+
+    [ContextMenu("Debug/Items/Clear User Inventory")]
+    [Button(true)]
+    public void DebugClearUserInventory() => Item.ClearUserInventory();
+
+    [ContextMenu("Debug/Items/Log Artifact Sync Report")]
+    [Button(true)]
+    public void DebugLogArtifactSyncReport() => Item.LogSyncReport();
+
+    #endregion
+
     #region On-Screen Runtime Debug Overlay (OnGUI)
 
     private void OnGUI()
@@ -477,6 +532,9 @@ public class DevTool : MonoBehaviour
                 DrawCharactersTab();
                 break;
             case 4:
+                DrawItemsTab();
+                break;
+            case 5:
                 DrawGizmoConfigTab();
                 break;
         }
@@ -657,6 +715,165 @@ public class DevTool : MonoBehaviour
             }
             GUILayout.EndHorizontal();
         }
+        GUILayout.EndScrollView();
+    }
+
+    private void DrawItemsTab()
+    {
+        var userInv = Item.GetUserInventory();
+        var dm = Item.GetDungeonMaster();
+        var report = Item.GenerateSyncReport();
+
+        itemScrollPos = GUILayout.BeginScrollView(itemScrollPos, GUILayout.Height(280f));
+
+        // 1. Sync & Diagnostics Summary
+        GUILayout.Label("<b>[ Artifact Inventory & DM Sync Status ]</b>");
+        GUILayout.BeginVertical("box");
+        GUILayout.Label($"User Inventory: <b>{report.UserInventoryTotalItems}</b> items (<b>{report.UserInventoryArtifacts}</b> Artifacts) | Capacity: <b>{report.UserInventoryCapacity}</b>");
+        GUILayout.Label($"Equipped on Characters: <b>{report.EquippedArtifacts}</b> Artifacts");
+        GUILayout.Label($"Dungeon Master Artifacts: <b>{report.DungeonMasterArtifacts}</b> {(report.IsDungeonMasterAlive ? "<color=green>(Alive)</color>" : "<color=red>(Defeated)</color>")}");
+
+        if (report.HasMismatch)
+        {
+            GUILayout.Label("<color=red><b>⚠ [SYNC WARNING]</b> (Inventory + Equipped) Artifacts != DM Artifact Count!</color>");
+        }
+        else
+        {
+            GUILayout.Label("<color=green><b>✔ [SYNC OK]</b> Artifact counts are aligned.</color>");
+        }
+
+        if (GUILayout.Button("Print Full Sync Report to Console"))
+        {
+            Item.LogSyncReport();
+        }
+        GUILayout.EndVertical();
+
+        GUILayout.Space(6f);
+
+        // 2. Database Scanned Item Browser
+        if (!isDatabaseScanned)
+        {
+            scannedDatabaseItems = Item.ScanDatabaseItems();
+            isDatabaseScanned = true;
+        }
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"<b>[ Database Items ({scannedDatabaseItems.Count} Scanned) ]</b>");
+        if (GUILayout.Button("Rescan Database", GUILayout.Width(130f)))
+        {
+            scannedDatabaseItems = Item.ScanDatabaseItems(true);
+            isDatabaseScanned = true;
+        }
+        GUILayout.EndHorizontal();
+
+        // Category Filter Tabs
+        itemCategoryIndex = GUILayout.Toolbar(itemCategoryIndex, itemCategoryTabs, GUILayout.ExpandWidth(true));
+
+        // Search & Quantity Controls
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Search:", GUILayout.Width(50f));
+        itemSearchFilter = GUILayout.TextField(itemSearchFilter, GUILayout.ExpandWidth(true));
+        if (GUILayout.Button("✕", GUILayout.Width(22f)))
+        {
+            itemSearchFilter = string.Empty;
+        }
+        GUILayout.Label("Qty:", GUILayout.Width(30f));
+        if (int.TryParse(GUILayout.TextField(debugSpawnAmount.ToString(), GUILayout.Width(40f)), out int parsedQty))
+        {
+            debugSpawnAmount = Mathf.Max(1, parsedQty);
+        }
+        GUILayout.EndHorizontal();
+
+        // Filter and display items
+        var filteredItems = scannedDatabaseItems.Where(item =>
+        {
+            if (item == null) return false;
+            if (itemCategoryIndex == 1 && item.ItemType != ItemType.Artifact) return false;
+            if (itemCategoryIndex == 2 && item.ItemType != ItemType.Rune) return false;
+            if (itemCategoryIndex == 3 && item.ItemType != ItemType.Consumable) return false;
+            if (itemCategoryIndex == 4 && (item.ItemType == ItemType.Artifact || item.ItemType == ItemType.Rune || item.ItemType == ItemType.Consumable)) return false;
+
+            if (!string.IsNullOrWhiteSpace(itemSearchFilter))
+            {
+                bool nameMatch = !string.IsNullOrEmpty(item.ItemName) && item.ItemName.IndexOf(itemSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0;
+                bool idMatch = !string.IsNullOrEmpty(item.Id) && item.Id.IndexOf(itemSearchFilter, StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!nameMatch && !idMatch) return false;
+            }
+            return true;
+        }).ToList();
+
+        itemBrowserScrollPos = GUILayout.BeginScrollView(itemBrowserScrollPos, GUILayout.Height(150f));
+        if (filteredItems.Count == 0)
+        {
+            GUILayout.Label("<color=grey><i>No matching items found in scanned database.</i></color>");
+        }
+        else
+        {
+            for (int i = 0; i < filteredItems.Count; i++)
+            {
+                var item = filteredItems[i];
+                if (item == null) continue;
+
+                GUILayout.BeginHorizontal("box");
+                string typeTag = item.ItemType == ItemType.Artifact ? "<color=cyan>[Artifact]</color>" :
+                                 item.ItemType == ItemType.Rune ? "<color=yellow>[Rune]</color>" :
+                                 item.ItemType == ItemType.Consumable ? "<color=lime>[Consumable]</color>" : "[Misc]";
+                GUILayout.Label($"{typeTag} <b>{item.ItemName}</b> <color=grey>({item.Id})</color>", GUILayout.Width(240f));
+
+                if (GUILayout.Button($"+{debugSpawnAmount}", GUILayout.Width(45f)))
+                {
+                    Item.Spawn(item, debugSpawnAmount);
+                }
+                if (debugSpawnAmount != 1 && GUILayout.Button("+1", GUILayout.Width(35f)))
+                {
+                    Item.Spawn(item, 1);
+                }
+                GUILayout.EndHorizontal();
+            }
+        }
+        GUILayout.EndScrollView();
+
+        if (debugItemAsset != null)
+        {
+            if (GUILayout.Button($"Spawn Assigned Asset: '{debugItemAsset.ItemName}' x{debugSpawnAmount}"))
+            {
+                Item.Spawn(debugItemAsset, debugSpawnAmount);
+            }
+        }
+
+        GUILayout.Space(6f);
+
+        // 3. Inventory Utilities & Contents
+        GUILayout.Label("<b>[ Inventory Controls & Slot Contents ]</b>");
+        if (GUILayout.Button("Clear All User Inventory Slots"))
+        {
+            Item.ClearUserInventory();
+        }
+
+        if (userInv != null && userInv.Inventory != null)
+        {
+            GUILayout.Space(4f);
+            GUILayout.BeginVertical("box");
+            bool anyOccupied = false;
+            for (int i = 0; i < userInv.Capacity; i++)
+            {
+                var slot = userInv.Inventory.GetSlot(i);
+                if (slot != null && !slot.IsEmpty)
+                {
+                    anyOccupied = true;
+                    string typeTag = slot.Item.ItemType == ItemType.Artifact ? "<color=cyan>[Artifact]</color>" :
+                                     slot.Item.ItemType == ItemType.Rune ? "<color=yellow>[Rune]</color>" :
+                                     slot.Item.ItemType == ItemType.Consumable ? "<color=lime>[Consumable]</color>" : "[Misc]";
+                    GUILayout.Label($"Slot {i:02}: {typeTag} <b>{slot.Item.ItemName}</b> x{slot.Amount} (ID: {slot.Item.Id})");
+                }
+            }
+            if (!anyOccupied)
+            {
+                GUILayout.Label("<color=grey><i>(User Inventory is currently empty)</i></color>");
+            }
+            GUILayout.EndVertical();
+        }
+
         GUILayout.EndScrollView();
     }
 
@@ -1457,6 +1674,317 @@ public class DevTool : MonoBehaviour
                 combat.ResetCombatState();
             }
         }
+    }
+
+    #endregion
+
+    #region Static Domain: DevTool.Item (Item Spawner & Inventory Sync Diagnostics)
+
+    /// <summary>
+    /// Centralized Item Spawning, runtime item generation, and Artifact Inventory synchronization utilities.
+    /// Provides auto-discovery of UserInventoryManager, CharacterInventoryManager instances, and DungeonMaster.
+    /// </summary>
+    public static class Item
+    {
+        private static UserInventoryManager cachedUserInventory;
+        private static DungeonMaster cachedDM;
+        private static List<ItemDefinition> cachedScannedItems;
+
+        public static UserInventoryManager GetUserInventory()
+        {
+            if (cachedUserInventory == null)
+            {
+                cachedUserInventory = UnityEngine.Object.FindAnyObjectByType<UserInventoryManager>();
+            }
+            return cachedUserInventory;
+        }
+
+        public static DungeonMaster GetDungeonMaster()
+        {
+            if (cachedDM == null)
+            {
+                cachedDM = UnityEngine.Object.FindAnyObjectByType<DungeonMaster>();
+            }
+            return cachedDM;
+        }
+
+        /// <summary>
+        /// Scans GameRegistry, Resources, and Editor AssetDatabase to discover all ItemDefinition assets.
+        /// </summary>
+        public static List<ItemDefinition> ScanDatabaseItems(bool forceRescan = false)
+        {
+            if (cachedScannedItems != null && !forceRescan)
+            {
+                return cachedScannedItems;
+            }
+
+            var list = new List<ItemDefinition>();
+            var addedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // 1. Scan via GameRegistry / MasterGameDatabase
+            try
+            {
+                var allItems = GameRegistry.GetAllItems();
+                if (allItems != null)
+                {
+                    foreach (var item in allItems)
+                    {
+                        if (item != null && !string.IsNullOrWhiteSpace(item.Id) && !addedIds.Contains(item.Id))
+                        {
+                            list.Add(item);
+                            addedIds.Add(item.Id);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Dev("DevTool.Item", "GameRegistryScan", $"GameRegistry item query failed: {ex.Message}");
+            }
+
+            // 2. Scan via Resources
+            try
+            {
+                var resourcesItems = Resources.LoadAll<ItemDefinition>("");
+                if (resourcesItems != null)
+                {
+                    foreach (var item in resourcesItems)
+                    {
+                        if (item != null && !string.IsNullOrWhiteSpace(item.Id) && !addedIds.Contains(item.Id))
+                        {
+                            list.Add(item);
+                            addedIds.Add(item.Id);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Dev("DevTool.Item", "ResourcesScan", $"Resources item query failed: {ex.Message}");
+            }
+
+#if UNITY_EDITOR
+            // 3. Editor-only AssetDatabase scan to find all ItemDefinition assets across the project
+            try
+            {
+                string[] guids = AssetDatabase.FindAssets("t:ItemDefinition");
+                foreach (var guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    var item = AssetDatabase.LoadAssetAtPath<ItemDefinition>(path);
+                    if (item != null && !string.IsNullOrWhiteSpace(item.Id) && !addedIds.Contains(item.Id))
+                    {
+                        list.Add(item);
+                        addedIds.Add(item.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Dev("DevTool.Item", "AssetDatabaseScan", $"AssetDatabase query failed: {ex.Message}");
+            }
+#endif
+
+            cachedScannedItems = list;
+            Log.Info("DevTool.Item", "Scan", $"Scanned database: Found {list.Count} unique ItemDefinitions.");
+            return list;
+        }
+
+        /// <summary>
+        /// Spawns the specified ItemDefinition into the player's UserInventoryManager.
+        /// </summary>
+        public static bool Spawn(ItemDefinition item, int count = 1)
+        {
+            if (item == null)
+            {
+                Log.Warning("DevTool.Item", "Spawn", "Cannot spawn null ItemDefinition.");
+                return false;
+            }
+
+            var userInv = GetUserInventory();
+            if (userInv == null)
+            {
+                Log.Warning("DevTool.Item", "Spawn", "No UserInventoryManager instance found in the scene.");
+                return false;
+            }
+
+            int leftover = userInv.AddItem(item, count);
+            int added = count - leftover;
+            if (added > 0)
+            {
+                Log.Info("DevTool.Item", "Spawn", $"Successfully added {added}x '{item.ItemName}' (ID: {item.Id}) to User Inventory. (Leftover: {leftover})");
+                return true;
+            }
+            else
+            {
+                Log.Warning("DevTool.Item", "Spawn", $"User Inventory is full! Could not add '{item.ItemName}'.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to look up an item by ID from GameRegistry and spawns it into UserInventoryManager.
+        /// </summary>
+        public static bool SpawnById(string itemId, int count = 1)
+        {
+            if (string.IsNullOrWhiteSpace(itemId))
+            {
+                Log.Warning("DevTool.Item", "SpawnById", "Item ID must not be empty.");
+                return false;
+            }
+
+            if (GameRegistry.TryGetItem(itemId, out var item))
+            {
+                return Spawn(item, count);
+            }
+
+            // Fallback lookup from scanned database
+            var scanned = ScanDatabaseItems();
+            var matched = scanned.Find(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+            if (matched != null)
+            {
+                return Spawn(matched, count);
+            }
+
+            Log.Warning("DevTool.Item", "SpawnById", $"Item with ID '{itemId}' was not found in database or scanned assets.");
+            return false;
+        }
+
+        public static void ClearUserInventory()
+        {
+            var userInv = GetUserInventory();
+            if (userInv != null && userInv.Inventory != null)
+            {
+                userInv.Inventory.Clear();
+                Log.Info("DevTool.Item", "Clear", "Cleared all slots in UserInventoryManager.");
+            }
+            else
+            {
+                Log.Warning("DevTool.Item", "Clear", "No active UserInventoryManager found to clear.");
+            }
+        }
+
+        #region Sync & Diagnostics
+
+        public struct SyncReport
+        {
+            public int UserInventoryTotalItems;
+            public int UserInventoryCapacity;
+            public int UserInventoryArtifacts;
+            public List<string> UserArtifactNames;
+
+            public int EquippedArtifacts;
+            public List<string> EquippedArtifactNames;
+
+            public int DungeonMasterArtifacts;
+            public List<string> DungeonMasterArtifactNames;
+
+            public bool IsDungeonMasterAlive;
+            public bool HasMismatch;
+        }
+
+        public static SyncReport GenerateSyncReport()
+        {
+            var report = new SyncReport
+            {
+                UserArtifactNames = new List<string>(),
+                EquippedArtifactNames = new List<string>(),
+                DungeonMasterArtifactNames = new List<string>()
+            };
+
+            var userInv = GetUserInventory();
+            if (userInv != null && userInv.Inventory != null)
+            {
+                report.UserInventoryCapacity = userInv.Capacity;
+                for (int i = 0; i < userInv.Capacity; i++)
+                {
+                    var slot = userInv.Inventory.GetSlot(i);
+                    if (slot != null && !slot.IsEmpty)
+                    {
+                        report.UserInventoryTotalItems += slot.Amount;
+                        if (slot.Item.ItemType == ItemType.Artifact)
+                        {
+                            report.UserInventoryArtifacts += slot.Amount;
+                            report.UserArtifactNames.Add(slot.Item.ItemName);
+                        }
+                    }
+                }
+            }
+
+            var charManagers = UnityEngine.Object.FindObjectsByType<CharacterInventoryManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (charManagers != null)
+            {
+                foreach (var cm in charManagers)
+                {
+                    if (cm == null || cm.Inventory == null) continue;
+                    for (int i = 0; i < cm.Inventory.SlotCount; i++)
+                    {
+                        var slot = cm.Inventory.GetSlot(i);
+                        if (slot != null && slot.IsOccupied && slot.EquippedItem != null)
+                        {
+                            if (slot.SlotType == EquipmentSlotType.Artifact || slot.EquippedItem.ItemType == ItemType.Artifact)
+                            {
+                                report.EquippedArtifacts++;
+                                report.EquippedArtifactNames.Add($"{cm.CharacterDisplayName}: {slot.EquippedItem.ItemName}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            var dm = GetDungeonMaster();
+            if (dm != null)
+            {
+                report.DungeonMasterArtifacts = dm.ArtifactCount;
+                report.IsDungeonMasterAlive = !dm.IsDefeated;
+                if (dm.Artifacts != null)
+                {
+                    foreach (var art in dm.Artifacts)
+                    {
+                        if (art != null)
+                        {
+                            report.DungeonMasterArtifactNames.Add($"{art.ArtifactName} (Lvl {art.PowerLevel}{(art.IsEmpowered ? ", Empowered" : "")})");
+                        }
+                    }
+                }
+            }
+
+            int totalInventoryAndEquippedArtifacts = report.UserInventoryArtifacts + report.EquippedArtifacts;
+            report.HasMismatch = dm != null && totalInventoryAndEquippedArtifacts != report.DungeonMasterArtifacts;
+
+            return report;
+        }
+
+        public static void LogSyncReport()
+        {
+            var r = GenerateSyncReport();
+            var sb = new StringBuilder();
+            sb.AppendLine("=== [Artifact & Inventory Sync Diagnostic Report] ===");
+            sb.AppendLine($"User Inventory: {r.UserInventoryTotalItems} items ({r.UserInventoryArtifacts} Artifacts) / Capacity {r.UserInventoryCapacity}");
+            if (r.UserArtifactNames.Count > 0)
+                sb.AppendLine($"  - Inventory Artifacts: {string.Join(", ", r.UserArtifactNames)}");
+
+            sb.AppendLine($"Character Equipped Artifacts: {r.EquippedArtifacts}");
+            if (r.EquippedArtifactNames.Count > 0)
+                sb.AppendLine($"  - Equipped: {string.Join(", ", r.EquippedArtifactNames)}");
+
+            sb.AppendLine($"Dungeon Master Artifacts: {r.DungeonMasterArtifacts} (Defeated: {!r.IsDungeonMasterAlive})");
+            if (r.DungeonMasterArtifactNames.Count > 0)
+                sb.AppendLine($"  - DM Collection: {string.Join(", ", r.DungeonMasterArtifactNames)}");
+
+            if (r.HasMismatch)
+            {
+                sb.AppendLine("⚠ [SYNC WARNING] Count mismatch between (Inventory + Equipped) artifacts and Dungeon Master artifact collection!");
+            }
+            else
+            {
+                sb.AppendLine("✔ [SYNC OK] Artifact counts match.");
+            }
+
+            Log.Info("DevTool.Item", "SyncReport", sb.ToString());
+        }
+
+        #endregion
     }
 
     #endregion

@@ -755,7 +755,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
-  m_ApplyToSortingLayers: 00000000435e5449079517fc8307b2199fc7ba56i
+  m_ApplyToSortingLayers: 00000000435e5449079517fc8307b2199fc7ba56ffc5fcd1i
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0
@@ -1051,7 +1051,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6cf345846929c054cac9b1a40d0ae4d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterRuntimeDatabase
-  database: {fileID: 11400000, guid: e3d156bc4f10e4c439a8663bb3ba1935, type: 2}
+  database: {fileID: 11400000, guid: 4d9f5e1144fa8c7428366827d5a6ad1d, type: 2}
 --- !u!4 &975895129
 Transform:
   m_ObjectHideFlags: 0
@@ -5298,6 +5298,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
   characterDisplayName: Owl Monster
+  artifactDropChance: 0.5
+  autoDropOnDeath: 1
   statsManager: {fileID: 1822531524}
 --- !u!1 &1988939312
 GameObject:
@@ -5361,6 +5363,9 @@ MonoBehaviour:
   debugSimulateRetreats: 1
   debugEnergyDelta: 25
   debugEssenceDelta: 10
+  debugItemAsset: {fileID: 0}
+  debugItemId: pot_health
+  debugSpawnAmount: 1
   targetFrameRate: 60
   enableVSync: 0
 --- !u!1660057539 &9223372036854775807

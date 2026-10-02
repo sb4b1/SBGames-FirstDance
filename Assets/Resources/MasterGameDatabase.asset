@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50369a182adc7a34aaa7a5d7712efc5b, type: 3}
   m_Name: MasterGameDatabase
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.MasterGameDatabaseSO
-  itemDatabase: {fileID: 11400000, guid: 88808e1786ed03d4c945dc39c594fd77, type: 2}
-  skillDatabase: {fileID: 11400000, guid: d7530f444ee0c4c40b387562f2ea70b4, type: 2}
-  characterDatabase: {fileID: 11400000, guid: 0d83794554c06f2478461f5c1092fcdc, type: 2}
+  itemDatabase: {fileID: 11400000, guid: 2a7dd6e07d382bd4b8450fe5bc63754f, type: 2}
+  skillDatabase: {fileID: 11400000, guid: fb7133f804c4bec49a04dfc6d07085d0, type: 2}
+  characterDatabase: {fileID: 11400000, guid: 4d9f5e1144fa8c7428366827d5a6ad1d, type: 2}

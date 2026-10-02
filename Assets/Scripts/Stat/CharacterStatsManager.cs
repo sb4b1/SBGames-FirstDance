@@ -4,6 +4,7 @@ using System.Collections;
 using ArtificeToolkit.Attributes;
 
 [RequireComponent(typeof(CharacterBrain))]
+[DisallowMultipleComponent]
 public class CharacterStatsManager : MonoBehaviour, IDamageable
 {
     private CharacterBrain brain;
@@ -46,6 +47,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public bool AttackReady { get; private set; } = true;
 
     public event System.Action<float, float> OnLifeChanged;
+    public event System.Action<CharacterStatsManager> OnCharacterDeath;
 
     private void Awake()
     {
@@ -191,7 +193,14 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     private void OnDeath()
     {
-        brain.OnDespawn();
+        OnCharacterDeath?.Invoke(this);
+
+        if (brain == null)
+        {
+            brain = GetComponent<CharacterBrain>();
+        }
+        brain?.OnDespawn();
+
         ELogger.Log(this, nameof(OnDeath), $"{name} died");
         Destroy(gameObject); // Temporary death handling - destroy the GameObject. Later: add death animation, ragdoll, etc.
         // Hook death logic here

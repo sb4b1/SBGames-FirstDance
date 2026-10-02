@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f75d8ddb8727044458cb90acec8ac7cb, type: 3}
-  m_Name: Brown_boots
+  m_Name: Brown_Boots
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Core.ItemDefinition
-  id: Brown_boots
-  itemName: Brown_boots
-  icon: {fileID: 0}
+  id: ITEM_ARTIFACT_001
+  itemName: Brown_Boots
+  icon: {fileID: -6959437438076263862, guid: 3883a2d2139bf284d8fc91d31ad888d2, type: 3}
   description: 
   itemType: 2
   equippableSlotType: 2
