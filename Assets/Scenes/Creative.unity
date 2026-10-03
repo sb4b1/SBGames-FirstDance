@@ -933,7 +933,7 @@ MonoBehaviour:
   cursorController: {fileID: 638713115}
   dungeonMaster: {fileID: 1281072019}
   coreGameLoop: {fileID: 525693412}
-  characterDatabase: {fileID: 0}
+  characterDatabase: {fileID: 11400000, guid: 4d9f5e1144fa8c7428366827d5a6ad1d, type: 2}
   shopConfig:
     slotCount: 5
     manualRerollCost: 2
@@ -1313,6 +1313,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 583056955256405874, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
+      propertyPath: baseStats
+      value: 
+      objectReference: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
     - target: {fileID: 1087599260838737379, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 2.14
@@ -1359,7 +1363,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8247723471863400132, guid: 66020da512fd70544a1e87b066dc719f, type: 3}
       propertyPath: characterName
-      value: NC002
+      value: MONSTER_N002
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4910,7 +4914,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 779946892532255747, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: characterName
-      value: NC001
+      value: MONSTER_N001
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.x
@@ -4971,6 +4975,10 @@ PrefabInstance:
     - target: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_Name
       value: MONSTER_N001
+      objectReference: {fileID: 0}
+    - target: {fileID: 9097028675395075657, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5235,6 +5243,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.UI.InventoryUIController
   inventoryManager: {fileID: 0}
+  dungeonMaster: {fileID: 0}
   characters: []
 --- !u!114 &1777165900
 MonoBehaviour:

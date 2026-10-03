@@ -14,7 +14,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField, Min(1)] private int level = 1;
 
     [Header("Base Stats")]
-    [SerializeField] private CharacterBaseStats baseStats;
+    [SerializeField] private CharacterBaseStatSO baseStats;
 
     // Runtime life
     [SerializeField] private float life;

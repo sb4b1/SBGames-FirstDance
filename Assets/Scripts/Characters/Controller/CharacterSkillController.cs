@@ -81,6 +81,62 @@ public class CharacterSkillController : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Returns the effective casting range of the best utility skill (or the first ready skill).
+    /// </summary>
+    public float GetBestReadySkillRange()
+    {
+        if (skills == null || skills.Count == 0) return 5f;
+
+        if (baseAI != null)
+        {
+            UtilitySkill bestUtil = baseAI.SelectBestSkill();
+            if (bestUtil != null)
+            {
+                for (int i = 0; i < skills.Count; i++)
+                {
+                    if (skills[i] != null && skills[i].UtilityData == bestUtil && skills[i].Data != null)
+                    {
+                        return skills[i].Data.EffectiveRange;
+                    }
+                }
+            }
+        }
+
+        // Fallback: first ready skill's range
+        for (int i = 0; i < skills.Count; i++)
+        {
+            if (skills[i] != null && skills[i].IsReady && skills[i].Data != null)
+            {
+                return skills[i].Data.EffectiveRange;
+            }
+        }
+
+        // Default fallback if no skill is currently ready
+        if (skills.Count > 0 && skills[0] != null && skills[0].Data != null)
+            return skills[0].Data.EffectiveRange;
+
+        return 5f;
+    }
+
+    /// <summary>
+    /// Returns the maximum effective range among all currently ready skills.
+    /// </summary>
+    public float GetMaxReadySkillRange()
+    {
+        if (skills == null || skills.Count == 0) return 5f;
+        float maxRange = 0f;
+        for (int i = 0; i < skills.Count; i++)
+        {
+            if (skills[i] != null && skills[i].IsReady && skills[i].Data != null)
+            {
+                float range = skills[i].Data.EffectiveRange;
+                if (range > maxRange) maxRange = range;
+            }
+        }
+        return maxRange > 0f ? maxRange : 5f;
+    }
+
     public bool TryCastSkillAI()
     {
         // Let BaseAI evaluate and select the best skill using its internal utility list
@@ -172,6 +228,7 @@ public class CharacterSkillController : MonoBehaviour
         private SkillCaster skill;
         public string ID => skill != null && skill.Data != null ? skill.Data.skillID : string.Empty;
         public SkillCaster Caster => skill;
+        public SkillData Data => skill != null ? skill.Data : null;
         public bool IsReady => skill != null && skill.IsReady();
 
         /// <summary>
@@ -251,13 +308,16 @@ public class CharacterSkillController : MonoBehaviour
         {
             if (skill != null)
             {
-                if (skill.Flags == 3)
+                if (!skill.TryCastSkill())
                 {
-                    skill.DebugCastSkill();
-                }
-                else
-                {
-                    Debug.LogWarning($"Skill {ID} cannot be cast due to failing preconditions.");
+                    if (skill.Flags == 3)
+                    {
+                        skill.DebugCastSkill();
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Skill {ID} cannot be cast due to failing preconditions.");
+                    }
                 }
             }
         }

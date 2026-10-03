@@ -12,8 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72d11be943fa3e34f86b9e656bb344fd, type: 3}
   m_Name: MONSTER_N001
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBaseStats
+  characterLevel: 1
+  characterRank: 1
   MaxLife: 100
+  MaxMana: 50
   Movespeed: 5
   Damage: 10
-  AttackRange: 2
+  AttackRange: 2.5
   AttackTimeInterval: 1

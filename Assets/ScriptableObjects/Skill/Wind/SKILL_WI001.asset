@@ -17,7 +17,7 @@ MonoBehaviour:
   description: 
   icon: {fileID: 0}
   skillPrefab: {fileID: 5297230624313289062, guid: d0d05b3b9f450c040a189a4b66b1d0ae, type: 3}
-  utilityData: {fileID: 0}
+  utilityData: {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
   projectileForward: 1
   projectileRotationOffset: 0
   type: 1

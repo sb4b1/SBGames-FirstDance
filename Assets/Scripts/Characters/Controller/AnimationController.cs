@@ -8,6 +8,9 @@ using ArtificeToolkit.Attributes;
 [RequireComponent(typeof(CharacterFlipRotator))]
 public class AnimationController : MonoBehaviour
 {
+    private const float SortingOrdersPerWorldUnit = 100f;
+    private const string CharacterSortingLayer = "Character";
+
     [SerializeField] private Animator animator;
     [SerializeField] private SpriteRenderer sprite;
     [SerializeField] private CharacterBrain brain;
@@ -26,16 +29,26 @@ public class AnimationController : MonoBehaviour
     private void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
+        if (sprite == null) sprite = GetComponent<SpriteRenderer>();
         if (flipRotator == null) flipRotator = GetComponent<CharacterFlipRotator>();
         if (movement == null) movement = GetComponentInParent<CharacterMovementController>();
         if (brain == null) brain = GetComponentInParent<CharacterBrain>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
-    }       
+    }
 
     private void Update()
     {
         UpdateMovement();
         UpdateFlip();
+    }
+
+    private void LateUpdate()
+    {
+        if (sprite == null || sprite.sortingLayerName != CharacterSortingLayer) return;
+
+        Transform positionSource = movement != null ? movement.transform :
+            agent != null ? agent.transform : transform;
+        sprite.sortingOrder = Mathf.RoundToInt(-positionSource.position.y * SortingOrdersPerWorldUnit);
     }
 
     private void UpdateMovement()

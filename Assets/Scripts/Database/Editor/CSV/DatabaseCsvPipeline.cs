@@ -365,10 +365,10 @@ namespace SBGames.Database.Editor.CSV
                 if (entry.baseStats == null)
                 {
                     string statsPath = $"{DefaultCharacterAssetFolder}/{SanitizeFilename(id)}_BaseStats.asset";
-                    var existingStats = AssetDatabase.LoadAssetAtPath<CharacterBaseStats>(statsPath);
+                    var existingStats = AssetDatabase.LoadAssetAtPath<CharacterBaseStatSO>(statsPath);
                     if (existingStats == null)
                     {
-                        existingStats = ScriptableObject.CreateInstance<CharacterBaseStats>();
+                        existingStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
                         AssetDatabase.CreateAsset(existingStats, statsPath);
                     }
                     entry.baseStats = existingStats;

@@ -14,7 +14,7 @@ public class CombatStatusSensor : MultiSensorBase
             var data = references?.GetCachedComponent<BaseAI>();
             if (data == null) return 0;
 
-            return -1;
+            return data.IsSkillReady ? 1 : 0;
         });
     }
 

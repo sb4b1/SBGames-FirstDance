@@ -10,8 +10,8 @@ public enum CharacterRank
     S
 }
 
-[CreateAssetMenu(fileName = "CharacterBaseStats", menuName = "SBGames/Stat/Character")]
-public class CharacterBaseStats : ScriptableObject
+[CreateAssetMenu(fileName = "CharacterBaseStats", menuName = "SBGames/Stats/Character")]
+public class CharacterBaseStatSO : ScriptableObject
 {
     [Min(1)] public int characterLevel = 1;
     public CharacterRank characterRank = CharacterRank.D;

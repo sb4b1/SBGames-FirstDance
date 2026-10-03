@@ -107,7 +107,7 @@ namespace SBGames.Inventory.Examples
             // Create CharacterStatsManager GameObject
             var charGo = new GameObject("[TestCharacter]");
             var statsManager = charGo.AddComponent<CharacterStatsManager>();
-            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStats>();
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
             baseStats.Damage = 20f;
             baseStats.Movespeed = 5f;
 
@@ -215,7 +215,7 @@ namespace SBGames.Inventory.Examples
 
             var charGo = new GameObject("[TestCharacterConsumable]");
             var stats = charGo.AddComponent<CharacterStatsManager>();
-            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStats>();
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
             baseStats.MaxLife = 100f;
             InitializeStatsManager(stats, baseStats);
 
@@ -259,7 +259,7 @@ namespace SBGames.Inventory.Examples
 
             var charGo = new GameObject("[TestDecoupling]");
             var stats = charGo.AddComponent<CharacterStatsManager>();
-            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStats>();
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
             baseStats.Damage = 15f;
             InitializeStatsManager(stats, baseStats);
 
@@ -295,7 +295,7 @@ namespace SBGames.Inventory.Examples
             return ok;
         }
 
-        private static void InitializeStatsManager(CharacterStatsManager statsManager, CharacterBaseStats baseStats)
+        private static void InitializeStatsManager(CharacterStatsManager statsManager, CharacterBaseStatSO baseStats)
         {
             var field = typeof(CharacterStatsManager).GetField("baseStats", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (field != null) field.SetValue(statsManager, baseStats);

@@ -28,9 +28,27 @@ public class SkillData : ScriptableObject
 
     [Header("Stats")]
     public SkillType type = SkillType.Default;
+    [Tooltip("Effective casting range. If 0, automatically derived from projectile speed/lifetime or defaults to 5.")]
+    public float castRange = 0f;
     public float baseDamage = 10f;
     public DamageType damageType = DamageType.Physical;
     public float baseManaCost = 10f;
+
+    /// <summary>
+    /// Gets the effective range of this skill for AI decision making and GOAP distance checks.
+    /// </summary>
+    public float EffectiveRange
+    {
+        get
+        {
+            if (castRange > 0f) return castRange;
+            if (type == SkillType.Projectile && projectileSpeed > 0f && projectileLifetime > 0f)
+                return projectileSpeed * projectileLifetime;
+            if (area && areaRadius > 0f)
+                return areaRadius;
+            return 5f;
+        }
+    }
 
     [EnableIf("type", SkillType.Projectile), FoldoutGroup("Projectile Settings")]
     public float projectileSpeed = 10f;
