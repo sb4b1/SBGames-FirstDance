@@ -15,6 +15,9 @@
 			"*.prefab": "yaml",
 			"*.unity": "yaml"
 		},
-		"dotnet.defaultSolution": "SBGames/SBGames.slnx"
+		"dotnet.defaultSolution": "SBGames/SBGames.slnx",
+		"chat.tools.terminal.autoApprove": {
+			"&": true
+		}
 	}
 }

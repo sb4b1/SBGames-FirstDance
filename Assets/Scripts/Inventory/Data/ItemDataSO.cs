@@ -13,6 +13,8 @@ namespace SBGames.Inventory.Data
     [CreateAssetMenu(fileName = "NewItemData", menuName = "SBGames/Inventory/Item Data SO")]
     public class ItemDataSO : ScriptableObject
     {
+        private const int RuneMaxStack = 10;
+
         [Header("Identity")]
         [Tooltip("Unique identifier used for lookups, databases, and serialization.")]
         [FormerlySerializedAs("id")]
@@ -66,8 +68,8 @@ namespace SBGames.Inventory.Data
         public ItemType ItemType => itemType;
         public EquipmentSlotType EquippableSlotType => equippableSlotType;
         public int BaseValue => baseValue;
-        public bool IsStackable => isStackable && maxStack > 1;
-        public int MaxStack => isStackable ? Math.Max(1, maxStack) : 1;
+        public bool IsStackable => itemType == ItemType.Rune || (isStackable && maxStack > 1);
+        public int MaxStack => itemType == ItemType.Rune ? RuneMaxStack : isStackable ? Math.Max(1, maxStack) : 1;
         public int MaxSockets => maxSockets;
         public IReadOnlyList<ItemStatModifierData> StatModifiers => statModifiers;
         public ConsumableEffect ConsumableEffect => consumableEffect;
@@ -112,7 +114,12 @@ namespace SBGames.Inventory.Data
                 displayName = name;
             }
 
-            if (!isStackable)
+            if (itemType == ItemType.Rune)
+            {
+                isStackable = true;
+                maxStack = RuneMaxStack;
+            }
+            else if (!isStackable)
             {
                 maxStack = 1;
             }
@@ -123,8 +130,12 @@ namespace SBGames.Inventory.Data
 
             if (IsEquippable)
             {
-                isStackable = false;
-                maxStack = 1;
+                if (itemType != ItemType.Rune)
+                {
+                    isStackable = false;
+                    maxStack = 1;
+                }
+
                 if (equippableSlotType == EquipmentSlotType.None)
                 {
                     equippableSlotType = itemType == ItemType.Rune ? EquipmentSlotType.Rune : EquipmentSlotType.Artifact;
@@ -146,8 +157,8 @@ namespace SBGames.Inventory.Data
             this.itemID = id;
             this.displayName = name;
             this.itemType = type;
-            this.isStackable = maxStack > 1 && type != ItemType.Rune && type != ItemType.Artifact;
-            this.maxStack = this.isStackable ? maxStack : 1;
+            this.isStackable = type == ItemType.Rune || (maxStack > 1 && type != ItemType.Artifact);
+            this.maxStack = type == ItemType.Rune ? RuneMaxStack : this.isStackable ? maxStack : 1;
             this.baseValue = baseValue;
             this.equippableSlotType = slotType;
             this.consumableEffect = effect;

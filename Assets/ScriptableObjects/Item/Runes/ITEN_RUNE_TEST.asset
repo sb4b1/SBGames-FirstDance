@@ -19,8 +19,8 @@ MonoBehaviour:
   itemType: 1
   equippableSlotType: 1
   baseValue: 10
-  isStackable: 0
-  maxStack: 1
+  isStackable: 1
+  maxStack: 10
   maxSockets: 0
   statModifiers: []
   consumableEffect: {fileID: 0}

@@ -114,6 +114,36 @@ namespace SBGames.Tests
         }
 
         [Test]
+        public void AddItem_RunesStackToTen_AndEquippingConsumesOneWithoutLosingRemainder()
+        {
+            Assert.IsTrue(_fireRune.IsStackable);
+            Assert.AreEqual(10, _fireRune.MaxStack);
+
+            var addResult = _inventoryManager.AddItem(_fireRune, 12);
+            Assert.IsTrue(addResult.IsSuccess);
+            Assert.AreEqual(10, _inventoryManager.GetSlot(0).Quantity);
+            Assert.AreEqual(2, _inventoryManager.GetSlot(1).Quantity);
+
+            Assert.IsTrue(_inventoryManager.AddItem(_iceRune, 2).IsSuccess);
+            Assert.AreEqual("rune_frost_bite", _inventoryManager.GetSlot(2).ItemID);
+            Assert.AreEqual(2, _inventoryManager.GetSlot(2).Quantity);
+
+            Assert.IsTrue(_inventoryManager.EquipToCharacter(1, _heroManager, targetSlotIndex: 0));
+            Assert.AreEqual(1, _inventoryManager.GetSlot(1).Quantity);
+            Assert.AreEqual(_fireRune, _heroManager.GetEquippedItem(0));
+        }
+
+        [Test]
+        public void AddItem_UpgradedRunesRemainUnstackable()
+        {
+            var result = _inventoryManager.AddItem(_fireRune, 2, upgradeTier: 1);
+
+            Assert.IsTrue(result.IsSuccess);
+            Assert.AreEqual(1, _inventoryManager.GetSlot(0).Quantity);
+            Assert.AreEqual(1, _inventoryManager.GetSlot(1).Quantity);
+        }
+
+        [Test]
         public void HasItem_O1Lookup_ReturnsAccurateResultsWithoutAllocating()
         {
             _inventoryManager.AddItem(_healingPotion, 5);

@@ -16,10 +16,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7608e2bc7f5ca5548ac74c522fcf28a7, type: 2}
   - {fileID: 11400000, guid: 7e2a0dfc0c67f0b4e8a48770fe303a03, type: 2}
   runes:
+  - {fileID: 11400000, guid: e8469765e46031b479113264169acce7, type: 2}
   - {fileID: 11400000, guid: 4dc20b23764d10f418355736bb8d4071, type: 2}
   consumables: []
   otherItems: []
   items:
   - {fileID: 11400000, guid: 7608e2bc7f5ca5548ac74c522fcf28a7, type: 2}
   - {fileID: 11400000, guid: 7e2a0dfc0c67f0b4e8a48770fe303a03, type: 2}
+  - {fileID: 11400000, guid: e8469765e46031b479113264169acce7, type: 2}
   - {fileID: 11400000, guid: 4dc20b23764d10f418355736bb8d4071, type: 2}
