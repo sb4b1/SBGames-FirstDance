@@ -24,7 +24,14 @@ public class CharacterCombatController : MonoBehaviour
 
     public void CastSkill()
     {
-        brain.TryCastSkill();
+        if (brain != null && brain.SkillController != null)
+        {
+            brain.SkillController.TryStartCastSkillAI();
+        }
+        else if (brain != null)
+        {
+            brain.TryCastSkill();
+        }
     }
 
     public void SearchForTargets()

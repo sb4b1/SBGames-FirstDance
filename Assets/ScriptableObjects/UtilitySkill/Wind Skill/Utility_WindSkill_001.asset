@@ -9,9 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eaa2f7e66d241d440982c43d7b9e4979, type: 3}
+  m_Script: {fileID: 11500000, guid: f2152c0bea4d3814db4fcd0aa5e659f1, type: 3}
   m_Name: Utility_WindSkill_001
-  m_EditorClassIdentifier: Assembly-CSharp::ConfigurableUtilitySkill
+  m_EditorClassIdentifier: Assembly-CSharp::UtilitySkill
   skillID: SKILL_WI001
   baseWeight: 1.5
   minManaCost: 10

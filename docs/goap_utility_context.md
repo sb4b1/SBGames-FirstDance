@@ -304,7 +304,7 @@ public override float Evaluate(BaseAI ctx)
 ### 2.3 Skill selection & execution
 
 - `UtilitySkill : ScriptableObject` provides `float Evaluate(BaseAI)` and `string GetID()`.
-  Use **`ConfigurableUtilitySkill`** for curve-based and consideration-driven evaluation:
+  **`UtilitySkill`** supports curve-based and consideration-driven evaluation:
   - Mana and health threshold gates
   - Normalized distance sweet-spot curve (`distanceCurve`)
   - Cluster / AoE multiplier curve (`clusterCurve`) querying `BaseAI.EnemiesInSkillRange(radius)`

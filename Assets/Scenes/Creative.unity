@@ -714,6 +714,17 @@ MonoBehaviour:
   isBossAlive: 1
   debugKills: 3
   debugRetreats: 1
+--- !u!114 &551471873 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9150011966489319026, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9611174bc99fcd4dab33794adc2f0ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -4956,6 +4967,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: skills.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: 'skills.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
+    - target: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: 'skills.Array.data[1]'
+      value: 
+      objectReference: {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
+    - target: {fileID: 5038190993547726646, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: skillController
+      value: 
+      objectReference: {fileID: 551471873}
     - target: {fileID: 5038190993547726646, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: combatController
       value: 

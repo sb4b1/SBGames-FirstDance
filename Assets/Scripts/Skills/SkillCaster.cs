@@ -199,7 +199,7 @@ public class SkillCaster : MonoBehaviour
         cooldownTimer = CooldownDuration;
     }
 
-    public bool TryCastSkill()
+    public bool TryCastSkill(GameObject targetOverride = null)
     {
         if (!IsReady())
             return false;
@@ -223,33 +223,40 @@ public class SkillCaster : MonoBehaviour
         Vector3 direction;
         Vector3 spawnPosition;
 
-        GameObject target = null;
-        if (requireTarget)
+        GameObject target = targetOverride;
+        if (target == null && targeting != null)
         {
-            if (targeting == null)
-                TryGetSensor();
-        
-            if (targeting == null)
-            {
-                Debug.LogError("SkillCaster missing SkillTargeting for target-required skill", this);
-                return false;
-            }
-
             target = FindFirstTarget();
-            if (target == null)
-                return false;
+        }
 
+        // Fallback: query BaseAI current target on caster
+        if (target == null && casterTransform != null)
+        {
+            var brain = casterTransform.GetComponentInChildren<BaseAI>();
+            if (brain != null && brain.CurrentTarget != null)
+            {
+                target = brain.CurrentTarget.gameObject;
+            }
+        }
+
+        if (target != null)
+        {
             // ✅ HAS TARGET → CAST TOWARDS TARGET
             Vector3 toTarget = target.transform.position - GetSpawnPosition(target);
             direction = toTarget.sqrMagnitude > 0.001f
                 ? toTarget.normalized
-                : casterTransform.up;
+                : (casterTransform != null ? casterTransform.up : Vector3.up);
 
             spawnPosition = GetSpawnPosition(target);
         }
+        else if (requireTarget && targeting != null)
+        {
+            // Target is required and a targeting sensor exists, but no target is in range
+            return false;
+        }
         else
         {
-            // ✅ NO TARGET → CAST IN FRONT
+            // ✅ NO TARGET → CAST IN FACING DIRECTION
             direction = casterTransform != null ? casterTransform.up : Vector3.up;
             spawnPosition = GetSpawnPosition() + direction * forwardSpawnOffset;
         }

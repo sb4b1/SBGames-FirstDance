@@ -12,3 +12,61 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50ef53763d4039044889eeceb128882d, type: 3}
   m_Name: NoAvailableSkill
   m_EditorClassIdentifier: Assembly-CSharp::UtilityNoAvailableSkill
+  skillID: NO_SKILL
+  baseWeight: 1
+  minManaCost: 0
+  useDistanceConsideration: 1
+  maxEvaluationRange: 10
+  distanceCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.2
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  useClusterConsideration: 0
+  clusterRadius: 3
+  clusterCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 1
+      value: 0.5
+      inSlope: 0
+      outSlope: 0.33333334
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 4
+      value: 1.5
+      inSlope: 0.33333334
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  checkHealthThreshold: 0
+  minHealthPercent: 0
+  maxHealthPercent: 100

@@ -68,6 +68,7 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private string currentGoalKey = EnumUtilGoal.None.ToString();
     [SerializeField] private SerializableDictionary<EnumUtilGoal, float> goalScores = new();
     [SerializeField] private string currentSkillKey = "None";
+    [SerializeField] private float currentSkillScore = 0f;
     [SerializeField] private SerializableDictionary<string, float> skillScores = new();
 #endif
 
@@ -92,6 +93,7 @@ public class BaseAI : MonoBehaviour
             skillController = GetComponent<CharacterSkillController>();
             if (skillController == null) skillController = GetComponentInChildren<CharacterSkillController>();
             if (skillController == null) skillController = GetComponentInParent<CharacterSkillController>();
+            if (skillController == null && transform.root != null) skillController = transform.root.GetComponentInChildren<CharacterSkillController>();
         }
 
         InitializeAgent();
@@ -244,15 +246,35 @@ public class BaseAI : MonoBehaviour
     /// </summary>
     public UtilitySkill SelectBestSkill(List<UtilitySkill> utilSkills)
     {
-        if (utilSkills == null || utilSkills.Count == 0) return null;
+        if (utilSkills == null || utilSkills.Count == 0)
+        {
+#if UNITY_EDITOR
+            currentSkillKey = "None";
+            currentSkillScore = 0f;
+            skillScores.Clear();
+#endif
+            return null;
+        }
 
         UtilitySkill bestUtilSkill = null;
         float highestScore = 0f;
+
+#if UNITY_EDITOR
+        skillScores.Clear();
+#endif
 
         foreach (var utilSkill in utilSkills)
         {
             if (utilSkill == null) continue;
             float score = utilSkill.Evaluate(this);
+
+#if UNITY_EDITOR
+            skillScores.GetPairs().Add(new SerializableDictionary<string, float>.Pair
+            {
+                Key = utilSkill.GetID(),
+                Value = score
+            });
+#endif
 
             if (score > highestScore)
             {
@@ -263,20 +285,22 @@ public class BaseAI : MonoBehaviour
 
 #if UNITY_EDITOR
         currentSkillKey = bestUtilSkill != null ? bestUtilSkill.GetID() : "None";
-        skillScores.Clear();
-        foreach (var utilSkill in utilSkills)
-        {
-            if (utilSkill == null) continue;
-            skillScores.GetPairs().Add(new SerializableDictionary<string, float>.Pair
-            {
-                Key = utilSkill.GetID(),
-                Value = utilSkill.Evaluate(this)
-            });
-        }
+        currentSkillScore = bestUtilSkill != null ? highestScore : 0f;
 #endif
 
         return bestUtilSkill;
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Records a fallback skill execution in the inspector when no UtilitySkill scored > 0.
+    /// </summary>
+    public void RecordFallbackSkill(string skillId)
+    {
+        currentSkillKey = string.IsNullOrEmpty(skillId) ? "[Fallback]" : $"[Fallback] {skillId}";
+        currentSkillScore = 0f;
+    }
+#endif
 
 #region Planner
 

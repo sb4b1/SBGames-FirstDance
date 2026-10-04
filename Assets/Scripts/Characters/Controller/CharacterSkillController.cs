@@ -5,6 +5,7 @@ using UnityEngine;
 public class CharacterSkillController : MonoBehaviour
 {
     [SerializeField] private BaseAI baseAI;
+    [SerializeField] private CharacterBrain brain;
     [SerializeField] private SkillTargeting skillTargeting;
 
     public SkillTargeting SkillTargeting => skillTargeting;
@@ -14,6 +15,13 @@ public class CharacterSkillController : MonoBehaviour
     public IReadOnlyList<Skill> Skills => skills;
     [SerializeField] private GameObject skillSpawnPoint;
     public GameObject SpawnPoint => skillSpawnPoint;
+
+    private Skill pendingSkill;
+    private GameObject pendingTarget;
+
+    public bool HasPendingCast => pendingSkill != null;
+    public Skill PendingSkill => pendingSkill;
+    public GameObject PendingTarget => pendingTarget;
 
     public CharacterSkillController()
     {
@@ -25,6 +33,19 @@ public class CharacterSkillController : MonoBehaviour
         if (baseAI == null)
         {
             baseAI = GetComponentInParent<BaseAI>();
+            if (baseAI == null && transform.root != null)
+            {
+                baseAI = transform.root.GetComponentInChildren<BaseAI>();
+            }
+        }
+
+        if (brain == null)
+        {
+            brain = GetComponentInParent<CharacterBrain>();
+            if (brain == null && transform.root != null)
+            {
+                brain = transform.root.GetComponentInChildren<CharacterBrain>();
+            }
         }
 
         InitializeExistingSkills();
@@ -137,49 +158,179 @@ public class CharacterSkillController : MonoBehaviour
         return maxRange > 0f ? maxRange : 5f;
     }
 
-    public bool TryCastSkillAI()
+    /// <summary>
+    /// Evaluates the best ready skill and target, locks them as a pending cast, and starts the cast animation.
+    /// The skill is physically executed when AnimationEvent_CastSkill calls ExecutePendingCast().
+    /// </summary>
+    public bool TryStartCastSkillAI(GameObject targetOverride = null)
     {
+        GameObject target = targetOverride;
+        if (target == null && baseAI != null && baseAI.CurrentTarget != null)
+        {
+            target = baseAI.CurrentTarget.gameObject;
+        }
+
+        Skill selectedSkill = null;
+
+        // 1. Let BaseAI evaluate and select best skill
+        if (baseAI != null)
+        {
+            UtilitySkill bestUtil = baseAI.SelectBestSkill();
+            if (bestUtil != null && skills != null)
+            {
+                selectedSkill = skills.Find(s => s != null && s.UtilityData == bestUtil && s.IsReady);
+            }
+        }
+
+        // 2. Fallback: first ready skill
+        if (selectedSkill == null && skills != null)
+        {
+            for (int i = 0; i < skills.Count; i++)
+            {
+                if (skills[i] != null && skills[i].IsReady)
+                {
+                    selectedSkill = skills[i];
+#if UNITY_EDITOR
+                    baseAI?.RecordFallbackSkill(skills[i].ID);
+#endif
+                    break;
+                }
+            }
+        }
+
+        if (selectedSkill == null)
+        {
+            return false;
+        }
+
+        return StartCasting(selectedSkill, target);
+    }
+
+    /// <summary>
+    /// Starts the casting process for a specific skill and target.
+    /// </summary>
+    public bool StartCasting(Skill skill, GameObject target = null)
+    {
+        if (skill == null || !skill.IsReady) return false;
+
+        if (brain != null)
+        {
+            if (!brain.TryCastSkill()) return false;
+        }
+
+        pendingSkill = skill;
+        pendingTarget = target;
+        return true;
+    }
+
+    public bool TryStartCastSkill(UtilitySkill utilSkill, GameObject targetOverride = null)
+    {
+        if (utilSkill == null || skills == null) return false;
+        Skill skillToTrigger = skills.Find(s => s != null && s.UtilityData == utilSkill);
+        if (skillToTrigger != null)
+            return StartCasting(skillToTrigger, targetOverride);
+
+        Debug.LogWarning($"[CharacterSkillController] No Skill found for UtilitySkill '{utilSkill.GetID()}'.");
+        return false;
+    }
+
+    public bool TryStartCastSkill(string skillID, GameObject targetOverride = null)
+    {
+        if (skills == null) return false;
+        Skill skillToTrigger = skills.Find(s => s != null && s.ID == skillID);
+        if (skillToTrigger != null)
+            return StartCasting(skillToTrigger, targetOverride);
+
+        Debug.LogWarning($"[CharacterSkillController] Skill with ID '{skillID}' not found.");
+        return false;
+    }
+
+    /// <summary>
+    /// Called by AnimationEventController when AnimationEvent_CastSkill fires.
+    /// Executes the pending skill that was locked when casting started.
+    /// </summary>
+    public bool ExecutePendingCast()
+    {
+        if (pendingSkill != null)
+        {
+            Skill skillToCast = pendingSkill;
+            GameObject targetToCast = pendingTarget;
+            pendingSkill = null;
+            pendingTarget = null;
+            return skillToCast.Trigger(targetToCast);
+        }
+
+        // Fallback if no pending cast was queued (e.g. direct animation trigger)
+        return TryCastSkillAI();
+    }
+
+    /// <summary>
+    /// Cancels any pending cast without executing it (e.g. on animation end or cast interrupt).
+    /// </summary>
+    public void CancelPendingCast()
+    {
+        pendingSkill = null;
+        pendingTarget = null;
+    }
+
+    public bool TryCastSkillAI(GameObject targetOverride = null)
+    {
+        GameObject target = targetOverride;
+        if (target == null && baseAI != null && baseAI.CurrentTarget != null)
+        {
+            target = baseAI.CurrentTarget.gameObject;
+        }
+
         // Let BaseAI evaluate and select the best skill using its internal utility list
         if (baseAI != null)
         {
             UtilitySkill selectedSkill = baseAI.SelectBestSkill();
             if (selectedSkill != null)
             {
-                TriggerSkill(selectedSkill);
-                return true;
+                return TriggerSkill(selectedSkill, target);
             }
         }
 
         // Fallback: trigger first available skill that is off cooldown
-        Skill readySkill = skills?.Find(s => s != null && s.IsReady);
-        if (readySkill != null)
+        if (skills != null)
         {
-            readySkill.Trigger();
-            return true;
+            for (int i = 0; i < skills.Count; i++)
+            {
+                if (skills[i] != null && skills[i].IsReady)
+                {
+#if UNITY_EDITOR
+                    baseAI?.RecordFallbackSkill(skills[i].ID);
+#endif
+                    return skills[i].Trigger(target);
+                }
+            }
         }
 
         return false;
     }
 
     /// <summary>Triggers the Skill whose UtilityData matches the given ScriptableObject.</summary>
-    public void TriggerSkill(UtilitySkill utilSkill)
+    public bool TriggerSkill(UtilitySkill utilSkill, GameObject targetOverride = null)
     {
-        if (utilSkill == null) return;
+        if (utilSkill == null || skills == null) return false;
         Skill skillToTrigger = skills.Find(s => s != null && s.UtilityData == utilSkill);
         if (skillToTrigger != null)
-            skillToTrigger.Trigger();
-        else
-            Debug.LogWarning($"[CharacterSkillController] No Skill found for UtilitySkill '{utilSkill.GetID()}'.");
+            return skillToTrigger.Trigger(targetOverride);
+        
+        Debug.LogWarning($"[CharacterSkillController] No Skill found for UtilitySkill '{utilSkill.GetID()}'.");
+        return false;
     }
 
     /// <summary>Triggers the Skill matching the given skillID string.</summary>
-    public void TriggerSkill(string skillID)
+    public bool TriggerSkill(string skillID, GameObject targetOverride = null)
     {
+        if (skills == null) return false;
         Skill skillToTrigger = skills.Find(s => s != null && s.ID == skillID);
         if (skillToTrigger != null)
-            skillToTrigger.Trigger();
-        else
-            Debug.LogWarning($"[CharacterSkillController] Skill with ID '{skillID}' not found.");
+            return skillToTrigger.Trigger(targetOverride);
+        
+        Debug.LogWarning($"[CharacterSkillController] Skill with ID '{skillID}' not found.");
+        return false;
     }
 
     /// <summary>
@@ -306,20 +457,27 @@ public class CharacterSkillController : MonoBehaviour
         [Button]
         public void Trigger()
         {
+            Trigger(null);
+        }
+
+        public bool Trigger(GameObject targetOverride)
+        {
             if (skill != null)
             {
-                if (!skill.TryCastSkill())
+                if (skill.TryCastSkill(targetOverride))
                 {
-                    if (skill.Flags == 3)
-                    {
-                        skill.DebugCastSkill();
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Skill {ID} cannot be cast due to failing preconditions.");
-                    }
+                    return true;
                 }
+
+                if (skill.Flags == 3)
+                {
+                    skill.DebugCastSkill();
+                    return true;
+                }
+
+                Debug.LogWarning($"Skill {ID} cannot be cast due to failing preconditions.");
             }
+            return false;
         }
     }
 }

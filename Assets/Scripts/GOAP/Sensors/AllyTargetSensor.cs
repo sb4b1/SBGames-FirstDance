@@ -11,26 +11,33 @@ public class AllyTargetSensor : LocalTargetSensorBase
     public override ITarget Sense(IActionReceiver agent, IComponentReference references, ITarget existingTarget)
     {
         var brain = references.GetCachedComponent<BaseAI>();
-        if (brain.AllyTargets == null) return null;
-        Transform target = null;
-        foreach (var transform in brain.AllyTargets)
-        {
-            if (target == null)
-            {
-                target = transform;
-                continue;
-            }
+        if (brain == null || brain.AllyTargets == null || brain.AllyTargets.Count == 0) return null;
 
-            target = Vector3.Distance(transform.position, agent.Transform.position) < Vector3.Distance(target.position, agent.Transform.position)
-                ? target : transform;
+        Transform bestTarget = null;
+        float bestSqrDist = float.MaxValue;
+        Vector3 agentPos = agent.Transform.position;
+
+        for (int i = 0; i < brain.AllyTargets.Count; i++)
+        {
+            var t = brain.AllyTargets[i];
+            if (t == null) continue;
+
+            float sqrDist = (t.position - agentPos).sqrMagnitude;
+            if (sqrDist < bestSqrDist)
+            {
+                bestSqrDist = sqrDist;
+                bestTarget = t;
+            }
         }
+
+        if (bestTarget == null) return null;
 
         if (existingTarget is TransformTarget transformTarget)
         {
-            return transformTarget.SetTransform(target);
+            return transformTarget.SetTransform(bestTarget);
         }
 
-        return new TransformTarget(target);
+        return new TransformTarget(bestTarget);
     }
 
 }

@@ -1,34 +1,45 @@
 using CrashKonijn.Agent.Core;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
+using UnityEngine;
 
 public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
 {
     public override void Start(IMonoAgent agent, Data data)
     {
-        if (data.Brain != null)
-        {
-            data.Brain.TryCastSkill();
-        }
     }
 
     public override IActionRunState Perform(IMonoAgent agent, Data data, IActionContext context)
     {
-        if (data.SkillController != null)
+        GameObject targetObj = null;
+        if (data.Target is TransformTarget tt && tt.Transform != null)
         {
-            data.SkillController.TryCastSkillAI();
+            targetObj = tt.Transform.gameObject;
         }
-        else if (data.Controller != null)
+
+        var skillController = data.SkillController;
+        if (skillController != null)
+        {
+            bool castStarted = skillController.TryStartCastSkillAI(targetObj);
+            if (!castStarted)
+            {
+                if (data.Brain != null)
+                {
+                    data.Brain.EndCastSkill();
+                }
+                return ActionRunState.Completed;
+            }
+
+            return ActionRunState.WaitThenComplete(1.2f);
+        }
+
+        if (data.Controller != null)
         {
             data.Controller.CastSkill();
+            return ActionRunState.WaitThenComplete(1.2f);
         }
 
-        if (data.Brain != null)
-        {
-            data.Brain.TryCastSkill();
-        }
-
-        return ActionRunState.WaitThenComplete(1.2f);
+        return ActionRunState.Completed;
     }
 
     public override void End(IMonoAgent agent, Data data)
@@ -49,9 +60,10 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)
     {
-        if (data.SkillController != null)
+        var skillController = data.SkillController;
+        if (skillController != null)
         {
-            return distance <= data.SkillController.GetBestReadySkillRange();
+            return distance <= skillController.GetBestReadySkillRange();
         }
 
         if (data.Stats != null && data.Stats.AttackRange != null)
@@ -67,7 +79,7 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
         public ITarget Target { get; set; }
 
         [GetComponentInParent]
-        public CharacterSkillController SkillController { get; set; }
+        public BaseAI AI { get; set; }
 
         [GetComponentInParent]
         public CharacterBrain Brain { get; set; }
@@ -77,5 +89,10 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
 
         [GetComponentInParent]
         public CharacterStatsManager Stats { get; set; }
+
+        public CharacterSkillController SkillController =>
+            (AI != null && AI.SkillController != null)
+                ? AI.SkillController
+                : (Brain != null ? Brain.GetComponentInChildren<CharacterSkillController>() : null);
     }
 }

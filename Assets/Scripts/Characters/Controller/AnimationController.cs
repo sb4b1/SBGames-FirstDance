@@ -88,6 +88,11 @@ public class AnimationController : MonoBehaviour
         brain.EndAttack();
     }
 
+    public void OnCastAnimationEnd()
+    {
+        brain.EndCastSkill();
+    }
+
 // Generate paremeters for animator
 #if UNITY_EDITOR
 
@@ -108,24 +113,27 @@ public class AnimationController : MonoBehaviour
             "IsCastingSkill"
         };
 
-        int validate = 0;
         animator = GetComponent<Animator>();
 
-        if (animator.parameterCount == 0)
-        {
-            ELogger.Warning(this, "No paramerters found.");
-            return;
-        }
+        HashSet<string> actualNames = new();
         foreach (var parameter in animator.parameters)
         {
+            actualNames.Add(parameter.name);
             if(!names.Contains(parameter.name))
-            {
-                ELogger.Warning(this, parameter.name);
-                validate++;
-            }
+                ELogger.Warning(this, $"Unexpected Animator parameter: {parameter.name}");
         }
 
-        if (validate == 0 || animator.parameterCount == 0) ELogger.Log(this, "No missing paramerters.");
+        int missingCount = 0;
+        foreach (string name in names)
+        {
+            if (actualNames.Contains(name)) continue;
+
+            ELogger.Warning(this, $"Missing Animator parameter: {name}");
+            missingCount++;
+        }
+
+        if (missingCount == 0)
+            ELogger.Log(this, "All required Animator parameters are present.");
     }
 
 

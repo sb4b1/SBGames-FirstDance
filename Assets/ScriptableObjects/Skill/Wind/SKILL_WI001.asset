@@ -21,6 +21,7 @@ MonoBehaviour:
   projectileForward: 1
   projectileRotationOffset: 0
   type: 1
+  castRange: 10
   baseDamage: 10
   damageType: 1
   baseManaCost: 10

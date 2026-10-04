@@ -19,6 +19,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     [SerializeField] private GameObject aiAugment;
     [SerializeField] private CharacterStatsManager statsManager;
     [SerializeField] private AnimationController animController;
+    [SerializeField] private CharacterSkillController skillController;
 
     // =========================
     // State
@@ -34,6 +35,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
     public AnimationController AnimController => animController != null ? animController : (animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>());
+    public CharacterSkillController SkillController => skillController != null ? skillController : (skillController = GetComponent<CharacterSkillController>() ?? GetComponentInChildren<CharacterSkillController>());
 
     private void Awake()
     {
@@ -48,6 +50,11 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         if (animController == null)
         {
             animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>();
+        }
+
+        if (skillController == null)
+        {
+            skillController = GetComponent<CharacterSkillController>() ?? GetComponentInChildren<CharacterSkillController>();
         }
     }
 
@@ -177,6 +184,10 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public void EndCastSkill()
     {
+        if (skillController != null)
+        {
+            skillController.CancelPendingCast();
+        }
         CanMove = true;
         IsCastingSkill = false;
         animController.UpdateCastSkill(false);
