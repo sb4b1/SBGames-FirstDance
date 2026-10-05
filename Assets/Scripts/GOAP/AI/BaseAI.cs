@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
 using SB4b1.Helpers;
 using UnityEngine;
@@ -7,6 +8,7 @@ using UnityEngine.AI;
 public class BaseAI : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;
+    [SerializeField] private AgentBehaviour agentBehaviour;
     [SerializeField] private CharacterStatsManager stats;
     [SerializeField] private CharacterMovementController motionController;
     [SerializeField] private CharacterSkillController skillController;
@@ -30,6 +32,7 @@ public class BaseAI : MonoBehaviour
 
     private GoapBehaviour goap;
     private GoapActionProvider provider;
+    private EnumUtilGoal activeGoal = EnumUtilGoal.None;
 
     [SerializeField] private Transform currentTarget;
     [SerializeField] private float targetDistance;
@@ -79,10 +82,16 @@ public class BaseAI : MonoBehaviour
 
         if (this.provider.AgentTypeBehaviour == null)
             this.provider.AgentType = this.goap.GetAgentType(agentType);
+
+        if (GetComponent<AIDecisionThrottler>() == null)
+        {
+            gameObject.AddComponent<AIDecisionThrottler>();
+        }
     }
 
     private void Start()
     {
+        if (agentBehaviour == null) agentBehaviour = GetComponent<AgentBehaviour>();
         if (stats == null) stats = GetComponentInParent<CharacterStatsManager>();
         if (motionController == null) motionController = GetComponentInParent<CharacterMovementController>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
@@ -102,10 +111,32 @@ public class BaseAI : MonoBehaviour
 
     private void Update()
     {
-        SetGoal();
-
-        //temporary: Update resources every frame for now, but this can be optimized later
+        // Physics, agent movement, and resource stats update smoothly every frame
         UpdateResources();
+    }
+
+    /// <summary>
+    /// Evaluates Utility AI goals and requests the best goal from GOAP.
+    /// Called at throttled intervals by <see cref="AIDecisionThrottler"/>.
+    /// </summary>
+    public void PerformStrategicDecision()
+    {
+        SetGoal();
+    }
+
+    /// <summary>
+    /// Resets navigation, stops the active GOAP action, and clears the active goal on severe events.
+    /// </summary>
+    public void InterruptCurrentPlan()
+    {
+        activeGoal = EnumUtilGoal.None;
+
+        if (agentBehaviour != null)
+        {
+            agentBehaviour.StopAction(false);
+        }
+
+        IsAgentStop(true);
     }
 
     private void InitializeAgent()
@@ -189,13 +220,41 @@ public class BaseAI : MonoBehaviour
     public void SetAgentLife(float life) => AgentLife = life;
     public void SetAgentMana(float mana) => AgentMana = mana;
 
-    private void SetGoal()
+    public void SetGoal(bool force = false)
     {
-        Planner(SelectBestGoal());
+        EnumUtilGoal bestGoal = SelectBestGoal();
+        if (bestGoal == EnumUtilGoal.None)
+        {
+            activeGoal = EnumUtilGoal.None;
+            return;
+        }
+
+        bool goalChanged = bestGoal != activeGoal;
+        bool hasNoActiveAction = agentBehaviour != null && agentBehaviour.ActionState.Action == null;
+
+        if (force || goalChanged || hasNoActiveAction)
+        {
+            activeGoal = bestGoal;
+            Planner(bestGoal);
+        }
     }
 
-    public void AgentDestination(Vector2 targetPosition) => agent.SetDestination(targetPosition);
-    public bool IsAgentStop(bool value) => agent.isStopped = value;
+    public void AgentDestination(Vector2 targetPosition)
+    {
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            agent.SetDestination(targetPosition);
+        }
+    }
+
+    public bool IsAgentStop(bool value)
+    {
+        if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+        {
+            return agent.isStopped = value;
+        }
+        return false;
+    }
 
     private EnumUtilGoal SelectBestGoal()
     {

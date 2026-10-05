@@ -1081,6 +1081,43 @@ Grid:
   m_CellGap: {x: 0, y: 0, z: 0}
   m_CellLayout: 0
   m_CellSwizzle: 0
+--- !u!1 &950638192 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9097028675395075657, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &950638193 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3967720624424618889, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 950638192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
+--- !u!114 &950638198
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 950638192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce1552f109be459419f06fdc62a111a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.AI.AIDecisionThrottler
+  baseAI: {fileID: 950638193}
+  characterBrain: {fileID: 1503231100}
+  statsManager: {fileID: 1503231091}
+  defaultDecisionInterval: 0.3
+  defaultIntervalJitter: 0.05
+  defaultActionCommitmentDuration: 0.4
+  nextDecisionTime: 0
+  actionCommitmentTimer: 0
+  isDecisionLocked: 0
 --- !u!1 &975895127
 GameObject:
   m_ObjectHideFlags: 0
@@ -5014,6 +5051,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1503231097}
+    - targetCorrespondingSourceObject: {fileID: 9097028675395075657, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 950638198}
   m_SourcePrefab: {fileID: 100100000, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
 --- !u!114 &1503231088 stripped
 MonoBehaviour:
@@ -5084,6 +5124,17 @@ MonoBehaviour:
   previewInscribedRunes: 0
   previewHasArtifact: 0
   previewTotalModifiers: 0
+--- !u!114 &1503231100 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5661646937458837832, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+  m_PrefabInstance: {fileID: 1503231083}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 485388953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
 --- !u!1 &1681077225
 GameObject:
   m_ObjectHideFlags: 0

@@ -20,3 +20,6 @@ MonoBehaviour:
   Damage: 10
   AttackRange: 2.5
   AttackTimeInterval: 1
+  DecisionInterval: 0.8
+  IntervalJitter: 0.05
+  ActionCommitmentDuration: 0.4

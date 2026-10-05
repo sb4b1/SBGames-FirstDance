@@ -36,34 +36,50 @@ private Vector3 protectPoint = Vector3.zero;
     private Vector3 GetRandomPosition(IActionReceiver agent)
     {
         if (protectPoint == Vector3.zero) protectPoint = agent.Transform.position;
-        int count = 0;
-        while (count < 5)
+
+        int territoryArea = NavMesh.GetAreaFromName("Territory");
+        int walkableArea = NavMesh.GetAreaFromName("Walkable");
+        int areaMask = 0;
+        if (territoryArea >= 0) areaMask |= (1 << territoryArea);
+        if (walkableArea >= 0) areaMask |= (1 << walkableArea);
+        if (areaMask == 0) areaMask = NavMesh.AllAreas;
+
+        // Try sampling around agent in territory / walkable area
+        for (int i = 0; i < 5; i++)
         {
-            var random = Random.insideUnitCircle * 3;
-            var position = agent.Transform.position + (Vector3)random;
+            Vector2 random = Random.insideUnitCircle * 3f;
+            Vector3 position = agent.Transform.position + new Vector3(random.x, random.y, 0f);
 
-            if (NavMesh.SamplePosition(position, out NavMeshHit hit, 1, 1 << NavMesh.GetAreaFromName("Territory")))
-            {
-
-                return hit.position;
-            }
-
-            count++;
-        }
-
-        count = 0;
-        while (count < 5)
-        {
-            var random = Random.insideUnitCircle * 2;
-            var position = protectPoint + (Vector3)random;
-
-            if (NavMesh.SamplePosition(position, out NavMeshHit hit, 1, 1 << NavMesh.GetAreaFromName("Territory")))
+            if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, areaMask))
             {
                 return hit.position;
             }
-
-            count++;
         }
+
+        // Try sampling around protect point in territory / walkable area
+        for (int i = 0; i < 5; i++)
+        {
+            Vector2 random = Random.insideUnitCircle * 2f;
+            Vector3 position = protectPoint + new Vector3(random.x, random.y, 0f);
+
+            if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, areaMask))
+            {
+                return hit.position;
+            }
+        }
+
+        // Fallback: sample any area around agent
+        for (int i = 0; i < 5; i++)
+        {
+            Vector2 random = Random.insideUnitCircle * 3f;
+            Vector3 position = agent.Transform.position + new Vector3(random.x, random.y, 0f);
+
+            if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+            {
+                return hit.position;
+            }
+        }
+
         return agent.Transform.position;
     }
 }

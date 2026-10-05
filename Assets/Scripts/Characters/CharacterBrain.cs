@@ -31,6 +31,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public bool IsDashing { get; private set; }
     public bool IsAttacking { get; private set; }
     public bool IsCastingSkill { get; private set; }
+    public bool IsBusy => IsAttacking || IsCastingSkill;
     public bool HasAI { get; private set; }
 
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());

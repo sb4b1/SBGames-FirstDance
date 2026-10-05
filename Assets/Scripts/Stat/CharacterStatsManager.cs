@@ -35,6 +35,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField, ReadOnly] private float damage;
     [SerializeField, ReadOnly] private float attackRange;
     [SerializeField, ReadOnly] private float attackTimeInterval;
+    [SerializeField, ReadOnly] private float decisionInterval;
+    [SerializeField, ReadOnly] private float intervalJitter;
 #endif
 
     public Stat MaxLife { get; private set; } = new Stat();
@@ -43,6 +45,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public Stat Damage { get; private set; } = new Stat();
     public Stat AttackRange { get; private set; } = new Stat();
     public Stat AttackTimeInterval { get; private set; } = new Stat();
+    public Stat DecisionInterval { get; private set; } = new Stat();
+    public Stat IntervalJitter { get; private set; } = new Stat();
 
     public bool AttackReady { get; private set; } = true;
 
@@ -81,6 +85,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         Damage.BaseValue = baseStats.Damage;
         AttackRange.BaseValue = baseStats.AttackRange;
         AttackTimeInterval.BaseValue = baseStats.AttackTimeInterval;
+        DecisionInterval.BaseValue = baseStats.DecisionInterval;
+        IntervalJitter.BaseValue = baseStats.IntervalJitter;
 
 #if UNITY_EDITOR
         maxLife = MaxLife.Value;
@@ -89,6 +95,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         damage = Damage.Value;
         attackRange = AttackRange.Value;
         attackTimeInterval = AttackTimeInterval.Value;
+        decisionInterval = DecisionInterval.Value;
+        intervalJitter = IntervalJitter.Value;
 #endif
     }
 
