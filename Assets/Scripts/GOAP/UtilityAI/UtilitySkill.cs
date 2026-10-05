@@ -106,6 +106,6 @@ public class UtilitySkill : ScriptableObject
             score *= clusterFactor;
         }
 
-        return Mathf.Max(0f, score);
+        return Mathf.Clamp01(Mathf.Max(0f, score));
     }
 }

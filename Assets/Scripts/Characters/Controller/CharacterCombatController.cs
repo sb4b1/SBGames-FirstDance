@@ -17,9 +17,9 @@ public class CharacterCombatController : MonoBehaviour
         if (stats == null) stats = GetComponent<CharacterStatsManager>();
     } 
 
-    public void Attack()
+    public bool Attack()
     {
-        brain.TryStartAttack();
+        return brain != null && brain.TryStartAttack();
     }
 
     public void CastSkill()

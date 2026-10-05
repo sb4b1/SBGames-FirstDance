@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 23237166}
   m_Layer: 0
   m_Name: "\u2501\u2501\u2501 MANAGER \u2501\u2501\u2501"
-  m_TagString: Untagged
+  m_TagString: EditorOnly
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -313,7 +313,7 @@ GameObject:
   - component: {fileID: 263831877}
   m_Layer: 0
   m_Name: ObjectPoolManager
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -357,7 +357,7 @@ GameObject:
   - component: {fileID: 313346444}
   m_Layer: 0
   m_Name: CharacterManager
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -403,7 +403,7 @@ GameObject:
   - component: {fileID: 342473172}
   m_Layer: 0
   m_Name: InputManager
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -627,7 +627,7 @@ GameObject:
   - component: {fileID: 525693413}
   m_Layer: 0
   m_Name: GameManager
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -968,7 +968,7 @@ GameObject:
   - component: {fileID: 765988093}
   m_Layer: 0
   m_Name: InventoryManager
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1015,7 +1015,7 @@ GameObject:
   - component: {fileID: 871039829}
   m_Layer: 0
   m_Name: User Interface
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1114,9 +1114,7 @@ MonoBehaviour:
   statsManager: {fileID: 1503231091}
   defaultDecisionInterval: 0.3
   defaultIntervalJitter: 0.05
-  defaultActionCommitmentDuration: 0.4
   nextDecisionTime: 0
-  actionCommitmentTimer: 0
   isDecisionLocked: 0
 --- !u!1 &975895127
 GameObject:
@@ -4966,11 +4964,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -1.66
+      value: -1.95
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.61
+      value: 0.52
       objectReference: {fileID: 0}
     - target: {fileID: 3109198578723773857, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_LocalPosition.z
@@ -5028,6 +5026,10 @@ PrefabInstance:
       propertyPath: animController
       value: 
       objectReference: {fileID: 1696204461}
+    - target: {fileID: 5661646937458837832, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
+      propertyPath: skillController
+      value: 
+      objectReference: {fileID: 551471873}
     - target: {fileID: 7184355760351402854, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
       propertyPath: m_Name
       value: SKILL_WI001
@@ -5448,7 +5450,7 @@ GameObject:
   - component: {fileID: 1988939316}
   m_Layer: 0
   m_Name: DevTool
-  m_TagString: Untagged
+  m_TagString: GameController
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

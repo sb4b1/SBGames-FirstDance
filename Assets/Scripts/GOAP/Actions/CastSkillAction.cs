@@ -5,38 +5,67 @@ using UnityEngine;
 
 public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
 {
+    private const float DEFAULT_SAFETY_TIMEOUT = 3.5f;
+
     public override void Start(IMonoAgent agent, Data data)
     {
+        data.CastInitiated = false;
+        data.SafetyTimeout = DEFAULT_SAFETY_TIMEOUT;
     }
 
     public override IActionRunState Perform(IMonoAgent agent, Data data, IActionContext context)
     {
-        GameObject targetObj = null;
-        if (data.Target is TransformTarget tt && tt.Transform != null)
+        if (!data.CastInitiated)
         {
-            targetObj = tt.Transform.gameObject;
-        }
-
-        var skillController = data.SkillController;
-        if (skillController != null)
-        {
-            bool castStarted = skillController.TryStartCastSkillAI(targetObj);
-            if (!castStarted)
+            // If brain is busy or in recovery, wait in combat idle before starting cast
+            if (data.Brain != null && !data.Brain.CanCastSkill)
             {
-                if (data.Brain != null)
-                {
-                    data.Brain.EndCastSkill();
-                }
-                return ActionRunState.Completed;
+                return ActionRunState.Continue;
             }
 
-            return ActionRunState.WaitThenComplete(1.2f);
+            GameObject targetObj = null;
+            if (data.Target is TransformTarget tt && tt.Transform != null)
+            {
+                targetObj = tt.Transform.gameObject;
+            }
+
+            var skillController = data.SkillController;
+            if (skillController != null)
+            {
+                bool castStarted = skillController.TryStartCastSkillAI(targetObj);
+                if (!castStarted)
+                {
+                    if (data.Brain != null)
+                    {
+                        data.Brain.EndCastSkill(0f);
+                    }
+                    return ActionRunState.Completed;
+                }
+            }
+            else if (data.Controller != null)
+            {
+                data.Controller.CastSkill();
+            }
+
+            data.CastInitiated = true;
+            return ActionRunState.Continue;
         }
 
-        if (data.Controller != null)
+        // Safety timeout to prevent soft-locks if animation events are not configured
+        data.SafetyTimeout -= context.DeltaTime;
+        if (data.SafetyTimeout <= 0f)
         {
-            data.Controller.CastSkill();
-            return ActionRunState.WaitThenComplete(1.2f);
+            if (data.Brain != null)
+            {
+                data.Brain.InterruptAllActions();
+            }
+            return ActionRunState.Completed;
+        }
+
+        // Stay in action while skill animation is playing
+        if (data.Brain != null && data.Brain.IsCastingSkill)
+        {
+            return ActionRunState.Continue;
         }
 
         return ActionRunState.Completed;
@@ -44,18 +73,16 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
 
     public override void End(IMonoAgent agent, Data data)
     {
-        if (data.Brain != null)
-        {
-            data.Brain.EndCastSkill();
-        }
+        data.CastInitiated = false;
     }
 
     public override void Stop(IMonoAgent agent, Data data)
     {
-        if (data.Brain != null)
+        if (data.Brain != null && (data.Brain.IsCastingSkill || data.Brain.IsRecovering))
         {
-            data.Brain.EndCastSkill();
+            data.Brain.InterruptAllActions();
         }
+        data.CastInitiated = false;
     }
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)
@@ -77,6 +104,8 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
     public class Data : IActionData
     {
         public ITarget Target { get; set; }
+        public bool CastInitiated { get; set; }
+        public float SafetyTimeout { get; set; }
 
         [GetComponentInParent]
         public BaseAI AI { get; set; }

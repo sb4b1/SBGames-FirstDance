@@ -25,14 +25,18 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // State
     // =========================
     public bool CanMove { get; private set; } = true;
-    public bool CanAttack => statsManager.AttackReady;
-
+    public bool CanAttack => statsManager != null && statsManager.AttackReady && !IsBusy;
+    public bool CanCastSkill => !IsBusy;
 
     public bool IsDashing { get; private set; }
     public bool IsAttacking { get; private set; }
     public bool IsCastingSkill { get; private set; }
-    public bool IsBusy => IsAttacking || IsCastingSkill;
+    public bool IsRecovering { get; private set; }
+    public bool IsBusy => IsAttacking || IsCastingSkill || IsRecovering;
     public bool HasAI { get; private set; }
+
+    private Coroutine recoveryCoroutine;
+    private Coroutine castFallbackCoroutine;
 
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
     public AnimationController AnimController => animController != null ? animController : (animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>());
@@ -71,6 +75,11 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         }
     }
 
+    private void OnDisable()
+    {
+        InterruptAllActions();
+    }
+
     // =========================
     // Pooling
     // =========================
@@ -86,6 +95,8 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public void OnDespawn()
     {
+        InterruptAllActions();
+
         // Unregister this character when despawned
         if (CharacterManager.Instance != null)
         {
@@ -99,7 +110,10 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public void AIActivation(bool value)
     {
-        aiAugment.SetActive(value);
+        if (aiAugment != null)
+        {
+            aiAugment.SetActive(value);
+        }
 
         agentStatus = value ? AgentStatus.Active : AgentStatus.Inactive;
         //ELogger.Log(this, nameof(AIActivation), value ? "Activate AI" : "Deactivate AI");
@@ -109,7 +123,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     {
         aiAugment = ComponentUtil.GetChildGameObjectByTag(this.gameObject, "AI_Augment");
 
-        if(aiAugment == null)
+        if (aiAugment == null)
         {
             ELogger.Warning(this, nameof(AddAIAugment), "No AI Augment found in children with tag 'AI_Augment'!");
             return;
@@ -135,7 +149,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // =========================
     public bool TryStartDash()
     {
-        if (IsDashing || !CanMove) return false;
+        if (IsDashing || !CanMove || IsBusy) return false;
 
         IsDashing = true;
         CanMove = false;
@@ -155,43 +169,213 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     {
         if (IsAttacking || !CanAttack) return false;
 
-        statsManager.StartAttackTimer();
+        if (statsManager != null)
+        {
+            statsManager.StartAttackTimer();
+        }
 
         CanMove = false;
         IsAttacking = true;
-        animController.UpdateAttack(true);
+        if (animController != null)
+        {
+            animController.UpdateAttack(true);
+        }
         return true;
     }
 
     // =========================
     // Skill
     // =========================
-    public bool TryCastSkill()
+    public bool TryCastSkill(float fallbackCastDuration = 0.5f)
     {
-        if (IsCastingSkill) return false;
+        if (!CanCastSkill) return false;
 
         CanMove = false;
         IsCastingSkill = true;
-        animController.UpdateCastSkill(true);
+        if (animController != null)
+        {
+            animController.UpdateCastSkill(true);
+        }
+
+        if (statsManager != null)
+        {
+            // Keep basic attack on cooldown throughout the casting animation
+            statsManager.EnsureAttackCooldown(fallbackCastDuration + 1f);
+        }
+
+        if (castFallbackCoroutine != null)
+        {
+            StopCoroutine(castFallbackCoroutine);
+            castFallbackCoroutine = null;
+        }
+        castFallbackCoroutine = StartCoroutine(CastFallbackCoroutine(fallbackCastDuration));
+
         return true;
     }
 
-    public void EndAttack()
+    private IEnumerator CastFallbackCoroutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        castFallbackCoroutine = null;
+        if (IsCastingSkill)
+        {
+            EndCastSkill();
+        }
+    }
+
+    public void EndAttack(float customRecoveryDelay = -1f)
     {
         CanMove = true;
         IsAttacking = false;
-        animController.UpdateAttack(false);
+        if (animController != null)
+        {
+            animController.UpdateAttack(false);
+        }
+
+        // Determine post-attack recovery delay
+        float recoveryDelay = customRecoveryDelay;
+        if (recoveryDelay < 0f)
+        {
+            if (statsManager != null && statsManager.BaseStats != null)
+            {
+                recoveryDelay = statsManager.BaseStats.DefaultPostAttackRecovery;
+            }
+            else
+            {
+                recoveryDelay = 0.3f;
+            }
+        }
+
+        if (recoveryCoroutine != null)
+        {
+            StopCoroutine(recoveryCoroutine);
+            recoveryCoroutine = null;
+        }
+
+        if (recoveryDelay > 0.001f)
+        {
+            IsRecovering = true;
+            recoveryCoroutine = StartCoroutine(RecoveryDelayCoroutine(recoveryDelay));
+        }
+        else
+        {
+            IsRecovering = false;
+        }
     }
 
-    public void EndCastSkill()
+    public void EndCastSkill(float customRecoveryDelay = -1f)
     {
+        if (castFallbackCoroutine != null)
+        {
+            StopCoroutine(castFallbackCoroutine);
+            castFallbackCoroutine = null;
+        }
+
+        // If cast animation ended without triggering the projectile event, fire the pending cast now
+        if (skillController != null && skillController.HasPendingCast)
+        {
+            skillController.ExecutePendingCast();
+        }
+
+        IsCastingSkill = false;
+        if (animController != null)
+        {
+            animController.UpdateCastSkill(false);
+        }
+
+        // Determine recovery delay
+        float recoveryDelay = customRecoveryDelay;
+        if (recoveryDelay < 0f)
+        {
+            if (skillController != null && skillController.LastExecutedSkillData != null && skillController.LastExecutedSkillData.useCustomRecoveryDuration)
+            {
+                recoveryDelay = skillController.LastExecutedSkillData.postCastRecoveryDuration;
+            }
+            else if (statsManager != null && statsManager.BaseStats != null)
+            {
+                recoveryDelay = statsManager.BaseStats.DefaultPostCastRecovery;
+            }
+            else
+            {
+                recoveryDelay = 0.3f;
+            }
+        }
+
+        if (recoveryCoroutine != null)
+        {
+            StopCoroutine(recoveryCoroutine);
+            recoveryCoroutine = null;
+        }
+
+        // Enforce basic attack cooldown after skill: Recovery Duration + AttackTimeInterval
+        float baseAttackInterval = statsManager != null ? statsManager.AttackTimeInterval.Value : 1.0f;
+        float totalPostSkillAttackCooldown = recoveryDelay + baseAttackInterval;
+        if (statsManager != null)
+        {
+            statsManager.StartAttackTimer(totalPostSkillAttackCooldown);
+        }
+
+        if (recoveryDelay > 0.001f)
+        {
+            IsRecovering = true;
+            CanMove = true;
+            recoveryCoroutine = StartCoroutine(RecoveryDelayCoroutine(recoveryDelay));
+        }
+        else
+        {
+            IsRecovering = false;
+            CanMove = true;
+        }
+    }
+
+    private IEnumerator RecoveryDelayCoroutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        IsRecovering = false;
+        CanMove = true;
+        recoveryCoroutine = null;
+    }
+
+    /// <summary>
+    /// Immediately interrupts all ongoing casting, attacking, and recovery actions.
+    /// Used by stuns, knockback, death, or manual cancellations.
+    /// </summary>
+    public void InterruptAllActions()
+    {
+        if (castFallbackCoroutine != null)
+        {
+            StopCoroutine(castFallbackCoroutine);
+            castFallbackCoroutine = null;
+        }
+
+        if (recoveryCoroutine != null)
+        {
+            StopCoroutine(recoveryCoroutine);
+            recoveryCoroutine = null;
+        }
+
+        IsAttacking = false;
+        IsCastingSkill = false;
+        IsRecovering = false;
+        IsDashing = false;
+        CanMove = true;
+
         if (skillController != null)
         {
             skillController.CancelPendingCast();
         }
-        CanMove = true;
-        IsCastingSkill = false;
-        animController.UpdateCastSkill(false);
+
+        if (animController != null)
+        {
+            animController.UpdateAttack(false);
+            animController.UpdateCastSkill(false);
+        }
+
+        var throttler = GetComponentInChildren<AIDecisionThrottler>();
+        if (throttler != null)
+        {
+            throttler.InterruptDecisionLock();
+        }
     }
 
     private void DelayAction(float delay, System.Action action)

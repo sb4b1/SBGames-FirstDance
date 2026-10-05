@@ -15,6 +15,9 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStatSO baseStats;
+    public CharacterBaseStatSO BaseStats => baseStats;
+
+    private Coroutine attackCooldownCoroutine;
 
     // Runtime life
     [SerializeField] private float life;
@@ -201,6 +204,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     private void OnDeath()
     {
+        CancelAttackTimer();
         OnCharacterDeath?.Invoke(this);
 
         if (brain == null)
@@ -214,13 +218,37 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         // Hook death logic here
     }
 
+    private void OnDisable()
+    {
+        CancelAttackTimer();
+    }
+
     // =========================
 
-    public void StartAttackTimer()
+    public void StartAttackTimer(float customDuration = -1f)
     {
-        if (AttackReady)
+        float duration = customDuration > 0f ? customDuration : AttackTimeInterval.Value;
+        CancelAttackTimer();
+        attackCooldownCoroutine = StartCoroutine(AttackCooldownCoroutine(duration));
+    }
+
+    /// <summary>
+    /// Enforces a minimum cooldown before the next basic attack is ready.
+    /// Used by post-cast recovery / action buffer to prevent robotic combos.
+    /// </summary>
+    public void EnsureAttackCooldown(float minDuration)
+    {
+        if (minDuration <= 0f) return;
+        CancelAttackTimer();
+        attackCooldownCoroutine = StartCoroutine(AttackCooldownCoroutine(minDuration));
+    }
+
+    public void CancelAttackTimer()
+    {
+        if (attackCooldownCoroutine != null)
         {
-            StartCoroutine(AttackCooldownCoroutine(AttackTimeInterval.Value));
+            StopCoroutine(attackCooldownCoroutine);
+            attackCooldownCoroutine = null;
         }
     }
 
@@ -229,6 +257,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         AttackReady = false;
         yield return new WaitForSeconds(interval);
         AttackReady = true;
+        attackCooldownCoroutine = null;
     }
 
     private float CalculateFinalDamage(in DamageData damage)

@@ -34,6 +34,14 @@ public class SkillData : ScriptableObject
     public DamageType damageType = DamageType.Physical;
     public float baseManaCost = 10f;
 
+    [Header("Recovery Settings")]
+    [Tooltip("Whether to use custom recovery duration for this skill or fallback to character base stat default.")]
+    public bool useCustomRecoveryDuration = true;
+
+    [Tooltip("Post-cast recovery / backswing duration (seconds) before this character can attack or act again.")]
+    [Min(0f)] public float postCastRecoveryDuration = 0.35f;
+
+
     /// <summary>
     /// Gets the effective range of this skill for AI decision making and GOAP distance checks.
     /// </summary>

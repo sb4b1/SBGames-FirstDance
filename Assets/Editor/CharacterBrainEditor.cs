@@ -20,7 +20,10 @@ public class CharacterBrainEditor : Editor
     public override VisualElement CreateInspectorGUI()
     {
         var root = new VisualElement();
-        VTree.CloneTree(root);
+        if (VTree != null)
+        {
+            VTree.CloneTree(root);
+        }
 
         var foldout = new Foldout()
         {
@@ -34,23 +37,54 @@ public class CharacterBrainEditor : Editor
         agentButton = root.Q<Button>("AgentControlButton");
         toggleAIButton = root.Q<Button>("ToggleAIButton");
 
-        playerButton.RegisterCallback<ClickEvent>(OnPlayerButtonClicked);
-        agentButton.RegisterCallback<ClickEvent>(OnAgentButtonClicked);
-        toggleAIButton.RegisterCallback<ClickEvent>(OnToggleAIButtonClicked);
+        if (playerButton != null) playerButton.RegisterCallback<ClickEvent>(OnPlayerButtonClicked);
+        if (agentButton != null) agentButton.RegisterCallback<ClickEvent>(OnAgentButtonClicked);
+        if (toggleAIButton != null) toggleAIButton.RegisterCallback<ClickEvent>(OnToggleAIButtonClicked);
+
+        root.Bind(serializedObject);
 
         return root;
     }
 
     private void OnPlayerButtonClicked(ClickEvent evt)
     {
+        if (characterBrain == null) return;
+
+        Undo.RecordObject(characterBrain, "Set Player Control");
         characterBrain.PlayerControl();
+        MarkDirtyAndSave(characterBrain);
     }
+
     private void OnAgentButtonClicked(ClickEvent evt)
     {
+        if (characterBrain == null) return;
+
+        Undo.RecordObject(characterBrain, "Set AI Control");
         characterBrain.AgentControl();
+        MarkDirtyAndSave(characterBrain);
     }
+
     private void OnToggleAIButtonClicked(ClickEvent evt)
     {
+        if (characterBrain == null) return;
+
+        Undo.RecordObject(characterBrain, "Toggle AI Control");
         characterBrain.ToggleAI();
+        MarkDirtyAndSave(characterBrain);
+    }
+
+    private void MarkDirtyAndSave(CharacterBrain brain)
+    {
+        serializedObject.Update();
+        EditorUtility.SetDirty(brain);
+        if (brain.gameObject != null)
+        {
+            EditorUtility.SetDirty(brain.gameObject);
+        }
+
+        if (PrefabUtility.IsPartOfPrefabInstance(brain))
+        {
+            PrefabUtility.RecordPrefabInstancePropertyModifications(brain);
+        }
     }
 }

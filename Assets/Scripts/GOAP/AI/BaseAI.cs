@@ -9,6 +9,7 @@ public class BaseAI : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private AgentBehaviour agentBehaviour;
+    [SerializeField] private CharacterBrain brain;
     [SerializeField] private CharacterStatsManager stats;
     [SerializeField] private CharacterMovementController motionController;
     [SerializeField] private CharacterSkillController skillController;
@@ -20,6 +21,7 @@ public class BaseAI : MonoBehaviour
     // You do NOT need to assign these manually in the Inspector.
     [SerializeField] private List<UtilitySkill> skills = new();
 
+    public CharacterBrain Brain => brain != null ? brain : (brain = GetComponentInParent<CharacterBrain>());
     public CharacterSkillController SkillController => skillController;
     public List<UtilitySkill> Skills => skills;
 
@@ -91,6 +93,7 @@ public class BaseAI : MonoBehaviour
 
     private void Start()
     {
+        if (brain == null) brain = GetComponentInParent<CharacterBrain>();
         if (agentBehaviour == null) agentBehaviour = GetComponent<AgentBehaviour>();
         if (stats == null) stats = GetComponentInParent<CharacterStatsManager>();
         if (motionController == null) motionController = GetComponentInParent<CharacterMovementController>();

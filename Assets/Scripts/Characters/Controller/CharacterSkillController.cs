@@ -19,6 +19,8 @@ public class CharacterSkillController : MonoBehaviour
     private Skill pendingSkill;
     private GameObject pendingTarget;
 
+    public SkillData LastExecutedSkillData { get; private set; }
+
     public bool HasPendingCast => pendingSkill != null;
     public Skill PendingSkill => pendingSkill;
     public GameObject PendingTarget => pendingTarget;
@@ -212,6 +214,8 @@ public class CharacterSkillController : MonoBehaviour
     public bool StartCasting(Skill skill, GameObject target = null)
     {
         if (skill == null || !skill.IsReady) return false;
+
+        LastExecutedSkillData = skill.Data;
 
         if (brain != null)
         {

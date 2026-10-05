@@ -25,6 +25,8 @@ MonoBehaviour:
   baseDamage: 10
   damageType: 1
   baseManaCost: 10
+  useCustomRecoveryDuration: 1
+  postCastRecoveryDuration: 0.35
   projectileSpeed: 10
   projectileLifetime: 5
   chain: 0
