@@ -38,7 +38,7 @@ namespace SBGames.Editor
         private void DrawDebugControlPanel(CoreGameLoop loop)
         {
             // Outer Box
-            GUIStyle boxStyle = new GUIStyle(EditorStyles.helpBox)
+            GUIStyle boxStyle = new(EditorStyles.helpBox)
             {
                 padding = new RectOffset(10, 10, 10, 10)
             };
@@ -46,7 +46,7 @@ namespace SBGames.Editor
             EditorGUILayout.BeginVertical(boxStyle);
 
             // Title Header
-            GUIStyle headerStyle = new GUIStyle(EditorStyles.boldLabel)
+            GUIStyle headerStyle = new(EditorStyles.boldLabel)
             {
                 fontSize = 13,
                 alignment = TextAnchor.MiddleLeft
@@ -79,7 +79,7 @@ namespace SBGames.Editor
                 _ => Color.gray
             };
 
-            GUIStyle statusStyle = new GUIStyle(EditorStyles.toolbarButton)
+            GUIStyle statusStyle = new(EditorStyles.toolbarButton)
             {
                 fontSize = 12,
                 fontStyle = FontStyle.Bold,

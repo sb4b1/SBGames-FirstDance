@@ -10,6 +10,7 @@ TagManager:
   - Adventurer
   - Monster
   - Boss
+  - Neutral
   layers:
   - Default
   - TransparentFX

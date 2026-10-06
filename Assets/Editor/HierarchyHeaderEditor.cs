@@ -46,7 +46,7 @@ public static class HierarchyHeaderEditor
         // Background
         // ---------------------------------------------
 
-        Rect backgroundRect = new Rect(
+        Rect backgroundRect = new(
             0f,
             rect.y,
             rect.width,
@@ -82,7 +82,7 @@ public static class HierarchyHeaderEditor
         // ---------------------------------------------
 
         GUIContent content =
-            new GUIContent(header.HeaderText);
+            new(header.HeaderText);
 
         Vector2 textSize =
             textStyle.CalcSize(content);
@@ -90,7 +90,7 @@ public static class HierarchyHeaderEditor
         float centerX =
             rect.width * 0.5f;
 
-        Rect textRect = new Rect(
+        Rect textRect = new(
             centerX - textSize.x * 0.5f,
             rect.y,
             textSize.x,
@@ -101,7 +101,7 @@ public static class HierarchyHeaderEditor
         // Text Background
         // ---------------------------------------------
 
-        Rect textBackgroundRect = new Rect(
+        Rect textBackgroundRect = new(
             textRect.x - header.LinePadding * 0.5f,
             textRect.y,
             textRect.width + header.LinePadding,

@@ -18,7 +18,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     [SerializeField] private GameObject aiAugment;
     [SerializeField] private CharacterStatsManager statsManager;
-    [SerializeField] private AnimationController animController;
+    [SerializeField] private AnimationObjectController animController;
     [SerializeField] private CharacterSkillController skillController;
 
     // =========================
@@ -39,7 +39,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     private Coroutine castFallbackCoroutine;
 
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
-    public AnimationController AnimController => animController != null ? animController : (animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>());
+    public AnimationObjectController AnimController => animController != null ? animController : (animController = GetComponent<AnimationObjectController>() ?? GetComponentInChildren<AnimationObjectController>());
     public CharacterSkillController SkillController => skillController != null ? skillController : (skillController = GetComponent<CharacterSkillController>() ?? GetComponentInChildren<CharacterSkillController>());
 
     private void Awake()
@@ -54,7 +54,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
         if (animController == null)
         {
-            animController = GetComponent<AnimationController>() ?? GetComponentInChildren<AnimationController>();
+            animController = GetComponent<AnimationObjectController>() ?? GetComponentInChildren<AnimationObjectController>();
         }
 
         if (skillController == null)
@@ -75,9 +75,29 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         }
     }
 
+    private void OnEnable()
+    {
+        if (StatsManager != null)
+        {
+            StatsManager.OnDamaged += HandleDamaged;
+        }
+    }
+
     private void OnDisable()
     {
+        if (statsManager != null)
+        {
+            statsManager.OnDamaged -= HandleDamaged;
+        }
         InterruptAllActions();
+    }
+
+    private void HandleDamaged(DamageData damage)
+    {
+        if (AnimController != null)
+        {
+            AnimController.PlayHit();
+        }
     }
 
     // =========================

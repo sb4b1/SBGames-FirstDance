@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 583056955256405874}
   - component: {fileID: 8142828820705702646}
   - component: {fileID: 8247723471863400132}
+  - component: {fileID: 5631788195306782302}
   m_Layer: 6
   m_Name: MONSTER_N002
   m_TagString: Faction_01
@@ -107,6 +108,7 @@ MonoBehaviour:
   aiAugment: {fileID: 5702767144640782713}
   statsManager: {fileID: 583056955256405874}
   animController: {fileID: 636021813663669992}
+  skillController: {fileID: 0}
 --- !u!114 &4025492394318729815
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134,7 +136,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a819b5c841abf4543adc0371c7748b50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
-  baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
+  level: 1
+  baseStats: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
   life: 0
   mana: 0
   maxLife: 0
@@ -143,6 +146,8 @@ MonoBehaviour:
   damage: 0
   attackRange: 0
   attackTimeInterval: 0
+  decisionInterval: 0
+  intervalJitter: 0
 --- !u!114 &8142828820705702646
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -174,7 +179,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
   uniqueId: 
-  characterName: NC002
+  characterName: MONSTER_N002
+--- !u!114 &5631788195306782302
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1442731878584338539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66eed53a943b6bd4fb2140f7c9c47dd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
+  characterDisplayName: Owl Monster
+  artifactDropChance: 0.5
+  autoDropOnDeath: 1
+  statsManager: {fileID: 583056955256405874}
 --- !u!1 &1984529058379558800
 GameObject:
   m_ObjectHideFlags: 0
@@ -577,6 +598,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseAI
   agent: {fileID: 2876902180845984889}
+  agentBehaviour: {fileID: 0}
+  brain: {fileID: 0}
   stats: {fileID: 583056955256405874}
   motionController: {fileID: 0}
   skillController: {fileID: 0}
@@ -597,6 +620,7 @@ MonoBehaviour:
   goalScores:
     pairs: []
   currentSkillKey: None
+  currentSkillScore: 0
   skillScores:
     pairs: []
 --- !u!1 &6045907984605155341

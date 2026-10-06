@@ -4,15 +4,10 @@ using System.Collections.Generic;
 using UnityEngine.AI;
 using ArtificeToolkit.Attributes;
 
-[RequireComponent(typeof(Animator), typeof(SpriteRenderer))]
 [RequireComponent(typeof(CharacterFlipRotator))]
-public class AnimationController : MonoBehaviour
+public class AnimationController : AnimationObjectController
 {
-    private const float SortingOrdersPerWorldUnit = 100f;
-    private const string CharacterSortingLayer = "Character";
-
-    [SerializeField] private Animator animator;
-    [SerializeField] private SpriteRenderer sprite;
+    [Header("Character References")]
     [SerializeField] private CharacterBrain brain;
     [SerializeField] private CharacterMovementController movement;
     [SerializeField] private NavMeshAgent agent;
@@ -26,56 +21,58 @@ public class AnimationController : MonoBehaviour
 
     private Vector2 lastMoveDir = Vector2.down;
 
-    private void Awake()
+    protected override void Awake()
     {
-        if (animator == null) animator = GetComponent<Animator>();
-        if (sprite == null) sprite = GetComponent<SpriteRenderer>();
+        base.Awake();
+
         if (flipRotator == null) flipRotator = GetComponent<CharacterFlipRotator>();
         if (movement == null) movement = GetComponentInParent<CharacterMovementController>();
         if (brain == null) brain = GetComponentInParent<CharacterBrain>();
         if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
     }
 
-    private void Update()
+    protected virtual void Update()
     {
         UpdateMovement();
         UpdateFlip();
     }
 
-    private void LateUpdate()
+    protected override Transform GetSortingPositionSource()
     {
-        if (sprite == null || sprite.sortingLayerName != CharacterSortingLayer) return;
-
-        Transform positionSource = movement != null ? movement.transform :
-            agent != null ? agent.transform : transform;
-        sprite.sortingOrder = Mathf.RoundToInt(-positionSource.position.y * SortingOrdersPerWorldUnit);
+        if (movement != null) return movement.transform;
+        if (agent != null) return agent.transform;
+        return base.GetSortingPositionSource();
     }
 
-    private void UpdateMovement()
+    protected virtual void UpdateMovement()
     {
-        Vector2 velocity = brain.ControlMode == ControlMode.Player ? movement.MoveDirection:
+        Vector2 velocity = brain != null && brain.ControlMode == ControlMode.Player && movement != null ? movement.MoveDirection :
                            (agent != null ? (Vector2)agent.velocity : Vector2.zero);
 
         if (velocity.sqrMagnitude > 0.01f)
             lastMoveDir = velocity.normalized;
 
-        animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
-        animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
-        animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
+        if (animator != null)
+        {
+            animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
+            animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
+            animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
+        }
     }
 
-    public void UpdateAttack(bool isAttacking)
+    public override void UpdateAttack(bool isAttacking)
     {
-        animator.SetBool(HASH_ATTACK, isAttacking);
+        if (animator != null) animator.SetBool(HASH_ATTACK, isAttacking);
     }
 
-    public void UpdateCastSkill(bool isCasting)
+    public override void UpdateCastSkill(bool isCasting)
     {
-        animator.SetBool(HASH_CASTSkill, isCasting);
+        if (animator != null) animator.SetBool(HASH_CASTSkill, isCasting);
     }
 
-    private void UpdateFlip()
+    protected virtual void UpdateFlip()
     {
+        if (flipRotator == null) return;
         if (lastMoveDir.x > 0.1f) flipRotator.ApplyFlip(false);
         else if (lastMoveDir.x < -0.1f) flipRotator.ApplyFlip(true);
     }
@@ -85,17 +82,16 @@ public class AnimationController : MonoBehaviour
     // =========================
     public void OnAttackAnimationEnd()
     {
-        brain.EndAttack();
+        if (brain != null) brain.EndAttack();
     }
 
     public void OnCastAnimationEnd()
     {
-        brain.EndCastSkill();
+        if (brain != null) brain.EndCastSkill();
     }
 
-// Generate paremeters for animator
+    // Generate parameters for animator
 #if UNITY_EDITOR
-
     [Button]
     private void Validate()
     {
@@ -114,12 +110,13 @@ public class AnimationController : MonoBehaviour
         };
 
         animator = GetComponent<Animator>();
+        if (animator == null) return;
 
         HashSet<string> actualNames = new();
         foreach (var parameter in animator.parameters)
         {
             actualNames.Add(parameter.name);
-            if(!names.Contains(parameter.name))
+            if (!names.Contains(parameter.name) && parameter.name != "GetHit")
                 ELogger.Warning(this, $"Unexpected Animator parameter: {parameter.name}");
         }
 
@@ -135,8 +132,5 @@ public class AnimationController : MonoBehaviour
         if (missingCount == 0)
             ELogger.Log(this, "All required Animator parameters are present.");
     }
-
-
-
 #endif
 }

@@ -16,13 +16,13 @@ public class InlineLabelDrawer : PropertyDrawer
 
         float labelWidth = 95f;
 
-        Rect labelRect = new Rect(
+        Rect labelRect = new(
             position.x,
             position.y,
             labelWidth,
             position.height);
 
-        Rect valueRect = new Rect(
+        Rect valueRect = new(
             position.x + labelWidth,
             position.y,
             position.width - labelWidth,

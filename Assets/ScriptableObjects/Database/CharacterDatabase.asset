@@ -26,3 +26,16 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: DUMMY_TARGET_001
+    characterName: Training Dummy
+    prefab: {fileID: 3331147636676233856, guid: d0271d9b1b49b59468e7ba4652aceb7d, type: 3}
+    baseStats: {fileID: 11400000, guid: 2ee72ab854b60a94eafa3f26ce011a87, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

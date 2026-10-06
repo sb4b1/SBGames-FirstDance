@@ -47,6 +47,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterSkillController
   baseAI: {fileID: 3967720624424618889}
+  brain: {fileID: 0}
   skillTargeting: {fileID: 2170900001641181309}
   skills:
   - skillPrefab: {fileID: 7184355760351402854}
@@ -261,6 +262,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimationEventController
   combatController: {fileID: 6820165486231997942}
+  skillController: {fileID: 9150011966489319026}
+  brain: {fileID: 0}
 --- !u!1 &2810017690310066115
 GameObject:
   m_ObjectHideFlags: 0
@@ -817,8 +820,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4220041162180980065}
   brain: {fileID: 3967720624424618889}
-  enemyTargets: []
-  allyTargets: []
 --- !u!1 &8899575827743905027
 GameObject:
   m_ObjectHideFlags: 0
@@ -868,6 +869,7 @@ GameObject:
   - component: {fileID: 6820165486231997942}
   - component: {fileID: 779946892532255747}
   - component: {fileID: 6721864809019792033}
+  - component: {fileID: 6435932636087086895}
   m_Layer: 6
   m_Name: MONSTER_N001
   m_TagString: Faction_02
@@ -956,11 +958,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
-  controlMode: 0
-  agentStatus: 0
+  controlMode: 1
+  agentStatus: 1
   aiAugment: {fileID: 9097028675395075657}
   statsManager: {fileID: 7331921466431717763}
   animController: {fileID: 7462584194519499158}
+  skillController: {fileID: 9150011966489319026}
 --- !u!114 &5841761043065473055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -991,6 +994,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a819b5c841abf4543adc0371c7748b50, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
+  level: 1
   baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
   life: 0
   mana: 0
@@ -1000,6 +1004,8 @@ MonoBehaviour:
   damage: 0
   attackRange: 0
   attackTimeInterval: 0
+  decisionInterval: 0
+  intervalJitter: 0
 --- !u!114 &6820165486231997942
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1028,7 +1034,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
   uniqueId: 
-  characterName: NC001
+  characterName: MONSTER_N001
 --- !u!114 &6721864809019792033
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1042,7 +1048,45 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Character.CharacterInventoryManager
   characterDisplayName: Purple Monster
+  artifactDropChance: 0.5
+  autoDropOnDeath: 1
   statsManager: {fileID: 7331921466431717763}
+--- !u!114 &6435932636087086895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8960087825022006478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9e13a79d44a75142a1ac85dab3cf650, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Stats.CharacterCombatPower
+  statsManager: {fileID: 7331921466431717763}
+  inventoryManager: {fileID: 6721864809019792033}
+  customConfig: {fileID: 0}
+  fallbackBaseCombatPower: 100
+  fallbackPowerPerLevel: 25
+  fallbackPowerPerInscribedRune: 15
+  fallbackPowerPerEquippedArtifact: 40
+  fallbackPowerPerFlatModifier: 10
+  fallbackPowerPerPercentAddModifier: 15
+  fallbackPowerPerPercentMultModifier: 20
+  fallbackMaxLifeWeight: 0.5
+  fallbackMaxManaWeight: 0.2
+  fallbackDamageWeight: 3
+  fallbackMoveSpeedWeight: 2
+  fallbackAttackSpeedWeight: 10
+  currentCombatPower: 0
+  previewLevelPower: 0
+  previewRunePower: 0
+  previewArtifactPower: 0
+  previewModifierPower: 0
+  previewStatPower: 0
+  previewInscribedRunes: 0
+  previewHasArtifact: 0
+  previewTotalModifiers: 0
 --- !u!1 &9097028675395075657
 GameObject:
   m_ObjectHideFlags: 0
@@ -1056,13 +1100,14 @@ GameObject:
   - component: {fileID: 8446831177810594064}
   - component: {fileID: 5427059989974091042}
   - component: {fileID: 3967720624424618889}
+  - component: {fileID: 590993200254740714}
   m_Layer: 0
   m_Name: NormalAI
   m_TagString: AI_Augment
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &3525965130228454493
 Transform:
   m_ObjectHideFlags: 0
@@ -1140,6 +1185,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseAI
   agent: {fileID: 7031461656827861849}
+  agentBehaviour: {fileID: 0}
+  brain: {fileID: 0}
   stats: {fileID: 7331921466431717763}
   motionController: {fileID: 5841761043065473055}
   skillController: {fileID: 9150011966489319026}
@@ -1148,7 +1195,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   skills:
-  - {fileID: 11400000, guid: 2a0e794ff344a414b83a1297ead7c6ec, type: 2}
+  - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -1162,8 +1209,28 @@ MonoBehaviour:
   goalScores:
     pairs: []
   currentSkillKey: None
+  currentSkillScore: 0
   skillScores:
     pairs: []
+--- !u!114 &590993200254740714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9097028675395075657}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce1552f109be459419f06fdc62a111a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.AI.AIDecisionThrottler
+  baseAI: {fileID: 3967720624424618889}
+  characterBrain: {fileID: 5661646937458837832}
+  statsManager: {fileID: 7331921466431717763}
+  defaultDecisionInterval: 0.3
+  defaultIntervalJitter: 0.05
+  nextDecisionTime: 0
+  isDecisionLocked: 0
 --- !u!1001 &1590298078433876062
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1226,7 +1293,7 @@ PrefabInstance:
       objectReference: {fileID: 6394289248788847368}
     - target: {fileID: 8476384533851095864, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
       propertyPath: m_Name
-      value: WIS001
+      value: SKILL_WI001
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

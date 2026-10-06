@@ -17,6 +17,10 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField] private CharacterBaseStatSO baseStats;
     public CharacterBaseStatSO BaseStats => baseStats;
 
+    [Header("Immortality / Training")]
+    [SerializeField] private bool isImmortal;
+    public bool IsImmortal { get => isImmortal; set => isImmortal = value; }
+
     private Coroutine attackCooldownCoroutine;
 
     // Runtime life
@@ -28,6 +32,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public float Mana { get => mana; private set => mana = value; }
 
     public event System.Action<int> OnLevelChanged;
+    public event System.Action<DamageData> OnDamaged;
 
     // Core stats (private set = safer)
 
@@ -145,13 +150,22 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     {
         float finalDamage = CalculateFinalDamage(damage);
 
-        Life = Mathf.Max(Life - finalDamage, 0);
+        if (isImmortal)
+        {
+            Life = Mathf.Max(Life - finalDamage, 1f);
+        }
+        else
+        {
+            Life = Mathf.Max(Life - finalDamage, 0);
+        }
+
         NotifyLifeChanged();
+        OnDamaged?.Invoke(damage);
 
         ELogger.Log(this, nameof(TakeDamage),
             $"{name} took <color=red>{finalDamage}</color> {damage.Type} damage");
 
-        if (Life <= 0)
+        if (!isImmortal && Life <= 0)
         {
             OnDeath();
             return true;
