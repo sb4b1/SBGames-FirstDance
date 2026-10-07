@@ -5,8 +5,6 @@
 		}
 	],
 	"settings": {
-		"dotrush.roslyn.projectOrSolutionFiles": [
-			"d:\\UnityProject\\SBGames\\SBGames.sln"
-		]
+		"dotnet.defaultSolution": "SBGames.sln"
 	}
 }

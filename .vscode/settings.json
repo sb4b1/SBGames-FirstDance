@@ -1,5 +1,5 @@
 {
-    "dotnet.defaultSolution": "SBGames.sln",
+    "dotnet.defaultSolution": "SBGames.slnx",
     "dotrush.roslyn.dotnetSdkDirectory": "C:/Program Files/dotnet/sdk/10.0.102",
     "dotrush.msbuildProperties": {
         "DefineConstants": "UNITY_EDITOR"
