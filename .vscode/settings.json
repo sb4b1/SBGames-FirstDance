@@ -1,4 +1,13 @@
 {
+    "dotnet.defaultSolution": "SBGames.sln",
+    "dotrush.roslyn.dotnetSdkDirectory": "C:/Program Files/dotnet/sdk/10.0.102",
+    "dotrush.msbuildProperties": {
+        "DefineConstants": "UNITY_EDITOR"
+    },
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "D:/UnityProject/SBGames/SBGames.sln"
+    ],
+    "dotrush.roslyn.restoreProjectsBeforeLoading": false,
     "files.exclude": {
         "**/.DS_Store": true,
         "**/.git": true,
@@ -56,20 +65,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "files.associations": {
-        "*.asset": "yaml",
-        "*.meta": "yaml",
-        "*.prefab": "yaml",
-        "*.unity": "yaml",
-    },
-    "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.patterns": {
-        "*.sln": "*.csproj",
-        "*.slnx": "*.csproj"
-    },
-    "dotnet.defaultSolution": "SBGames.slnx",
-    "dotrush.roslyn.projectOrSolutionFiles": [
-        "d:\\UnityProject\\SBGames\\Library\\com.singularitygroup.hotreload\\Solution\\SBGames.sln",
-        "d:\\UnityProject\\SBGames\\SBGames.slnx"
-    ]
+    "omnisharp.dotnetPath": "C:/Program Files/dotnet/dotnet.exe"
 }
