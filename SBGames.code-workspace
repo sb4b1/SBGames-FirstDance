@@ -2,26 +2,11 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"name": "SBGames[discontinue]",
-			"path": "../SBGames[discontinue]"
 		}
 	],
 	"settings": {
-		"files.associations": {
-			"*.asset": "yaml",
-			"*.meta": "yaml",
-			"*.prefab": "yaml",
-			"*.unity": "yaml"
-		},
-		"dotnet.defaultSolution": "SBGames/SBGames.slnx",
-		"chat.tools.terminal.autoApprove": {
-			"&": true,
-			"/^git --no-pager checkout -- \"Assets/Editor/BaseAIEditor\\.cs\" \"Assets/Scripts/GOAP/AI/BaseAI\\.cs\" \"Assets/UI/UXML/BaseAIEditor\\.uxml\" \"Assets/Prefabs/Characters/Monsters/Normal/MONSTER_N001\\.prefab\" \"Assets/Prefabs/Characters/Monsters/Normal/MONSTER_N002\\.prefab\" && git --no-pager diff -- \"Assets/Editor/BaseAIEditor\\.cs\" \"Assets/Scripts/GOAP/AI/BaseAI\\.cs\" \"Assets/UI/UXML/BaseAIEditor\\.uxml\" \"Assets/Prefabs/Characters/Monsters/Normal/MONSTER_N001\\.prefab\" \"Assets/Prefabs/Characters/Monsters/Normal/MONSTER_N002\\.prefab\"$/": {
-				"approve": true,
-				"matchCommandLine": true
-			}
-		}
+		"dotrush.roslyn.projectOrSolutionFiles": [
+			"d:\\UnityProject\\SBGames\\SBGames.sln"
+		]
 	}
 }
