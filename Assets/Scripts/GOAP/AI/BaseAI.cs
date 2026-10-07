@@ -22,7 +22,7 @@ public class BaseAI : MonoBehaviour
     // You do NOT need to assign these manually in the Inspector.
     [SerializeField] private List<UtilitySkill> skills = new();
 
-    public CharacterBrain Brain => brain != null ? brain : (brain = GetComponentInParent<CharacterBrain>());
+    public CharacterBrain Brain => brain ??= GetComponentInParent<CharacterBrain>();
     public CharacterSkillController SkillController => skillController;
     public List<UtilitySkill> Skills => skills;
 
