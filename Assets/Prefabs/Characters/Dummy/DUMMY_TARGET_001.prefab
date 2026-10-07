@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 2347909690006521187}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.03, y: 0.22, z: 0}
+  m_LocalPosition: {x: 0.05, y: -0.08, z: 0}
   m_LocalScale: {x: 0.73483, y: 0.73483, z: 0.73483}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -104,7 +104,7 @@ Transform:
   m_GameObject: {fileID: 3076295436485742621}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: 0.32, z: 0}
+  m_LocalPosition: {x: 0.03, y: 0, z: 0}
   m_LocalScale: {x: 0.9072796, y: 0.9526435, z: 0.9072796}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -171,7 +171,7 @@ GameObject:
   - component: {fileID: 7963992535777943062}
   m_Layer: 6
   m_Name: DUMMY_TARGET_001
-  m_TagString: Untagged
+  m_TagString: Adventurer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -186,7 +186,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.1149, y: 1.1149, z: 1.1149}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6903839758770761967}
@@ -232,7 +232,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
-  controlMode: 0
+  controlMode: 1
   agentStatus: 0
   aiAugment: {fileID: 0}
   statsManager: {fileID: 544288945407813503}
@@ -289,6 +289,7 @@ GameObject:
   - component: {fileID: 8249147817719887853}
   - component: {fileID: 8914880871197735703}
   - component: {fileID: 4796599795009612460}
+  - component: {fileID: 5277988453235752591}
   m_Layer: 0
   m_Name: Model
   m_TagString: Untagged
@@ -305,8 +306,8 @@ Transform:
   m_GameObject: {fileID: 4796599795009612459}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.319, z: 0}
-  m_LocalScale: {x: 5.1306877, y: 5.1306877, z: 5.1306877}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 5.1543, y: 5.1543, z: 5.1543}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4052471138314152721}
@@ -393,6 +394,37 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4796599795009612460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4796599795009612459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 463fc8390dea495a8b7ea326e0cea51d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AnimationObjectController
+  animator: {fileID: 8914880871197735703}
+  sprite: {fileID: 8249147817719887853}
+  enableYSorting: 1
+  targetSortingLayer: Character
+  sortingOrdersPerWorldUnit: 100
+--- !u!114 &5277988453235752591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4796599795009612459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b78f1274a2dd444b9f0d8d8d60ddde3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterFlipRotator
+  rootTransform: {fileID: 0}
+  flipAxis: 0
 --- !u!1 &6586206257086356665
 GameObject:
   m_ObjectHideFlags: 0
@@ -426,20 +458,3 @@ Transform:
   - {fileID: 772809736415795392}
   m_Father: {fileID: 4052471138314152721}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4796599795009612460
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4796599795009612459}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 463fc8390dea495a8b7ea326e0cea51d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AnimationObjectController
-  animator: {fileID: 8914880871197735703}
-  sprite: {fileID: 8249147817719887853}
-  enableYSorting: 1
-  targetSortingLayer: Character
-  sortingOrdersPerWorldUnit: 100

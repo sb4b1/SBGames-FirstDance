@@ -26,8 +26,19 @@ public class SkillData : ScriptableObject
     [Tooltip("Additional rotation (degrees) applied around Z after aligning to travel direction.")]
     public float projectileRotationOffset = 0f;
 
+    public enum SkillTargetFilter
+    {
+        EnemiesOnly = 0,
+        AllExceptCaster = 1,
+        Everyone = 2,
+        AlliesOnly = 3,
+        SelfOnly = 4
+    }
+
     [Header("Stats")]
     public SkillType type = SkillType.Default;
+    [Tooltip("Defines which entities this skill can hit (EnemiesOnly, AllExceptCaster, Everyone, AlliesOnly, SelfOnly).")]
+    public SkillTargetFilter targetFilter = SkillTargetFilter.EnemiesOnly;
     [Tooltip("Effective casting range. If 0, automatically derived from projectile speed/lifetime or defaults to 5.")]
     public float castRange = 0f;
     public float baseDamage = 10f;

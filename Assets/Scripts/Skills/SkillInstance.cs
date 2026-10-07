@@ -16,6 +16,8 @@ public class SkillInstance : MonoBehaviour, IPoolable
     public GameObject currentTarget;
 
     public string casterID { get; private set; }
+    public GameObject CasterGameObject { get; private set; }
+    public SkillData.SkillTargetFilter TargetFilter => Data != null ? Data.targetFilter : SkillData.SkillTargetFilter.EnemiesOnly;
 
     public SkillData Data { get; private set; }
     public SkillStatsManager Stats { get; private set; }
@@ -35,6 +37,10 @@ public class SkillInstance : MonoBehaviour, IPoolable
     private bool isActive;
     private bool isHit;
 
+    private bool hasExitedCaster;
+    private float launchArmingTimer;
+    private const float LAUNCH_ARMING_DELAY = 0.1f;
+
     private void Awake()
     {
         hitResolver = GetComponent<SkillHitResolver>();
@@ -44,15 +50,18 @@ public class SkillInstance : MonoBehaviour, IPoolable
         targeting   = GetComponentInChildren<SkillTargeting>();
     }
 
-    public void Initialize(SkillStatsManager stats, Vector3 direction, string casterID, GameObject target = null)
+    public void Initialize(SkillStatsManager stats, Vector3 direction, string casterID, GameObject target = null, GameObject casterGameObject = null)
     {
         Stats = stats;
         Data = stats != null ? stats.SkillData : null;
         this.casterID = casterID;
+        CasterGameObject = casterGameObject;
         currentTarget = target;
         CurrentDamage = stats != null ? stats.Damage.Value : (Data != null ? Data.baseDamage : 0f);
         RemainingChains = stats != null ? (int)stats.MaxChainTargets.Value : (Data != null ? Data.maxChainTargets : 0);
         HasDetonated = false;
+        hasExitedCaster = false;
+        launchArmingTimer = 0f;
 
         HitTargets.Clear();
         lifetimeTimer = stats != null ? stats.ProjectileLifetime.Value : (Data != null ? Data.projectileLifetime : 0f);
@@ -71,24 +80,27 @@ public class SkillInstance : MonoBehaviour, IPoolable
         }
     }
 
-    public void Initialize(SkillData data, Vector3 direction,string casterID, GameObject target = null)
+    public void Initialize(SkillData data, Vector3 direction, string casterID, GameObject target = null, GameObject casterGameObject = null)
     {
         Stats = null;
         Data = data;
         this.casterID = casterID;
+        CasterGameObject = casterGameObject;
         currentTarget = target;
-        CurrentDamage = data.baseDamage;
-        RemainingChains = data.maxChainTargets;
+        CurrentDamage = data != null ? data.baseDamage : 0f;
+        RemainingChains = data != null ? data.maxChainTargets : 0;
         HasDetonated = false;
+        hasExitedCaster = false;
+        launchArmingTimer = 0f;
 
         HitTargets.Clear();
-        lifetimeTimer = data.projectileLifetime;
+        lifetimeTimer = data != null ? data.projectileLifetime : 0f;
         isActive = true;
         isHit = false;
 
         movement?.Initialize(this, direction);
 
-        if (data.type == SkillType.Area)
+        if (data != null && data.type == SkillType.Area)
         {
             DeactivateHitbox();
         }
@@ -104,6 +116,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
             return;
 
         float dt = Time.deltaTime;
+        launchArmingTimer += dt;
 
         if (!isHit)
             movement?.Tick(this, dt);
@@ -113,6 +126,81 @@ public class SkillInstance : MonoBehaviour, IPoolable
         {
             ReturnToPool();
         }
+    }
+
+    public void NotifyExitedCaster()
+    {
+        hasExitedCaster = true;
+    }
+
+    public bool CanHitTarget(GameObject target, HitContext context)
+    {
+        if (target == null || !isActive)
+            return false;
+
+        if (HitTargets.Contains(target))
+            return false;
+
+        bool isCaster = (CasterGameObject != null && target == CasterGameObject) ||
+                        (!string.IsNullOrEmpty(casterID) && target.TryGetComponent(out IIdentifier objID) && objID.UniqueId == casterID);
+
+        SkillData.SkillTargetFilter filter = TargetFilter;
+
+        if (isCaster)
+        {
+            if (filter == SkillData.SkillTargetFilter.EnemiesOnly || filter == SkillData.SkillTargetFilter.AllExceptCaster)
+                return false;
+
+            if (filter == SkillData.SkillTargetFilter.Everyone)
+            {
+                // For direct projectile collisions, prevent instant self-collision on spawn before exiting caster hitbox or arming delay
+                if (context == HitContext.Direct && !hasExitedCaster && launchArmingTimer < LAUNCH_ARMING_DELAY)
+                    return false;
+
+                return true;
+            }
+
+            if (filter == SkillData.SkillTargetFilter.SelfOnly)
+                return true;
+
+            if (filter == SkillData.SkillTargetFilter.AlliesOnly)
+                return true;
+
+            return false;
+        }
+
+        // If target is NOT the caster:
+        if (filter == SkillData.SkillTargetFilter.SelfOnly)
+            return false;
+
+        if (filter == SkillData.SkillTargetFilter.Everyone || filter == SkillData.SkillTargetFilter.AllExceptCaster)
+            return true;
+
+        // Faction checking for EnemiesOnly vs AlliesOnly
+        bool isAlly = IsAlly(target);
+
+        if (filter == SkillData.SkillTargetFilter.EnemiesOnly)
+            return !isAlly;
+
+        if (filter == SkillData.SkillTargetFilter.AlliesOnly)
+            return isAlly;
+
+        return true;
+    }
+
+    private bool IsAlly(GameObject target)
+    {
+        if (CasterGameObject == null || target == null)
+            return false;
+
+        // Check tags (Adventurer, Monster)
+        if (CasterGameObject.CompareTag("Adventurer") && target.CompareTag("Adventurer"))
+            return true;
+
+        if (CasterGameObject.CompareTag("Monster") && target.CompareTag("Monster"))
+            return true;
+
+        return false;
     }
 
     public void OnHit(GameObject target, HitContext context)
@@ -170,12 +258,18 @@ public class SkillInstance : MonoBehaviour, IPoolable
     {
         isActive = true;
         HasDetonated = false;
+        hasExitedCaster = false;
+        launchArmingTimer = 0f;
         HitTargets.Clear();
     }
 
     public void OnDespawn()
     {
         currentTarget = null;
+        CasterGameObject = null;
+        casterID = null;
+        hasExitedCaster = false;
+        launchArmingTimer = 0f;
         isHit = false;
         Data = null;
         Stats = null;

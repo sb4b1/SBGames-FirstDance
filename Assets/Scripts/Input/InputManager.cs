@@ -233,10 +233,10 @@ namespace SBGames.Input
                 return;
             }
 
-            if (_uiSystemRegistry.ContainsKey(button))
-            {
-                Debug.LogWarning($"[InputManager] Rebinding button '{button}' to a new UI system ({uiSystem.GetType().Name}).");
-            }
+            // if (_uiSystemRegistry.ContainsKey(button))
+            // {
+            //     Debug.LogWarning($"[InputManager] Rebinding button '{button}' to a new UI system ({uiSystem.GetType().Name}).");
+            // }
 
             _uiSystemRegistry[button] = uiSystem;
         }

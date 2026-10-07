@@ -302,15 +302,22 @@ public class SkillCaster : MonoBehaviour
                 rotation
             );
 
+        GameObject casterGo = casterTransform != null ? casterTransform.gameObject : (transform.root != null ? transform.root.gameObject : gameObject);
+        string resolvedCasterId = casterID;
+        if (casterTransform != null && casterTransform.TryGetComponent(out CharacterIdentifier identifier) && !string.IsNullOrEmpty(identifier.UniqueId))
+        {
+            resolvedCasterId = identifier.UniqueId;
+        }
+
         if (skillObject.TryGetComponent(out SkillInstance skillInstance))
         {
             if (stats != null)
             {
-                skillInstance.Initialize(stats, direction, casterID, target);
+                skillInstance.Initialize(stats, direction, resolvedCasterId, target, casterGo);
             }
             else
             {
-                skillInstance.Initialize(skillData, direction, casterID, target);
+                skillInstance.Initialize(skillData, direction, resolvedCasterId, target, casterGo);
             }
         }
         else

@@ -231,6 +231,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimationController
   animator: {fileID: 8232599140175757072}
   sprite: {fileID: 4786395061666043320}
+  enableYSorting: 1
+  targetSortingLayer: Character
+  sortingOrdersPerWorldUnit: 100
   brain: {fileID: 5661646937458837832}
   movement: {fileID: 5841761043065473055}
   agent: {fileID: 7031461656827861849}
@@ -263,7 +266,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimationEventController
   combatController: {fileID: 6820165486231997942}
   skillController: {fileID: 9150011966489319026}
-  brain: {fileID: 0}
+  brain: {fileID: 5661646937458837832}
 --- !u!1 &2810017690310066115
 GameObject:
   m_ObjectHideFlags: 0
@@ -772,8 +775,9 @@ MonoBehaviour:
     - {fileID: 8960087825022006478}
     EnableTagFilter: 1
     AllowedTags:
-    - Faction_01
-    - Faction_02
+    - Adventurer
+    - Monster
+    - Dummy
   DetectionMode: 1
   Shape: 0
   Circle:
@@ -887,7 +891,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.73483, y: 0.73483, z: 0.73483}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3525965130228454493}
@@ -996,6 +1000,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   level: 1
   baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
+  isImmortal: 0
   life: 0
   mana: 0
   maxLife: 0
@@ -1021,6 +1026,7 @@ MonoBehaviour:
   brain: {fileID: 5661646937458837832}
   stats: {fileID: 7331921466431717763}
   attackPoint: {fileID: 3843292984236393184}
+  attackRadius: 0.4
 --- !u!114 &779946892532255747
 MonoBehaviour:
   m_ObjectHideFlags: 0

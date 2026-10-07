@@ -12,17 +12,26 @@ public class SkillCollision : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (skill == null)
+            return;
+
         GameObject target = other.transform.root.gameObject;
 
-        if (target == null)
-            return;
-
-        if (skill.HitTargets.Contains(target))
-            return;
-
-        if (target.TryGetComponent(out IIdentifier objID) && objID.UniqueId == skill.casterID)
+        if (!skill.CanHitTarget(target, HitContext.Direct))
             return;
 
         skill.OnHit(target, HitContext.Direct);
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (skill == null)
+            return;
+
+        GameObject target = other.transform.root.gameObject;
+        if (skill.CasterGameObject != null && target == skill.CasterGameObject)
+        {
+            skill.NotifyExitedCaster();
+        }
     }
 }

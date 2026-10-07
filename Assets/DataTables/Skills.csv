@@ -1,5 +1,6 @@
-SkillID,SkillName,Description,SkillType,DamageType,BaseDamage,BaseManaCost,ProjectileSpeed,ProjectileLifetime,Chain,MaxChainTargets,ChainDamageMultiplier,Area,AreaRadius,BeamTickInterval
-SKILL_F001,FireSkill_001,,Default,Magical,10.00,10.00,3.00,5.07,False,0,0.70,False,0.00,0.10
-SKILL_L001,LightningSkill_001,,Area,Magical,10.00,10.00,10.00,5.00,False,0,0.70,True,3.00,0.10
-SKILL_WA001,WaterSkill_001,,Default,Magical,10.00,10.00,10.00,5.00,False,0,0.00,False,0.00,0.10
-SKILL_WI001,WindSkill_001,,Projectile,Magical,10.00,10.00,10.00,5.00,False,0,0.70,False,0.00,0.10
+SkillID,SkillName,Description,SkillType,TargetFilter,DamageType,BaseDamage,BaseManaCost,ProjectileSpeed,ProjectileLifetime,Chain,MaxChainTargets,ChainDamageMultiplier,Area,AreaRadius,BeamTickInterval
+SKILL_F001,FireSkill_001,,Default,EnemiesOnly,Magical,10.00,10.00,3.00,5.07,False,0,0.70,False,0.00,0.10
+SKILL_L001,LightningSkill_001,,Area,EnemiesOnly,Magical,10.00,10.00,10.00,5.00,False,0,0.70,True,3.00,0.10
+SKILL_WA001,WaterSkill_001,,Default,EnemiesOnly,Magical,10.00,10.00,10.00,5.00,False,0,0.00,False,0.00,0.10
+SKILL_WI001,WindSkill_001,,Projectile,EnemiesOnly,Magical,10.00,10.00,10.00,5.00,False,0,0.70,False,0.00,0.10
+

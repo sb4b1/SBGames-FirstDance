@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72d11be943fa3e34f86b9e656bb344fd, type: 3}
+  m_Name: ADVENTURER_N002
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterBaseStatSO
+  characterLevel: 1
+  characterRank: 1
+  MaxLife: 150
+  MaxMana: 100
+  Movespeed: 5
+  Damage: 15
+  AttackRange: 0
+  AttackTimeInterval: 0
+  DefaultPostAttackRecovery: 0.3
+  DefaultPostCastRecovery: 0.3
+  DecisionInterval: 0.3
+  IntervalJitter: 0.05

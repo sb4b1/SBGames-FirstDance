@@ -39,3 +39,16 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: ADVENTURER_N002
+    characterName: Blue Witch
+    prefab: {fileID: 3252151753393515643, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+    baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

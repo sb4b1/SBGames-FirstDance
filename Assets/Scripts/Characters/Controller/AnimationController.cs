@@ -62,12 +62,12 @@ public class AnimationController : AnimationObjectController
 
     public override void UpdateAttack(bool isAttacking)
     {
-        if (animator != null) animator.SetBool(HASH_ATTACK, isAttacking);
+        SetBool(HASH_ATTACK, isAttacking);
     }
 
     public override void UpdateCastSkill(bool isCasting)
     {
-        if (animator != null) animator.SetBool(HASH_CASTSkill, isCasting);
+        SetBool(HASH_CASTSkill, isCasting);
     }
 
     protected virtual void UpdateFlip()
@@ -95,42 +95,80 @@ public class AnimationController : AnimationObjectController
     [Button]
     private void Validate()
     {
-        List<string> names = new()
+        if (animator == null)
         {
-            "Speed",
-            "MoveX",
-            "MoveY",
-            "IdleUp",
-            "IdleDown",
-            "IdleRight",
-            "IdleLeft",
-            "IsWalking",
-            "IsAttacking",
-            "IsCastingSkill"
+            animator = GetComponent<Animator>() ?? GetComponentInChildren<Animator>();
+        }
+
+        if (animator == null)
+        {
+            ELogger.Warning(this, "Animator component is missing.");
+            return;
+        }
+
+        UnityEditor.Animations.AnimatorController controller = null;
+        if (animator.runtimeAnimatorController is UnityEditor.Animations.AnimatorController directAc)
+        {
+            controller = directAc;
+        }
+        else if (animator.runtimeAnimatorController is AnimatorOverrideController overrideController)
+        {
+            controller = overrideController.runtimeAnimatorController as UnityEditor.Animations.AnimatorController;
+        }
+
+        if (controller == null)
+        {
+            ELogger.Warning(this, "No valid AnimatorController asset found on Animator.");
+            return;
+        }
+
+        var requiredParameters = new Dictionary<string, AnimatorControllerParameterType>
+        {
+            { "Speed", AnimatorControllerParameterType.Float },
+            { "MoveX", AnimatorControllerParameterType.Float },
+            { "MoveY", AnimatorControllerParameterType.Float },
+            { "IdleUp", AnimatorControllerParameterType.Bool },
+            { "IdleDown", AnimatorControllerParameterType.Bool },
+            { "IdleRight", AnimatorControllerParameterType.Bool },
+            { "IdleLeft", AnimatorControllerParameterType.Bool },
+            { "IsWalking", AnimatorControllerParameterType.Bool },
+            { "IsAttacking", AnimatorControllerParameterType.Bool },
+            { "IsCastingSkill", AnimatorControllerParameterType.Bool },
+            { "GetHit", AnimatorControllerParameterType.Trigger }
         };
 
-        animator = GetComponent<Animator>();
-        if (animator == null) return;
-
         HashSet<string> actualNames = new();
-        foreach (var parameter in animator.parameters)
+        foreach (var parameter in controller.parameters)
         {
             actualNames.Add(parameter.name);
-            if (!names.Contains(parameter.name) && parameter.name != "GetHit")
+            if (!requiredParameters.ContainsKey(parameter.name))
+            {
                 ELogger.Warning(this, $"Unexpected Animator parameter: {parameter.name}");
+            }
         }
 
-        int missingCount = 0;
-        foreach (string name in names)
+        int createdCount = 0;
+        UnityEditor.Undo.RecordObject(controller, "Add Missing Animator Parameters");
+
+        foreach (var kvp in requiredParameters)
         {
-            if (actualNames.Contains(name)) continue;
+            if (actualNames.Contains(kvp.Key)) continue;
 
-            ELogger.Warning(this, $"Missing Animator parameter: {name}");
-            missingCount++;
+            controller.AddParameter(kvp.Key, kvp.Value);
+            ELogger.Log(this, $"Created missing Animator parameter: {kvp.Key} ({kvp.Value})");
+            createdCount++;
         }
 
-        if (missingCount == 0)
+        if (createdCount > 0)
+        {
+            UnityEditor.EditorUtility.SetDirty(controller);
+            UnityEditor.AssetDatabase.SaveAssets();
+            ELogger.Log(this, $"Successfully added {createdCount} missing Animator parameter(s) to '{controller.name}'.");
+        }
+        else
+        {
             ELogger.Log(this, "All required Animator parameters are present.");
+        }
     }
 #endif
 }

@@ -5,6 +5,7 @@ using SB4b1.Helpers;
 using UnityEngine;
 using UnityEngine.AI;
 
+[RequireComponent(typeof(GoapActionProvider))]
 public class BaseAI : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;

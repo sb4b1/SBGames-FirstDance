@@ -177,7 +177,7 @@ namespace SBGames.Database.Editor.CSV
             var skillGuids = AssetDatabase.FindAssets("t:SkillData");
             var headers = new[]
             {
-                "SkillID", "SkillName", "Description", "SkillType", "DamageType", "BaseDamage", "BaseManaCost",
+                "SkillID", "SkillName", "Description", "SkillType", "TargetFilter", "DamageType", "BaseDamage", "BaseManaCost",
                 "ProjectileSpeed", "ProjectileLifetime", "Chain", "MaxChainTargets", "ChainDamageMultiplier",
                 "Area", "AreaRadius", "BeamTickInterval"
             };
@@ -195,6 +195,7 @@ namespace SBGames.Database.Editor.CSV
                     ["SkillName"] = skill.skillName ?? string.Empty,
                     ["Description"] = skill.description ?? string.Empty,
                     ["SkillType"] = skill.type.ToString(),
+                    ["TargetFilter"] = skill.targetFilter.ToString(),
                     ["DamageType"] = skill.damageType.ToString(),
                     ["BaseDamage"] = skill.baseDamage.ToString("F2"),
                     ["BaseManaCost"] = skill.baseManaCost.ToString("F2"),
@@ -260,6 +261,7 @@ namespace SBGames.Database.Editor.CSV
                 if (row.TryGetValue("SkillName", out var name)) targetSkill.skillName = name;
                 if (row.TryGetValue("Description", out var desc)) targetSkill.description = desc;
                 if (row.TryGetValue("SkillType", out var typeStr) && Enum.TryParse<SkillType>(typeStr, true, out var st)) targetSkill.type = st;
+                if (row.TryGetValue("TargetFilter", out var filterStr) && Enum.TryParse<SkillData.SkillTargetFilter>(filterStr, true, out var tf)) targetSkill.targetFilter = tf;
                 if (row.TryGetValue("DamageType", out var dtStr) && Enum.TryParse<DamageType>(dtStr, true, out var dt)) targetSkill.damageType = dt;
                 if (row.TryGetValue("BaseDamage", out var dmgStr) && float.TryParse(dmgStr, out var dmg)) targetSkill.baseDamage = dmg;
                 if (row.TryGetValue("BaseManaCost", out var manaStr) && float.TryParse(manaStr, out var mana)) targetSkill.baseManaCost = mana;

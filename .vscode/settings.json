@@ -67,5 +67,9 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "SBGames.slnx"
+    "dotnet.defaultSolution": "SBGames.slnx",
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "d:\\UnityProject\\SBGames\\Library\\com.singularitygroup.hotreload\\Solution\\SBGames.sln",
+        "d:\\UnityProject\\SBGames\\SBGames.slnx"
+    ]
 }
