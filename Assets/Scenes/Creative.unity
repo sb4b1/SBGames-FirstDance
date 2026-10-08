@@ -410,6 +410,17 @@ PanelRenderer:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_Position: 0
+--- !u!114 &253268210 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 445898926109784483, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+  m_PrefabInstance: {fileID: 8015110572603347517}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f689dc181f5dbf043ac6605c2d8b131a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkillTargeting
 --- !u!1 &263831875
 GameObject:
   m_ObjectHideFlags: 0
@@ -1097,6 +1108,11 @@ MonoBehaviour:
   itemDatabase: {fileID: 11400000, guid: 30a5277af0036b0478e3ae017b19305d, type: 2}
   persistAcrossScenes: 0
   enforceCombatPhaseLock: 1
+--- !u!4 &813974210 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6785917886292104977, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+  m_PrefabInstance: {fileID: 8015110572603347517}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &871039828
 GameObject:
   m_ObjectHideFlags: 0
@@ -5410,6 +5426,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: ADVENTURER_N002
       objectReference: {fileID: 0}
+    - target: {fileID: 5434509249952807549, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: spawnType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5434509249952807549, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: targeting
+      value: 
+      objectReference: {fileID: 253268210}
+    - target: {fileID: 5434509249952807549, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: skillSpawnPoint
+      value: 
+      objectReference: {fileID: 813974210}
     - target: {fileID: 6769856459707252562, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
       propertyPath: statsManager
       value: 

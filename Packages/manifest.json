@@ -1,11 +1,11 @@
 {
   "dependencies": {
     "com.abzorba.artificetoolkit": "https://github.com/AbZorbaGames/artificetoolkit.git",
+    "com.badranraza.ide.antigravity": "https://github.com/BadranRaza/com.unity.ide.antigravity.git",
     "com.bennykok.hierarchy-header": "https://github.com/BennyKok/unity-hierarchy-header.git",
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
     "com.crashkonijn.goap": "https://github.com/crashkonijn/GOAP.git?path=/Package#3.1.1",
     "com.h8man.2d.navmeshplus": "https://github.com/h8man/NavMeshPlus.git",
-    "com.termway.ide.antigravity": "https://github.com/TermWay/unity-ide-antigravity.git",
     "com.unity.2d.animation": "16.0.1",
     "com.unity.2d.aseprite": "6.0.0",
     "com.unity.2d.psdimporter": "15.0.1",

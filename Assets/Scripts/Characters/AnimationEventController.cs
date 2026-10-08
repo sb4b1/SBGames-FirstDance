@@ -28,31 +28,21 @@ public class AnimationEventController : MonoBehaviour
 
     public void AnimationEvent_Attack()
     {
-        if (combatController != null)
-            combatController.SearchForTargets();
+        combatController?.SearchForTargets();
     }
 
     public void AnimationEvent_CastSkill()
     {
-        if (skillController != null)
-        {
-            skillController.ExecutePendingCast();
-        }
+        skillController?.ExecutePendingCast();
     }
 
     public void AnimationEvent_CastSkillComplete()
     {
-        if (brain != null)
-        {
-            brain.EndCastSkill();
-        }
+        brain?.EndCastSkill();
     }
 
     public void AnimationEvent_AttackComplete()
     {
-        if (brain != null)
-        {
-            brain.EndAttack();
-        }
+        brain?.EndAttack();
     }
 }
