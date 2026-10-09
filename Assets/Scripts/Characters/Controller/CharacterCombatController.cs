@@ -45,7 +45,7 @@ public class CharacterCombatController : MonoBehaviour
     {
         Transform point = attackPoint != null ? attackPoint : transform;
         float radius = attackRadius > 0f ? attackRadius : DEFAULT_ATTACK_RADIUS;
-        int hitCount = Physics2D.OverlapCircleNonAlloc(point.position, radius, hitBuffer);
+        int hitCount = Physics2D.OverlapCircle(point.position, radius, ContactFilter2D.noFilter, hitBuffer);
 
         hitTargetsBuffer.Clear();
 

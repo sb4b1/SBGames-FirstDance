@@ -274,24 +274,48 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         attackCooldownCoroutine = null;
     }
 
+    public Stat GetStat(StatType type)
+    {
+        return type switch
+        {
+            StatType.Health => MaxLife,
+            StatType.MaxHealth => MaxLife,
+            StatType.Attack => Damage,
+            StatType.MoveSpeed => Movespeed,
+            StatType.AttackSpeed => AttackTimeInterval,
+            _ => null
+        };
+    }
+
+    public Stat GetStatByModifier(StatModifier modifier)
+    {
+        if (modifier == null) return null;
+        if (MaxLife.Modifiers.Contains(modifier)) return MaxLife;
+        if (Damage.Modifiers.Contains(modifier)) return Damage;
+        if (Movespeed.Modifiers.Contains(modifier)) return Movespeed;
+        if (AttackTimeInterval.Modifiers.Contains(modifier)) return AttackTimeInterval;
+        if (MaxMana.Modifiers.Contains(modifier)) return MaxMana;
+        if (AttackRange.Modifiers.Contains(modifier)) return AttackRange;
+        if (DecisionInterval.Modifiers.Contains(modifier)) return DecisionInterval;
+        if (IntervalJitter.Modifiers.Contains(modifier)) return IntervalJitter;
+        return null;
+    }
+
     private float CalculateFinalDamage(in DamageData damage)
     {
         float amount = damage.Amount;
+        if (amount <= 0f) return 0f;
 
         switch (damage.Type)
         {
             case DamageType.Physical:
-                // later: armor stat
+                // later: armor stat mitigation
                 break;
-
-            //case DamageType.Poison:
-                // later: resist stat
-                //break;
 
             case DamageType.True:
                 return amount;
         }
 
-        return Mathf.Max(1f, amount);
+        return Mathf.Max(0f, amount);
     }
 }

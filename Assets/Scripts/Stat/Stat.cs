@@ -102,7 +102,16 @@ public class Stat
 
     public bool RemoveAllModifiersFromSource(object source)
     {
-        int removed = _modifiers.RemoveAll(m => m.Source == source);
+        int removed = 0;
+        for (int i = _modifiers.Count - 1; i >= 0; i--)
+        {
+            if (_modifiers[i].Source == source)
+            {
+                _modifiers.RemoveAt(i);
+                removed++;
+            }
+        }
+
         if (removed > 0)
         {
             MarkDirty();
@@ -131,7 +140,7 @@ public class Stat
     protected void EnsureSorted()
     {
         if (_isSorted) return;
-        _modifiers.Sort((a, b) => a.Order.CompareTo(b.Order));
+        _modifiers.Sort();
         _isSorted = true;
     }
 

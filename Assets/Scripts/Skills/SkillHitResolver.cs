@@ -6,7 +6,8 @@ public class SkillHitResolver : MonoBehaviour
     public void ResolveHit(SkillInstance skill, GameObject target)
     {
 
-        if (!target.TryGetComponent(out IDamageable damagable))
+        IDamageable damagable = target.GetComponent<IDamageable>() ?? target.GetComponentInParent<IDamageable>() ?? target.transform.root.GetComponentInChildren<IDamageable>();
+        if (damagable == null)
         {
             ELogger.Warning(this, nameof(ResolveHit), $"Target {target.name} does not implement IDamageable. Cannot apply damage.");
             return;
@@ -18,7 +19,8 @@ public class SkillHitResolver : MonoBehaviour
             skill
         ));
 
-        if (!target.TryGetComponent(out StatusEffectManager sem))
+        StatusEffectManager sem = target.GetComponent<StatusEffectManager>() ?? target.GetComponentInParent<StatusEffectManager>() ?? target.transform.root.GetComponentInChildren<StatusEffectManager>();
+        if (sem == null)
             return;
 
         foreach (var application in skill.Data.statusEffects)

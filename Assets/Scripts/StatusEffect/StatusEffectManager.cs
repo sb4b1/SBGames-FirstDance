@@ -4,12 +4,12 @@ using UnityEngine;
 public class StatusEffectManager : MonoBehaviour
 {
     private readonly Dictionary<string, StatusEffect> activeEffects = new();
-    private CharacterStats stats;
+    private CharacterStatsManager stats;
     private readonly List<string> toRemove = new();
 
     private void Awake()
     {
-        stats = GetComponent<CharacterStats>();
+        stats = GetComponent<CharacterStatsManager>() ?? GetComponentInParent<CharacterStatsManager>();
     }
 
     private void Update()

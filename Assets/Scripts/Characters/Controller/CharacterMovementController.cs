@@ -23,14 +23,29 @@ public class CharacterMovementController : MonoBehaviour
 
     private void Awake()
     {
-        rb.gravityScale = 0f;
-        rb.freezeRotation = true;
+        if (rb == null) rb = GetComponent<Rigidbody2D>();
+        if (brain == null) brain = GetComponent<CharacterBrain>();
+        if (stats == null) stats = GetComponent<CharacterStatsManager>();
+
+        if (rb != null)
+        {
+            rb.gravityScale = 0f;
+            rb.freezeRotation = true;
+        }
     }
 
     private void OnEnable()
     {
-        moveAction = InputSystem.actions.FindAction("Move");
-        moveAction.Enable();
+        if (InputSystem.actions != null)
+        {
+            moveAction = InputSystem.actions.FindAction("Move");
+            moveAction?.Enable();
+        }
+    }
+
+    private void OnDisable()
+    {
+        moveAction?.Disable();
     }
 
     private void Update()
@@ -45,7 +60,7 @@ public class CharacterMovementController : MonoBehaviour
 
     private void ReadInput()
     {
-        if (brain.ControlMode != ControlMode.Player || brain.IsDashing)
+        if (brain == null || brain.ControlMode != ControlMode.Player || brain.IsDashing || moveAction == null)
         {
             moveInput = Vector2.zero;
             return;
@@ -53,7 +68,7 @@ public class CharacterMovementController : MonoBehaviour
 
         moveInput = moveAction.ReadValue<Vector2>().normalized;
 
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (brain.TryStartDash())
                 StartCoroutine(DashRoutine());

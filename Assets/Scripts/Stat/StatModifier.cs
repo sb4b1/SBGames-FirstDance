@@ -5,12 +5,18 @@ public enum StatModType
     PercentMult = 300,
 }
 
-public sealed class StatModifier
+public sealed class StatModifier : System.IComparable<StatModifier>
 {
     public float Value { get; }
     public StatModType Type { get; }
     public int Order { get; }
     public object Source { get; }
+
+    public int CompareTo(StatModifier other)
+    {
+        if (other == null) return 1;
+        return Order.CompareTo(other.Order);
+    }
 
     public StatModifier(float value, StatModType type, int order, object source)
     {

@@ -74,7 +74,8 @@ public class CharacterSkillController : MonoBehaviour
     {
         if (skillSpawnPoint == null)
         {
-            skillSpawnPoint = transform.Find("SpawnPoint").gameObject;
+            var spawnChild = transform.Find("SpawnPoint");
+            skillSpawnPoint = spawnChild != null ? spawnChild.gameObject : gameObject;
         }
     }
 
