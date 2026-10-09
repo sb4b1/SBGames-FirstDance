@@ -5439,6 +5439,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 813974210}
     - target: {fileID: 6769856459707252562, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: agentStatus
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6769856459707252562, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
       propertyPath: statsManager
       value: 
       objectReference: {fileID: 1922264339}
@@ -5513,6 +5517,10 @@ PrefabInstance:
     - target: {fileID: 8156641959742805057, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
       propertyPath: m_Name
       value: MageAI
+      objectReference: {fileID: 0}
+    - target: {fileID: 8156641959742805057, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8996163782249249517, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
       propertyPath: attackPoint

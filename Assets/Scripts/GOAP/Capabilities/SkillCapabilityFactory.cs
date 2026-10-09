@@ -12,7 +12,9 @@ public class SkillCapabilityFactory : CapabilityFactoryBase
             .AddCondition<IsSkillReady>(Comparison.GreaterThanOrEqual, 1)
             .AddCondition<AgentMana>(Comparison.GreaterThanOrEqual, 5)
             .AddEffect<ThreatLevel>(EffectType.Decrease)
-            .SetBaseCost(1);
+            .SetBaseCost(1)
+            .SetValidateConditions(false)
+            .SetValidateTarget(false);
 
         return builder.Build();
     }

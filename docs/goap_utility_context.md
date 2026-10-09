@@ -105,8 +105,7 @@ public class KillEnemyGoal : GoalBase {}
 
 Location: `GOAP/Goals/`. Current goals: `WanderGoal`, `KillEnemyGoal`, `KeepDistanceGoal`, `SurviveGoal`.
 Goals carry no logic. Their conditions and base cost are declared in a **Capability** (§1.5).
-**⚠ Gap:** `KeepDistanceGoal` and `SurviveGoal` are not registered in any capability and are not
-mapped in `BaseAI.Planner`.
+Both `KeepDistanceGoal` and `SurviveGoal` are registered in `SurvivalCapabilityFactory` and paired with `FleeAction`.
 
 ### 1.2 Actions: `GoapActionBase<TData>` with a nested `Data : IActionData`
 
@@ -157,17 +156,12 @@ return new TransformTarget(target);
 | `AllyTargetSensor` | (unregistered) | Same pattern over `AllyTargets` |
 | `WanderTargetSensor` | `WanderTarget` | `NavMesh.SamplePosition` restricted to the area `"Territory"`, radius 3 around the agent, falling back to radius 2 around the spawn ("protect") point |
 
-**⚠ Gaps in sensors:**
-- The selection loop in `EnemyTargetSensor` and `AllyTargetSensor` is inverted:
-  `dist(new) < dist(current) ? current : new` keeps the **farthest** transform. It also does not
-  null-check list entries. If `EnemyTargets` is empty, it returns a `TransformTarget(null)`
-  instead of `null`.
-- `CombatStatusSensor` always returns `-1` for `IsSkillReady`. Because `CastSkillAction` requires
-  `IsSkillReady >= 1`, it can never be planned. The sensor should return
-  `data.IsSkillReady ? 1 : 0`.
-- Nothing ever writes `BaseAI.TargetDistance`, so `EnemyDistance` is always `0` while a target exists.
-- `KeepDistanceTarget` computes `a * Random(-2,2)` (it scales a world position rather than an
-  offset) and divides by `a.y` without a zero check.
+**Sensor implementation notes (resolved):**
+- `EnemyTargetSensor` and `AllyTargetSensor` use zero-alloc nearest scans, null checks, and write `BaseAI.SetTarget(best, distance)`.
+- `CombatStatusSensor` evaluates `data.IsSkillReady ? 1 : 0`.
+- `BaseAI.TargetDistance` is maintained continuously on `BaseAI` and `EnemyTargetSensor`, feeding `EnemyDistanceSensor`.
+- `KeepDistanceTarget` in `EnemyDistanceSensor` evaluates an allocation-free 2D retreat vector with zero-division safety.
+- `WanderTargetSensor` samples using per-agent `BaseAI.SpawnPosition` without singleton state leak.
 
 ### 1.4 WorldKeys and TargetKeys: empty marker classes
 
@@ -177,8 +171,8 @@ public class EnemyTarget : TargetKeyBase {}  // GOAP/TargetKeys/Target/
 ```
 
 - **WorldKeys** (all integer-valued): `AgentLife`, `AgentMana`, `EnemyDistance`, `FearLevel`,
-  `IsIdle`, `IsSkillReady` (bool as 0/1), `ThreatLevel`.
-- **TargetKeys:** `EnemyTarget`, `SelfTarget`, `WanderTarget`, `KeepDistanceTarget`.
+  `IsIdle`, `IsSkillReady` (bool as 0/1), `ThreatLevel`, `HasSquadOrder` (0/1), `SquadOrderTypeKey`.
+- **TargetKeys:** `EnemyTarget`, `SelfTarget`, `WanderTarget`, `KeepDistanceTarget`, `LeaderTarget`, `FocusFireTarget`.
 - There is no explicit registration step. A key becomes "registered" when a capability references
   it (`AddCondition<T>`, `AddEffect<T>`, `SetTarget<T>`) and a sensor provides it
   (`AddLocalWorldSensor<T>`, `AddTargetSensor<…>().SetTarget<T>()`).
@@ -214,6 +208,8 @@ public class AttackCapabilityFactory : CapabilityFactoryBase
 | `WanderCapability` | `WanderGoal` (`IsIdle >= 1`) | `WanderAction` → `IsIdle` ↑ | `WanderTargetSensor` → `WanderTarget` |
 | `AttackCapability` | `KillEnemyGoal` (`ThreatLevel <= 0`) | `AttackAction` → `ThreatLevel` ↓, cost 2 | none |
 | `SkillCapability` | none | `CastSkillAction` (`IsSkillReady >= 1`, `AgentMana >= 5`) → `ThreatLevel` ↓, cost 1 | none |
+| `SquadCapability` | `FollowLeaderGoal`, `FocusFireGoal`, `FallBackGoal` | `FollowLeaderAction`, `FocusFireAction`, `FallBackAction` | `SquadOrderSensor`, `LeaderTargetSensor`, `FocusFireTargetSensor` |
+| `SurvivalCapability` | `SurviveGoal`, `KeepDistanceGoal` | `FleeAction` → `FearLevel` ↓, cost 1 | none (`KeepDistanceTarget` provided by `EnemyDistanceSensor`) |
 | `BasicCapability` | none | none | `EnemyTargetSensor` → `EnemyTarget`; multi: `AwarenessSensor`, `CombatStatusSensor`, `EnemyDistanceSensor` |
 
 Convention: shared perception goes in **`BasicCapability`**. Feature capabilities hold their own
@@ -353,14 +349,13 @@ can be dropped in: `RangeSensor2D`, `RaySensor2D` (note: the class is named `Ray
 
 | Code | Allocates? |
 |---|---|
-| `VisionController.GetTargets()`: `new List<Transform>()` every 0.2 s | **Yes, ⚠ Gap** |
+| `VisionController.TickPerception()`: preallocated buffers | No |
 | `VisionController.GetTarget()` / `TryGetTarget()`: `foreach` + early return | No |
-| `SkillTargeting.GetTargets()`: returns the sensor's shared list | No, but the result is aliased and overwritten by the next query |
-| `SkillTargeting.GetAOETargets()`: `new List` that is immediately discarded | **Yes, ⚠ Gap** |
-| `SkillTargeting.GetBeamTargets()`: `IEnumerable` iterator (`yield`) | **Yes, ⚠ Gap** (iterator object) |
-| `CharacterCombatController.SearchForTargets()`: `Physics2D.OverlapCircleAll` | **Yes, ⚠ Gap** (use `OverlapCircle` with a `ContactFilter2D` and a cached `Collider2D[]`/`List`) |
-| `EnemyTargetSensor`: `foreach` over the cached `List<Transform>` | No |
-| `AllyTargets`: never populated by `VisionController` | **⚠ Gap** |
+| `SkillTargeting.GetTargets()`: returns sensor detections without allocations | No |
+| `SkillTargeting.GetAOETargets()` / `GetBeamTargets()`: zero-alloc direct list | No |
+| `CharacterCombatController.SearchForTargets()`: `Physics2D.OverlapCircleNonAlloc` + cached buffer | No |
+| `EnemyTargetSensor`: `for` scan over cached `List<Transform>` | No |
+| `AllyTargets`: populated alongside `EnemyTargets` by `VisionController` | No |
 
 ### 3.4 Required zero-GC pattern
 

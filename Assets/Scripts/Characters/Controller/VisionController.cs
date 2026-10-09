@@ -20,11 +20,14 @@ public class VisionController : MonoBehaviour
     private float searchTimer;
     private const float SEARCH_INTERVAL = 0.2f;
 
+    [SerializeField] private FactionMember factionMember;
+
     private void Awake()
     {
         if (brain == null) brain = GetComponent<BaseAI>();
         if (brain == null) brain = GetComponentInParent<BaseAI>();
         if (sensor == null) sensor = GetComponentInChildren<Sensor>();
+        if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
     }
 
     private void Update()
@@ -50,12 +53,38 @@ public class VisionController : MonoBehaviour
         sensor.GetDetectionsByDistance(detectionBuffer);
 
         enemyTargets.Clear();
+        allyTargets.Clear();
         for (int i = 0; i < detectionBuffer.Count; i++)
         {
             var obj = detectionBuffer[i];
-            if (obj != null)
+            if (obj == null) continue;
+
+            if (factionMember != null)
             {
-                enemyTargets.Add(obj.transform);
+                if (factionMember.IsAllyOf(obj))
+                {
+                    allyTargets.Add(obj.transform);
+                }
+                else if (factionMember.IsHostileTo(obj))
+                {
+                    enemyTargets.Add(obj.transform);
+                }
+                else
+                {
+                    enemyTargets.Add(obj.transform);
+                }
+            }
+            else
+            {
+                if ((CompareTag("Adventurer") && obj.CompareTag("Adventurer")) ||
+                    (CompareTag("Monster") && obj.CompareTag("Monster")))
+                {
+                    allyTargets.Add(obj.transform);
+                }
+                else
+                {
+                    enemyTargets.Add(obj.transform);
+                }
             }
         }
 

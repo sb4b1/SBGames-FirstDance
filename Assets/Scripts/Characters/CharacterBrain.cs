@@ -206,7 +206,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // =========================
     // Skill
     // =========================
-    public bool TryCastSkill(float fallbackCastDuration = 0.5f)
+    public bool TryCastSkill(float fallbackCastDuration = -1f)
     {
         if (!CanCastSkill) return false;
 
@@ -217,10 +217,28 @@ public class CharacterBrain : MonoBehaviour, IPoolable
             animController.UpdateCastSkill(true);
         }
 
+        // Determine effective cast duration / timeout
+        float castDuration = fallbackCastDuration;
+        if (castDuration <= 0f)
+        {
+            var anim = AnimController;
+            if (anim != null && anim.CastAnimationDuration > 0f)
+            {
+                float clipLength = anim.CastAnimationDuration;
+                // If the animation clip contains a completion event, the fallback timer is strictly
+                // a safety timeout and must not fire before the animation completes.
+                castDuration = anim.HasCastCompleteEvent ? clipLength + 0.5f : clipLength;
+            }
+            else
+            {
+                castDuration = 1.5f;
+            }
+        }
+
         if (statsManager != null)
         {
             // Keep basic attack on cooldown throughout the casting animation
-            statsManager.EnsureAttackCooldown(fallbackCastDuration + 1f);
+            statsManager.EnsureAttackCooldown(castDuration + 1f);
         }
 
         if (castFallbackCoroutine != null)
@@ -228,7 +246,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
             StopCoroutine(castFallbackCoroutine);
             castFallbackCoroutine = null;
         }
-        castFallbackCoroutine = StartCoroutine(CastFallbackCoroutine(fallbackCastDuration));
+        castFallbackCoroutine = StartCoroutine(CastFallbackCoroutine(castDuration));
 
         return true;
     }

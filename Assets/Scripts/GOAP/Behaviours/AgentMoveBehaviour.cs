@@ -60,6 +60,11 @@ public class AgentMoveBehaviour : MonoBehaviour
     private void TargetNotInRange(ITarget target)
     {
         this.shouldMove = true;
+        if (agent != null && agent.Brain != null && !agent.Brain.CanMove)
+        {
+            agent.IsAgentStop(true);
+            return;
+        }
         agent.IsAgentStop(false);
     }
 
@@ -67,9 +72,17 @@ public class AgentMoveBehaviour : MonoBehaviour
     {
         if (!this.shouldMove) return;
         if (this.currentTarget == null) return;
+
+        if (agent != null && agent.Brain != null && !agent.Brain.CanMove)
+        {
+            agent.IsAgentStop(true);
+            return;
+        }
+
         if (this.lastPosition == currentTarget.Position) return;
 
         lastPosition = currentTarget.Position;
+        agent.IsAgentStop(false);
         agent.AgentDestination(new Vector2(this.currentTarget.Position.x, this.currentTarget.Position.y));
     }
 

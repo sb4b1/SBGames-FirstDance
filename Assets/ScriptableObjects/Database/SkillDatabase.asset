@@ -13,7 +13,12 @@ MonoBehaviour:
   m_Name: SkillDatabase
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.SkillDatabaseSO
   skills:
+  - {fileID: 11400000, guid: a07936d0b9731c74ebd32072a6a4eda7, type: 2}
   - {fileID: 11400000, guid: c90689d6a14c7bd41a0c50cb71778b5c, type: 2}
+  - {fileID: 11400000, guid: 09f6ddb453d52424096df20b08891417, type: 2}
   - {fileID: 11400000, guid: c6b8a673e2328964d9b3410056c9bee1, type: 2}
+  - {fileID: 11400000, guid: 7e03c0d26591baf4a8b1b708564c6077, type: 2}
   - {fileID: 11400000, guid: b203beacb56705749ba99e3548b82f1f, type: 2}
+  - {fileID: 11400000, guid: ce5cb2d01076fa84396a1f25ed922298, type: 2}
   - {fileID: 11400000, guid: 40f46ec2688c217408e25589e6b5270d, type: 2}
+  - {fileID: 11400000, guid: 1183b54ca7c9e0a439c0916c2d90de03, type: 2}

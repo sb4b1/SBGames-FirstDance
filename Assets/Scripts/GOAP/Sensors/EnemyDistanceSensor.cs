@@ -22,21 +22,21 @@ public class EnemyDistanceSensor : MultiSensorBase
         this.AddLocalTargetSensor<KeepDistanceTarget>((agent, references, target) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-            if (data.CurrentTarget == null) return null;
-            // find opposite direction of target
-            Vector3 a = agent.Transform.position - (data.CurrentTarget.transform.position - agent.Transform.position);
+            if (data == null || data.CurrentTarget == null) return null;
 
-            // find perpendicular vector from vector a
-            var b = -a.x / a.y;
+            Vector3 agentPos = agent.Transform.position;
+            Vector3 toTarget = data.CurrentTarget.position - agentPos;
+            toTarget.z = 0f;
+            Vector3 awayDir = toTarget.sqrMagnitude > 0.001f ? -toTarget.normalized : Vector3.up;
+            Vector3 perpDir = new Vector3(-awayDir.y, awayDir.x, 0f);
 
-            // get random position fron perpendicular vector
-            //Vector3 position = new Vector3(1, b, 0).normalized;
-
-            int count = 0;
-            while (count < 5)
+            for (int i = 0; i < 5; i++)
             {
+                float perpFactor = RandomUtil.Range(-1.5f, 1.5f);
+                float retreatDist = RandomUtil.Range(2.5f, 4.5f);
+                Vector3 candidatePos = agentPos + (awayDir * retreatDist) + (perpDir * perpFactor);
 
-                if (NavMesh.SamplePosition(a * RandomUtil.Range(-2, 2), out NavMeshHit hit, 1, NavMesh.AllAreas))
+                if (NavMesh.SamplePosition(candidatePos, out NavMeshHit hit, 2f, NavMesh.AllAreas))
                 {
                     if (target is PositionTarget positionTarget)
                     {
@@ -45,11 +45,14 @@ public class EnemyDistanceSensor : MultiSensorBase
 
                     return new PositionTarget(hit.position);
                 }
-
-                count++;
             }
 
-            return new PositionTarget(agent.Transform.position);
+            if (target is PositionTarget fallbackTarget)
+            {
+                return fallbackTarget.SetPosition(agentPos);
+            }
+
+            return new PositionTarget(agentPos);
         });
     }
 

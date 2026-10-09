@@ -52,3 +52,16 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: MONSTER_N002
+    characterName: MONSTER_N002
+    prefab: {fileID: 0}
+    baseStats: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

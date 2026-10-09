@@ -29,12 +29,15 @@ namespace SBGames.Shop.Unity
 
         [Header("Shop Settings")]
         [SerializeField] private CharacterDatabaseSO characterDatabase;
+        [SerializeField] private SBGames.Personality.Data.PersonalityDatabaseSO personalityDatabase;
         [SerializeField] private ShopConfig shopConfig = new ShopConfig(5, 2, 0.5f);
         [SerializeField] private bool autoRefreshOnPlanningPhase = true;
 
         [Header("Unity Events for UI & Audio")]
         public UnityEvent<MonsterShopItem, PlacedUnitInstance> onShopMonsterSummoned;
         public UnityEvent<IReadOnlyList<ShopSlot>, bool> onShopRefreshed;
+
+        public SBGames.Personality.Data.PersonalityDatabaseSO PersonalityDatabase => personalityDatabase;
 
         // Core systems
         public MonsterShopSystem Shop { get; private set; }
@@ -139,7 +142,11 @@ namespace SBGames.Shop.Unity
             );
 
             // Hook internal shop events
-            Shop.OnShopRefreshed += (slots, isManual) => onShopRefreshed?.Invoke(slots, isManual);
+            Shop.OnShopRefreshed += (slots, isManual) =>
+            {
+                DecorateShopItemsWithPersonality(slots);
+                onShopRefreshed?.Invoke(slots, isManual);
+            };
 
             // Hook placement manager events
             if (placementManager != null)
@@ -269,6 +276,25 @@ namespace SBGames.Shop.Unity
             }
 
             return go;
+        }
+
+        private void DecorateShopItemsWithPersonality(IReadOnlyList<ShopSlot> slots)
+        {
+            if (personalityDatabase == null || slots == null) return;
+
+            for (int i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                if (slot == null || slot.IsEmpty || slot.CurrentItem == null) continue;
+
+                var item = slot.CurrentItem;
+                if (item.RaceInstinct == null || item.Trait == null)
+                {
+                    var race = item.RaceInstinct ?? personalityDatabase.GetRaceForArchetype(item.ArchetypeId);
+                    var trait = item.Trait ?? personalityDatabase.RollRandomTrait();
+                    item.SetPersonality(race, trait);
+                }
+            }
         }
     }
 }

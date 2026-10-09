@@ -50,7 +50,17 @@ public class CharacterSkillController : MonoBehaviour
             }
         }
 
+        if (skills == null || skills.Count == 0)
+        {
+            var casters = GetComponentsInChildren<SkillCaster>(true);
+            foreach (var caster in casters)
+            {
+                skills.Add(new Skill(caster.gameObject, this));
+            }
+        }
+
         InitializeExistingSkills();
+        baseAI?.InitializeSkills();
     }
 
     private void OnValidate()

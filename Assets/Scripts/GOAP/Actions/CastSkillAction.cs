@@ -76,11 +76,22 @@ public class CastSkillAction : GoapActionBase<CastSkillAction.Data>
         data.CastInitiated = false;
     }
 
+    public override bool IsValid(IActionReceiver agent, Data data)
+    {
+        // While cast animation is actively playing, protect the action from cancellation
+        if (data.CastInitiated && data.Brain != null && data.Brain.IsCastingSkill)
+        {
+            return true;
+        }
+
+        return base.IsValid(agent, data);
+    }
+
     public override void Stop(IMonoAgent agent, Data data)
     {
-        if (data.Brain != null && (data.Brain.IsCastingSkill || data.Brain.IsRecovering))
+        if (data.Brain != null && data.Brain.IsCastingSkill)
         {
-            data.Brain.InterruptAllActions();
+            data.Brain.EndCastSkill();
         }
         data.CastInitiated = false;
     }

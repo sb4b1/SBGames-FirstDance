@@ -193,11 +193,24 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (CasterGameObject == null || target == null)
             return false;
 
-        // Check tags (Adventurer, Monster)
+        // Check IFactionMember first
+        if (CasterGameObject.TryGetComponent<IFactionMember>(out var casterFaction) &&
+            target.TryGetComponent<IFactionMember>(out var targetFaction))
+        {
+            return casterFaction.IsAllyOf(targetFaction);
+        }
+
+        // Check tags fallback (Adventurer, Monster, Factions)
         if (CasterGameObject.CompareTag("Adventurer") && target.CompareTag("Adventurer"))
             return true;
 
         if (CasterGameObject.CompareTag("Monster") && target.CompareTag("Monster"))
+            return true;
+
+        if (CasterGameObject.CompareTag("Faction_01") && target.CompareTag("Faction_01"))
+            return true;
+
+        if (CasterGameObject.CompareTag("Faction_02") && target.CompareTag("Faction_02"))
             return true;
 
         return false;

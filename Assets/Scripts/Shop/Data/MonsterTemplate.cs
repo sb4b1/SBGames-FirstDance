@@ -23,6 +23,7 @@ namespace SBGames.Shop.Data
         [SerializeField] private float moveSpeed;
         [SerializeField] private float baseDefense;
         [SerializeField] private GameObject prefab;
+        [SerializeField] private SBGames.Personality.Data.RaceInstinctSO raceInstinct;
 
         public string ArchetypeId => archetypeId;
         public string DisplayName => displayName;
@@ -36,6 +37,7 @@ namespace SBGames.Shop.Data
         public float MoveSpeed => moveSpeed;
         public float BaseDefense => baseDefense;
         public GameObject Prefab => prefab;
+        public SBGames.Personality.Data.RaceInstinctSO RaceInstinct => raceInstinct;
 
         public MonsterTemplate(
             string archetypeId,

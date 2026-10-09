@@ -1,0 +1,84 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ui:Style src="AltarEventModal.uss" />
+
+    <!-- Full Screen Overlay -->
+    <ui:VisualElement name="altar-overlay" class="altar-overlay">
+        
+        <!-- Main Modal Window -->
+        <ui:VisualElement name="altar-card" class="altar-card">
+            
+            <!-- Header Section -->
+            <ui:VisualElement name="altar-header" class="altar-header">
+                <ui:VisualElement class="header-titles">
+                    <ui:Label name="altar-title" text="ALTAR OF TRANSMUTATION" class="altar-title" />
+                    <ui:Label name="altar-subtitle" text="Reshape minion instincts through dark ritual" class="altar-subtitle" />
+                </ui:VisualElement>
+                
+                <ui:VisualElement class="header-badges">
+                    <ui:Label name="altar-cost-badge" text="Cost: 10 Essence" class="cost-badge" />
+                    <ui:Label name="altar-wallet-status" text="DM Essence: 100 | Energy: 50" class="wallet-status" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Main Body (Columns) -->
+            <ui:VisualElement name="altar-body" class="altar-body">
+                
+                <!-- Left Column: Unit Selection & Current State -->
+                <ui:VisualElement name="left-column" class="column left-column">
+                    <ui:Label text="1. SELECT TARGET UNIT" class="section-header" />
+                    
+                    <!-- Scrollable Unit List -->
+                    <ui:ScrollView name="unit-scroll-view" class="unit-scroll-view">
+                        <ui:VisualElement name="unit-list-container" class="unit-list-container" />
+                    </ui:ScrollView>
+
+                    <!-- Current Inspection Card -->
+                    <ui:VisualElement name="current-unit-card" class="current-unit-card">
+                        <ui:Label text="ACTIVE PSYCHOLOGICAL PROFILE" class="sub-header" />
+                        
+                        <ui:VisualElement class="profile-row">
+                            <ui:Label text="Race Instinct:" class="field-label" />
+                            <ui:Label name="current-race-label" text="Undead" class="field-value race-value" />
+                        </ui:VisualElement>
+                        <ui:Label name="current-race-desc" text="Fear locked to 0. Immune to panic." class="field-desc" />
+
+                        <ui:VisualElement class="profile-row separator-top">
+                            <ui:Label text="Current Trait:" class="field-label" />
+                            <ui:Label name="current-trait-label" text="Cowardly" class="field-value trait-value" />
+                        </ui:VisualElement>
+                        <ui:Label name="current-trait-desc" text="Doubles fear intake. Retreats at 50% HP." class="field-desc" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <!-- Right Column: 1-of-3 Trait Draft Comparison -->
+                <ui:VisualElement name="right-column" class="column right-column">
+                    <ui:Label text="2. CHOOSE OFFERED TRAIT" class="section-header" />
+                    
+                    <ui:VisualElement name="trait-cards-container" class="trait-cards-container">
+                        <!-- Dynamic draft cards inserted here -->
+                    </ui:VisualElement>
+
+                    <!-- Trait Details Box -->
+                    <ui:VisualElement name="selected-trait-detail" class="trait-detail-box">
+                        <ui:Label name="detail-trait-name" text="Select a trait above to inspect" class="detail-title" />
+                        <ui:Label name="detail-trait-description" text="Trait modifiers affect AI Goal selection curves and Skill evaluation considerations." class="detail-description" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+            </ui:VisualElement>
+
+            <!-- Footer Actions -->
+            <ui:VisualElement name="altar-footer" class="altar-footer">
+                <ui:Button name="minimize-btn" text="Minimize" class="secondary-btn" />
+                <ui:Button name="skip-btn" text="Leave Altar" class="secondary-btn" />
+                <ui:Button name="confirm-btn" text="Transmute Trait" class="primary-btn" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+
+    <!-- Floating Reopen Pill (Visible during Planning when minimized) -->
+    <ui:Button name="reopen-pill" text="⚡ Altar Active (Click to Return)" class="reopen-pill hidden" />
+
+</ui:UXML>

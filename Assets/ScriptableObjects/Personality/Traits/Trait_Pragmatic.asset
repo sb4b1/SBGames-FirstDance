@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b27591df005c22143ba3e775a4cfa107, type: 3}
+  m_Name: Trait_Pragmatic
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Personality.Data.CharacterTraitSO
+  traitId: Pragmatic
+  displayName: Pragmatic
+  description: Disciplined combatant. Conserves AoE skills until at least 3 enemies are grouped.
+  icon: {fileID: 0}
+  badgeColor: {r: 0.65, g: 0.5, b: 0.85, a: 1}
+  threatMultiplier: 1
+  fearMultiplier: 1
+  zeroFear: 0
+  survivalHpThreshold: 0.25
+  neverFlee: 0
+  clusterCountOffset: 1
+  rangePreferenceMultiplier: 1
+  executionHealthThreshold: 0.3
+  executionBonusMultiplier: 1
+  peelingHealthThreshold: 0.35
+  peelingBonusMultiplier: 1
+  lowHealthTargetPriority: 1

@@ -66,7 +66,8 @@ public class UtilitySkill : ScriptableObject
         if (checkHealthThreshold)
         {
             float maxHp = 100f;
-            if (context.TryGetComponent<CharacterStatsManager>(out var stats) && stats.MaxLife != null && stats.MaxLife.Value > 0f)
+            var stats = context.StatsManager;
+            if (stats != null && stats.MaxLife != null && stats.MaxLife.Value > 0f)
             {
                 maxHp = stats.MaxLife.Value;
             }
@@ -92,18 +93,65 @@ public class UtilitySkill : ScriptableObject
             if (distFactor <= 0f)
                 return 0f;
 
+            // Apply Opportunist / range preference modifier
+            if (context.RangePreferenceMultiplier > 1f && normDist > 0.3f)
+            {
+                distFactor *= context.RangePreferenceMultiplier;
+            }
+
             score *= distFactor;
         }
 
-        // 5. Cluster / AoE evaluation
+        // 5. Cluster / AoE evaluation (Pragmatic / Reckless)
         if (useClusterConsideration)
         {
             int enemiesInCluster = context.EnemiesInSkillRange(clusterRadius);
-            if (enemiesInCluster <= 0)
+            int clusterOffset = context.ClusterCountOffset;
+
+            // Pragmatic (+offset) requires more enemies; Reckless (-offset) fires AoE on 1 enemy
+            float evaluatedCount = Mathf.Max(1f, enemiesInCluster - clusterOffset);
+
+            if (enemiesInCluster <= 0 && clusterOffset >= 0)
                 return 0f;
 
-            float clusterFactor = clusterCurve.Evaluate(enemiesInCluster);
+            float clusterFactor = clusterCurve.Evaluate(evaluatedCount);
             score *= clusterFactor;
+        }
+
+        // 6. Target Execution Bias (Bloodthirsty / Opportunist)
+        if (context.ExecutionBonusMultiplier > 1f && context.CurrentTarget != null)
+        {
+            var targetStats = context.CurrentTarget.GetComponentInParent<CharacterStatsManager>();
+            if (targetStats != null && targetStats.MaxLife != null && targetStats.MaxLife.Value > 0f)
+            {
+                float targetHpPercent = targetStats.Life / targetStats.MaxLife.Value;
+                if (targetHpPercent <= context.ExecutionHealthThreshold)
+                {
+                    score *= context.ExecutionBonusMultiplier;
+                }
+            }
+        }
+
+        // 7. Ally Peeling Bias (Guardian)
+        if (context.PeelingBonusMultiplier > 1f && context.AllyTargets != null && context.AllyTargets.Count > 0)
+        {
+            float peelThreshold = context.PeelingHealthThreshold;
+            for (int i = 0; i < context.AllyTargets.Count; i++)
+            {
+                var ally = context.AllyTargets[i];
+                if (ally != null)
+                {
+                    var allyStats = ally.GetComponentInParent<CharacterStatsManager>();
+                    if (allyStats != null && allyStats.MaxLife != null && allyStats.MaxLife.Value > 0f)
+                    {
+                        if ((allyStats.Life / allyStats.MaxLife.Value) <= peelThreshold)
+                        {
+                            score *= context.PeelingBonusMultiplier;
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         return Mathf.Clamp01(Mathf.Max(0f, score));

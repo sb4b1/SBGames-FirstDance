@@ -11,15 +11,18 @@ public class UtilityKillEnemyGoal : UtilityGoal
 
     public override float Evaluate(BaseAI context)
     {
-        if (context.ThreatLevel <= 0f)
+        if (context == null || context.ThreatLevel <= 0f)
         {
-            return 0;
+            return 0f;
         }
 
-        float threatValue = threatCurve.Evaluate(Map(context.ThreatLevel, 0f, 100f));
-        float fearValue = fearCurve.Evaluate(Map(context.FearLevel, 0f, 100f));
+        float effectiveThreat = context.ThreatLevel * context.EffectiveThreatMultiplier;
+        float effectiveFear = context.IsFearLocked ? 0f : context.FearLevel * context.EffectiveFearMultiplier;
 
-        return threatValue - fearValue;
+        float threatValue = threatCurve.Evaluate(Map(effectiveThreat, 0f, 100f));
+        float fearValue = fearCurve.Evaluate(Map(effectiveFear, 0f, 100f));
+
+        return Mathf.Clamp01(threatValue - fearValue);
     }
 
     protected float Map(float value, float inMin, float inMax)

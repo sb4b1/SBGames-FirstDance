@@ -12,7 +12,11 @@ public class EnemyTargetSensor : LocalTargetSensorBase
     public override ITarget Sense(IActionReceiver agent, IComponentReference references, ITarget existingTarget)
     {
         var brain = references.GetCachedComponent<BaseAI>();
-        if (brain == null || brain.EnemyTargets == null || brain.EnemyTargets.Count == 0) return null;
+        if (brain == null || brain.EnemyTargets == null || brain.EnemyTargets.Count == 0)
+        {
+            if (brain != null && brain.CurrentTarget != null) brain.SetTarget(null);
+            return null;
+        }
 
         Transform bestTarget = null;
         float bestSqrDist = float.MaxValue;
@@ -31,9 +35,13 @@ public class EnemyTargetSensor : LocalTargetSensorBase
             }
         }
 
-        if (bestTarget == null) return null;
+        if (bestTarget == null)
+        {
+            brain.SetTarget(null);
+            return null;
+        }
 
-        brain.SetTarget(bestTarget);
+        brain.SetTarget(bestTarget, Mathf.Sqrt(bestSqrDist));
         
         if (existingTarget is TransformTarget transformTarget)
         {

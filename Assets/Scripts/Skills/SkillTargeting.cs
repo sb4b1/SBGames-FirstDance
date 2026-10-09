@@ -66,29 +66,22 @@ public class SkillTargeting : MonoBehaviour
     // =========================
     public List<GameObject> GetAOETargets()
     {
-        var results = new List<GameObject>();
-
         if (sensor == null)
-            return results;
+            return null;
 
         sensor.Pulse();
-
-        results = sensor.GetDetections();
-
-        return results;
+        return sensor.GetDetections();
     }
 
     // =========================
     // Beam Tick Targets
     // =========================
-    public IEnumerable<GameObject> GetBeamTargets()
+    public List<GameObject> GetBeamTargets()
     {
         if (sensor == null)
-            yield break;
+            return null;
 
         sensor.Pulse();
-
-        foreach (var detection in sensor.GetDetections())
-            yield return detection.gameObject;
+        return sensor.GetDetections();
     }
 }

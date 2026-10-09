@@ -2,5 +2,10 @@ public enum EnumUtilGoal
 {
     None,
     Wander,
-    KillEnemy
+    KillEnemy,
+    FollowLeader,
+    FocusFire,
+    FallBack,
+    Survive,
+    KeepDistance
 }

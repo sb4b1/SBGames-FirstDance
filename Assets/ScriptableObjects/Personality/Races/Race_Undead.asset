@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a58ea7d9a04c8c24ca8a0cb9299c3a40, type: 3}
+  m_Name: Race_Undead
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Personality.Data.RaceInstinctSO
+  raceId: Undead
+  displayName: Undead
+  description: Fear is locked to 0. Immune to panic and retreat.
+  icon: {fileID: 0}
+  lockFear: 1
+  lockedFearValue: 0
+  fearIntakeMultiplier: 0
+  threatIntakeMultiplier: 1
+  woundedTargetPriority: 1
+  baselineSurvivalHpThreshold: 0.2
+  immuneToPanic: 1

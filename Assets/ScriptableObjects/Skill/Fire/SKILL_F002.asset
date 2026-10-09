@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf3fe472de7fa6d4684979c378aa3f69, type: 3}
+  m_Name: SKILL_F002
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillID: SKILL_F002
+  skillName: Fireball
+  description: Launches a fiery projectile that burns targets.
+  icon: {fileID: 0}
+  skillPrefab: {fileID: 393218696613620997, guid: 90a416fe4f0807a44b53c7ef33f12669, type: 3}
+  utilityData: {fileID: 11400000, guid: 243af448085afbc4c925fbcdc251bf6c, type: 2}
+  projectileForward: 0
+  projectileRotationOffset: 0
+  type: 1
+  targetFilter: 0
+  castRange: 0
+  baseDamage: 15
+  damageType: 1
+  baseManaCost: 10
+  useCustomRecoveryDuration: 1
+  postCastRecoveryDuration: 0.35
+  projectileSpeed: 10
+  projectileLifetime: 5
+  chain: 0
+  maxChainTargets: 0
+  chainDamageMultiplier: 0.7
+  area: 0
+  areaRadius: 0
+  beamTickInterval: 0.1
+  statusEffects: []

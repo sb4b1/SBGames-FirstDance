@@ -1,0 +1,350 @@
+/* Altar Event Modal Styles */
+
+.altar-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(5, 7, 12, 0.88);
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+}
+
+.altar-card {
+    width: 960px;
+    max-width: 95%;
+    max-height: 90%;
+    background-color: rgb(18, 22, 32);
+    border-color: rgb(80, 45, 120);
+    border-width: 2px;
+    border-radius: 12px;
+    padding: 24px;
+    flex-direction: column;
+}
+
+/* Header */
+.altar-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+    border-bottom-width: 1px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+}
+
+.altar-title {
+    font-size: 26px;
+    -unity-font-style: bold;
+    color: rgb(235, 80, 95);
+    letter-spacing: 2px;
+}
+
+.altar-subtitle {
+    font-size: 13px;
+    color: rgb(160, 168, 185);
+    margin-top: 4px;
+}
+
+.cost-badge {
+    background-color: rgba(220, 50, 60, 0.25);
+    border-color: rgb(220, 50, 60);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(255, 130, 140);
+    margin-bottom: 4px;
+    -unity-text-align: middle-center;
+}
+
+.wallet-status {
+    font-size: 12px;
+    color: rgb(180, 195, 215);
+    -unity-text-align: middle-right;
+}
+
+/* Body */
+.altar-body {
+    flex-direction: row;
+    flex-grow: 1;
+    min-height: 420px;
+}
+
+.column {
+    flex-direction: column;
+    padding: 10px;
+}
+
+.left-column {
+    flex-grow: 1;
+    flex-basis: 45%;
+    border-right-color: rgba(255, 255, 255, 0.08);
+    border-right-width: 1px;
+    padding-right: 18px;
+}
+
+.right-column {
+    flex-grow: 1;
+    flex-basis: 55%;
+    padding-left: 18px;
+}
+
+.section-header {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(200, 170, 240);
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+/* Unit List */
+.unit-scroll-view {
+    height: 180px;
+    background-color: rgb(12, 14, 22);
+    border-radius: 8px;
+    border-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px;
+    margin-bottom: 14px;
+    padding: 6px;
+}
+
+.unit-item-btn {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgb(22, 26, 38);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: transparent;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+}
+
+.unit-item-btn:hover {
+    background-color: rgb(32, 38, 56);
+}
+
+.unit-item-btn.selected {
+    border-color: rgb(140, 90, 220);
+    background-color: rgb(40, 32, 65);
+}
+
+.unit-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+.badge-grid {
+    background-color: rgba(46, 204, 113, 0.25);
+    color: rgb(80, 240, 150);
+}
+
+.badge-bench {
+    background-color: rgba(52, 152, 219, 0.25);
+    color: rgb(100, 190, 255);
+}
+
+/* Current Unit Card */
+.current-unit-card {
+    background-color: rgb(14, 17, 26);
+    border-color: rgba(140, 90, 220, 0.3);
+    border-width: 1px;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.sub-header {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(130, 140, 165);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.profile-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.separator-top {
+    border-top-color: rgba(255, 255, 255, 0.08);
+    border-top-width: 1px;
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.field-label {
+    font-size: 12px;
+    color: rgb(150, 160, 180);
+}
+
+.field-value {
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.race-value {
+    color: rgb(120, 220, 140);
+}
+
+.trait-value {
+    color: rgb(240, 170, 80);
+}
+
+.field-desc {
+    font-size: 11px;
+    color: rgb(120, 130, 145);
+    margin-top: 2px;
+    white-space: normal;
+}
+
+/* Right Column: Trait Draft Cards */
+.trait-cards-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.trait-card-btn {
+    width: 48%;
+    min-height: 115px;
+    background-color: rgb(20, 24, 36);
+    border-color: rgba(255, 255, 255, 0.12);
+    border-width: 1px;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.trait-card-btn:hover {
+    background-color: rgb(30, 36, 54);
+    border-color: rgb(140, 90, 220);
+}
+
+.trait-card-btn.selected {
+    background-color: rgb(45, 30, 70);
+    border-color: rgb(220, 120, 255);
+    border-width: 2px;
+}
+
+.trait-card-btn.keep-trait {
+    border-color: rgba(100, 140, 180, 0.35);
+}
+
+.card-title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(255, 215, 100);
+    margin-bottom: 4px;
+}
+
+.card-desc {
+    font-size: 11px;
+    color: rgb(160, 170, 190);
+    white-space: normal;
+}
+
+.trait-detail-box {
+    background-color: rgb(14, 17, 26);
+    border-color: rgba(255, 255, 255, 0.08);
+    border-width: 1px;
+    border-radius: 8px;
+    padding: 14px;
+    flex-grow: 1;
+}
+
+.detail-title {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(255, 210, 80);
+    margin-bottom: 6px;
+}
+
+.detail-description {
+    font-size: 12px;
+    color: rgb(180, 190, 210);
+    white-space: normal;
+}
+
+/* Footer Actions */
+.altar-footer {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    border-top-color: rgba(255, 255, 255, 0.1);
+    border-top-width: 1px;
+    padding-top: 16px;
+    margin-top: 14px;
+}
+
+.secondary-btn {
+    background-color: rgb(30, 35, 48);
+    border-color: rgba(255, 255, 255, 0.15);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: rgb(180, 190, 205);
+    margin-left: 10px;
+}
+
+.secondary-btn:hover {
+    background-color: rgb(42, 48, 66);
+    color: rgb(255, 255, 255);
+}
+
+.primary-btn {
+    background-color: rgb(180, 45, 65);
+    border-color: rgb(230, 75, 95);
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 10px 26px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+    margin-left: 14px;
+}
+
+.primary-btn:hover {
+    background-color: rgb(215, 55, 80);
+}
+
+.primary-btn:disabled {
+    background-color: rgb(55, 45, 55);
+    border-color: rgb(75, 65, 75);
+    color: rgb(120, 110, 120);
+}
+
+/* Floating Reopen Pill */
+.reopen-pill {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    background-color: rgb(90, 40, 140);
+    border-color: rgb(180, 110, 240);
+    border-width: 2px;
+    border-radius: 20px;
+    padding: 10px 22px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+}
+
+.reopen-pill:hover {
+    background-color: rgb(120, 50, 180);
+}
+
+.hidden {
+    display: none;
+}

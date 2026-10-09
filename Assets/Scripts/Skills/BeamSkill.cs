@@ -22,9 +22,17 @@ public class BeamSkill : MonoBehaviour
 
         tickTimer = skill.Stats != null ? skill.Stats.BeamTickInterval.Value : (skill.Data != null ? skill.Data.beamTickInterval : 0.1f);
 
-        foreach (var target in targeting.GetBeamTargets())
+        var targets = targeting.GetBeamTargets();
+        if (targets != null)
         {
-            skill.OnHit(target, HitContext.BeamTick);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var target = targets[i];
+                if (target != null)
+                {
+                    skill.OnHit(target, HitContext.BeamTick);
+                }
+            }
         }
     }
 }

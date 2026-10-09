@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b38c8a9081cadfe48aad630bf745a694, type: 3}
+  m_Name: Event_AltarOfTransmutation
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Events.Types.AltarEventSO
+  eventId: Event_AltarOfTransmutation
+  eventTitle: Altar of Transmutation
+  eventSubtitle: Ancient Dark Ritual
+  flavorDescription: An obsidian monolith surfaces from the dungeon depths, offering to reshape the instincts of your minions.
+  eventIcon: {fileID: 0}
+  minRound: 2
+  maxOccurrencesPerRun: 0
+  weight: 1
+  allowMinimizing: 1
+  bloodCost: 10
+  energyCost: 25
+  bloodAltarChance: 0.5
+  personalityDatabase: {fileID: 11400000, guid: a2062dd22aef33e4989a70ec81217c45, type: 2}
+  draftOptionCount: 3

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
 using SB4b1.Helpers;
+using SBGames.Personality;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -15,6 +16,7 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private CharacterMovementController motionController;
     [SerializeField] private CharacterSkillController skillController;
     [SerializeField] private VisionController vision;
+    [SerializeField] private SquadMember squadMember;
     [SerializeField] private List<UtilityGoal> goals;
 
     // Automatically populated from CharacterSkillController.Skills at runtime.
@@ -22,9 +24,29 @@ public class BaseAI : MonoBehaviour
     // You do NOT need to assign these manually in the Inspector.
     [SerializeField] private List<UtilitySkill> skills = new();
 
+    [SerializeField] private CharacterPersonality personality;
+
     public CharacterBrain Brain => brain ??= GetComponentInParent<CharacterBrain>();
+    public CharacterStatsManager StatsManager => stats ??= GetComponentInParent<CharacterStatsManager>();
     public CharacterSkillController SkillController => skillController;
+    public SquadMember SquadMember => squadMember ??= GetComponentInParent<SquadMember>();
+    public CharacterPersonality Personality => personality ??= GetComponentInParent<CharacterPersonality>();
     public List<UtilitySkill> Skills => skills;
+
+    // --- Precomputed Zero-Alloc Personality Biases ---
+    public float EffectiveThreatMultiplier => Personality != null ? Personality.Snapshot.ThreatMultiplier : 1.0f;
+    public float EffectiveFearMultiplier => Personality != null ? Personality.Snapshot.FearMultiplier : 1.0f;
+    public bool IsFearLocked => Personality != null && Personality.Snapshot.IsFearLocked;
+    public float SurvivalHpThreshold => Personality != null ? Personality.Snapshot.SurvivalHpThreshold : 0.25f;
+    public bool IgnoreSurvivalGoal => Personality != null && Personality.Snapshot.IgnoreSurvivalGoal;
+    public int ClusterCountOffset => Personality != null ? Personality.Snapshot.ClusterCountOffset : 0;
+    public float RangePreferenceMultiplier => Personality != null ? Personality.Snapshot.RangePreferenceMultiplier : 1.0f;
+    public float ExecutionHealthThreshold => Personality != null ? Personality.Snapshot.ExecutionHealthThreshold : 0.30f;
+    public float ExecutionBonusMultiplier => Personality != null ? Personality.Snapshot.ExecutionBonusMultiplier : 1.0f;
+    public float PeelingHealthThreshold => Personality != null ? Personality.Snapshot.PeelingHealthThreshold : 0.35f;
+    public float PeelingBonusMultiplier => Personality != null ? Personality.Snapshot.PeelingBonusMultiplier : 1.0f;
+    public float LowHealthTargetPriority => Personality != null ? Personality.Snapshot.LowHealthTargetPriority : 1.0f;
+    public float BleedingTargetPriority => Personality != null ? Personality.Snapshot.BleedingTargetPriority : 1.0f;
 
     /// <summary>True when at least one skill in the SkillController is off cooldown.</summary>
     public bool IsSkillReady => skillController != null && skillController.HasReadySkill();
@@ -46,6 +68,15 @@ public class BaseAI : MonoBehaviour
     public float TargetDistance { get => targetDistance; private set => targetDistance = value; }
     public List<Transform> EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
     public List<Transform> AllyTargets { get => allyTargets; private set => allyTargets = value; }
+
+    public bool HasSquadLeader => SquadMember != null && SquadMember.HasLeader;
+    public SquadOrderType SquadOrder => SquadMember != null ? SquadMember.CurrentOrder : SquadOrderType.None;
+    public Transform FocusFireTarget => SquadMember != null ? SquadMember.FocusFireTarget : null;
+    public Transform LeaderTransform => SquadMember != null ? SquadMember.LeaderTransform : null;
+    public Vector3 SquadRallyPoint => SquadMember != null ? SquadMember.RallyPoint : transform.position;
+
+    [SerializeField] private Vector3 spawnPosition;
+    public Vector3 SpawnPosition { get => spawnPosition; set => spawnPosition = value; }
 
     [SerializeField] private int threatLevel;
     [SerializeField] private int fearLevel;
@@ -83,7 +114,7 @@ public class BaseAI : MonoBehaviour
         this.goap = FindAnyObjectByType<GoapBehaviour>();
         this.provider = this.GetComponent<GoapActionProvider>();
 
-        if (this.provider.AgentTypeBehaviour == null)
+        if (this.provider.AgentTypeBehaviour == null && this.goap != null)
             this.provider.AgentType = this.goap.GetAgentType(agentType);
 
         if (GetComponent<AIDecisionThrottler>() == null)
@@ -109,6 +140,20 @@ public class BaseAI : MonoBehaviour
             if (skillController == null && transform.root != null) skillController = transform.root.GetComponentInChildren<CharacterSkillController>();
         }
 
+        // Auto-find VisionController if not assigned
+        if (vision == null)
+        {
+            vision = GetComponent<VisionController>();
+            if (vision == null) vision = GetComponentInChildren<VisionController>();
+            if (vision == null) vision = GetComponentInParent<VisionController>();
+            if (vision == null && transform.root != null) vision = transform.root.GetComponentInChildren<VisionController>();
+        }
+
+        if (spawnPosition == Vector3.zero)
+        {
+            spawnPosition = transform.position;
+        }
+
         InitializeAgent();
         InitializeSkills();
     }
@@ -117,6 +162,15 @@ public class BaseAI : MonoBehaviour
     {
         // Physics, agent movement, and resource stats update smoothly every frame
         UpdateResources();
+
+        if (currentTarget != null)
+        {
+            targetDistance = Vector3.Distance(transform.position, currentTarget.position);
+        }
+        else
+        {
+            targetDistance = 0f;
+        }
     }
 
     /// <summary>
@@ -193,33 +247,75 @@ public class BaseAI : MonoBehaviour
 
     public void SenseEnemy()
     {
-        // Increase threat level when sensing an enemy
-        threatLevel += 10;
-        fearLevel += 5; // Optionally increase fear level as well
+        // Increase threat level when sensing an enemy, scaled by trait/race
+        threatLevel += Mathf.RoundToInt(10 * EffectiveThreatMultiplier);
+
+        if (IsFearLocked)
+        {
+            fearLevel = Mathf.RoundToInt(Personality.Snapshot.LockedFearValue);
+        }
+        else
+        {
+            fearLevel += Mathf.RoundToInt(5 * EffectiveFearMultiplier);
+        }
     }
 
     public void LostEnemy()
     {
         // Decrease threat level when losing sight of an enemy
-        threatLevel -= 10;
-        fearLevel -= 5; // Optionally decrease fear level as well
+        threatLevel = Mathf.Max(0, threatLevel - Mathf.RoundToInt(10 * EffectiveThreatMultiplier));
+
+        if (IsFearLocked)
+        {
+            fearLevel = Mathf.RoundToInt(Personality.Snapshot.LockedFearValue);
+        }
+        else
+        {
+            fearLevel = Mathf.Max(0, fearLevel - Mathf.RoundToInt(5 * EffectiveFearMultiplier));
+        }
     }
 
 #endregion
 
     public void UpdateTargets()
     {
-        enemyTargets = vision.EnemyTargets;
-        allyTargets = vision.AllyTargets;
+        if (vision != null)
+        {
+            enemyTargets = vision.EnemyTargets;
+            allyTargets = vision.AllyTargets;
+        }
+
+        // Ghost threat cleanup: if no enemies remain in perception, clean up threat/fear
+        if ((enemyTargets == null || enemyTargets.Count == 0) && threatLevel > 0)
+        {
+            threatLevel = 0;
+            if (!IsFearLocked)
+            {
+                fearLevel = 0;
+            }
+        }
     }
 
     public void UpdateResources()
     {
-        agentLife = stats.Life;
-        agentMana = stats.Mana;
+        if (stats != null)
+        {
+            agentLife = stats.Life;
+            agentMana = stats.Mana;
+        }
     }
 
-    public void SetTarget(Transform target) => CurrentTarget = target;
+    public void SetTarget(Transform target)
+    {
+        CurrentTarget = target;
+        TargetDistance = target != null ? Vector3.Distance(transform.position, target.position) : 0f;
+    }
+
+    public void SetTarget(Transform target, float distance)
+    {
+        CurrentTarget = target;
+        TargetDistance = distance;
+    }
 
     public void SetAgentLife(float life) => AgentLife = life;
     public void SetAgentMana(float mana) => AgentMana = mana;
@@ -377,10 +473,52 @@ public class BaseAI : MonoBehaviour
             case EnumUtilGoal.KillEnemy:
                 provider.RequestGoal<KillEnemyGoal>();
                 break;
+            case EnumUtilGoal.FollowLeader:
+                provider.RequestGoal<FollowLeaderGoal>();
+                break;
+            case EnumUtilGoal.FocusFire:
+                provider.RequestGoal<FocusFireGoal>();
+                break;
+            case EnumUtilGoal.FallBack:
+                provider.RequestGoal<FallBackGoal>();
+                break;
+            case EnumUtilGoal.Survive:
+                provider.RequestGoal<SurviveGoal>();
+                break;
+            case EnumUtilGoal.KeepDistance:
+                provider.RequestGoal<KeepDistanceGoal>();
+                break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);
                 break;
         }
     }
 #endregion
+
+    /// <summary>
+    /// Computes a trait-weighted target utility score for a given target transform without managed allocations.
+    /// Incorporates low-health priority (Bloodthirsty/Beast) and distance weighting.
+    /// </summary>
+    public float GetTraitWeightedTargetScore(Transform target, float distance)
+    {
+        if (target == null) return 0f;
+
+        // Base proximity score (closer = higher)
+        float score = 100f / (1f + distance);
+
+        // Low health execution bias
+        if (LowHealthTargetPriority > 1f && target.TryGetComponent<CharacterStatsManager>(out var targetStats))
+        {
+            if (targetStats.MaxLife != null && targetStats.MaxLife.Value > 0f)
+            {
+                float targetHpPercent = targetStats.Life / targetStats.MaxLife.Value;
+                if (targetHpPercent <= ExecutionHealthThreshold)
+                {
+                    score *= LowHealthTargetPriority;
+                }
+            }
+        }
+
+        return score;
+    }
 }

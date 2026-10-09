@@ -12,10 +12,16 @@ public class CharacterCombatController : MonoBehaviour
     [SerializeField] private float attackRadius = 0.4f;
     private const float DEFAULT_ATTACK_RADIUS = 0.4f;
 
+    [SerializeField] private FactionMember factionMember;
+
+    private readonly Collider2D[] hitBuffer = new Collider2D[16];
+    private readonly System.Collections.Generic.List<IDamageable> hitTargetsBuffer = new(16);
+
     private void Awake()
     {
         if (brain == null) brain = GetComponent<CharacterBrain>();
         if (stats == null) stats = GetComponent<CharacterStatsManager>();
+        if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
     } 
 
     public bool Attack()
@@ -39,18 +45,33 @@ public class CharacterCombatController : MonoBehaviour
     {
         Transform point = attackPoint != null ? attackPoint : transform;
         float radius = attackRadius > 0f ? attackRadius : DEFAULT_ATTACK_RADIUS;
-        Collider2D[] hitColliders = Physics2D.OverlapCircleAll(point.position, radius);
+        int hitCount = Physics2D.OverlapCircleNonAlloc(point.position, radius, hitBuffer);
 
-        var hitTargets = new System.Collections.Generic.HashSet<IDamageable>();
+        hitTargetsBuffer.Clear();
 
-        foreach (Collider2D hit in hitColliders)
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider2D hit = hitBuffer[i];
+            if (hit == null) continue;
+
             var targetRoot = hit.transform.root;
             if (targetRoot == this.transform.root) continue; // Skip self
 
-            IDamageable targetStats = hit.GetComponentInParent<IDamageable>() ?? targetRoot.GetComponentInChildren<IDamageable>();
-            if (targetStats != null && hitTargets.Add(targetStats))
+            // Prevent friendly fire
+            if (factionMember != null)
             {
+                if (!factionMember.IsHostileTo(targetRoot.gameObject)) continue;
+            }
+            else
+            {
+                if (CompareTag("Adventurer") && targetRoot.CompareTag("Adventurer")) continue;
+                if (CompareTag("Monster") && targetRoot.CompareTag("Monster")) continue;
+            }
+
+            IDamageable targetStats = hit.GetComponentInParent<IDamageable>() ?? targetRoot.GetComponentInChildren<IDamageable>();
+            if (targetStats != null && !hitTargetsBuffer.Contains(targetStats))
+            {
+                hitTargetsBuffer.Add(targetStats);
                 float damageAmount = stats != null && stats.Damage != null && stats.Damage.Value > 0 ? stats.Damage.Value : 10f;
                 targetStats.TakeDamage(new DamageData(damageAmount, DamageType.Physical));
                 ELogger.Log(this, nameof(SearchForTargets), $"Hit {targetRoot.name} for {damageAmount} damage");

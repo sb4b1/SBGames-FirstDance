@@ -18,8 +18,8 @@ MonoBehaviour:
   MaxMana: 100
   Movespeed: 5
   Damage: 15
-  AttackRange: 0
-  AttackTimeInterval: 0
+  AttackRange: 1
+  AttackTimeInterval: 1
   DefaultPostAttackRecovery: 0.3
   DefaultPostCastRecovery: 0.3
   DecisionInterval: 0.3

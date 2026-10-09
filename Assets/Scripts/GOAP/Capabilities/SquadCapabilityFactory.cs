@@ -1,0 +1,46 @@
+using CrashKonijn.Goap.Core;
+using CrashKonijn.Goap.Runtime;
+
+public class SquadCapabilityFactory : CapabilityFactoryBase
+{
+    public override ICapabilityConfig Create()
+    {
+        var builder = new CapabilityBuilder("SquadCapability");
+
+        // Goals
+        builder.AddGoal<FollowLeaderGoal>()
+            .AddCondition<IsIdle>(Comparison.GreaterThanOrEqual, 1)
+            .SetBaseCost(1);
+
+        builder.AddGoal<FocusFireGoal>()
+            .AddCondition<ThreatLevel>(Comparison.SmallerThanOrEqual, 0)
+            .SetBaseCost(1);
+
+        builder.AddGoal<FallBackGoal>()
+            .AddCondition<FearLevel>(Comparison.SmallerThanOrEqual, 0)
+            .SetBaseCost(1);
+
+        // Actions
+        builder.AddAction<FollowLeaderAction>()
+            .SetTarget<LeaderTarget>()
+            .AddEffect<IsIdle>(EffectType.Increase)
+            .SetBaseCost(1);
+
+        builder.AddAction<FocusFireAction>()
+            .SetTarget<FocusFireTarget>()
+            .AddEffect<ThreatLevel>(EffectType.Decrease)
+            .SetBaseCost(1);
+
+        builder.AddAction<FallBackAction>()
+            .SetTarget<LeaderTarget>()
+            .AddEffect<FearLevel>(EffectType.Decrease)
+            .SetBaseCost(1);
+
+        // Sensors
+        builder.AddMultiSensor<SquadOrderSensor>();
+        builder.AddTargetSensor<LeaderTargetSensor>().SetTarget<LeaderTarget>();
+        builder.AddTargetSensor<FocusFireTargetSensor>().SetTarget<FocusFireTarget>();
+
+        return builder.Build();
+    }
+}

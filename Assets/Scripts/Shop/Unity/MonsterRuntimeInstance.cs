@@ -1,5 +1,6 @@
 using System;
 using SBGames.Loop;
+using SBGames.Personality;
 using SBGames.Shop.Data;
 using UnityEngine;
 
@@ -27,6 +28,10 @@ namespace SBGames.Shop.Unity
         [SerializeField] private float moveSpeed;
         [SerializeField] private float attackInterval;
 
+        [Header("Personality & Psychological Traits")]
+        [SerializeField] private SBGames.Personality.Data.RaceInstinctSO raceInstinct;
+        [SerializeField] private SBGames.Personality.Data.CharacterTraitSO activeTrait;
+
         private MonsterShopItem _shopItem;
 
         public MonsterShopItem ShopItem => _shopItem;
@@ -40,6 +45,8 @@ namespace SBGames.Shop.Unity
         public float Defense => defense;
         public float MoveSpeed => moveSpeed;
         public float AttackInterval => attackInterval;
+        public SBGames.Personality.Data.RaceInstinctSO RaceInstinct => raceInstinct;
+        public SBGames.Personality.Data.CharacterTraitSO ActiveTrait => activeTrait;
 
         /// <summary>
         /// Initializes the monster instance with data rolled from the shop.
@@ -71,6 +78,42 @@ namespace SBGames.Shop.Unity
                 if (statsManager.Damage != null) statsManager.Damage.BaseValue = damage;
                 if (statsManager.Movespeed != null) statsManager.Movespeed.BaseValue = moveSpeed;
                 if (statsManager.AttackTimeInterval != null) statsManager.AttackTimeInterval.BaseValue = attackInterval;
+            }
+
+            // Sync personality if item has race or trait assigned
+            if (item.RaceInstinct != null || item.Trait != null)
+            {
+                SetPersonality(item.RaceInstinct, item.Trait);
+            }
+            else
+            {
+                // Check if CharacterPersonality is already present on prefab
+                var pers = GetComponent<CharacterPersonality>();
+                if (pers != null)
+                {
+                    raceInstinct = pers.RaceInstinct;
+                    activeTrait = pers.ActiveTrait;
+                }
+            }
+        }
+
+        public void SetPersonality(SBGames.Personality.Data.RaceInstinctSO race, SBGames.Personality.Data.CharacterTraitSO trait)
+        {
+            raceInstinct = race;
+            activeTrait = trait;
+
+            var pers = GetComponent<CharacterPersonality>();
+            if (pers == null) pers = gameObject.AddComponent<CharacterPersonality>();
+            pers.Initialize(race, trait);
+        }
+
+        public void UpdateTrait(SBGames.Personality.Data.CharacterTraitSO newTrait)
+        {
+            activeTrait = newTrait;
+            var pers = GetComponent<CharacterPersonality>();
+            if (pers != null)
+            {
+                pers.SetTrait(newTrait);
             }
         }
     }

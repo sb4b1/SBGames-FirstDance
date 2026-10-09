@@ -6,7 +6,6 @@ using UnityEngine.AI;
 
 public class WanderTargetSensor : LocalTargetSensorBase
 {
-private Vector3 protectPoint = Vector3.zero;
     // Is called when this script is initialzed
     public override void Created()
     {
@@ -23,7 +22,7 @@ private Vector3 protectPoint = Vector3.zero;
 
     public override ITarget Sense(IActionReceiver agent, IComponentReference references, ITarget existingTarget)
     {
-        var random = this.GetRandomPosition(agent);
+        var random = this.GetRandomPosition(agent, references);
 
         // If the existing target is a `PositionTarget`, we can reuse it and just update the position.
         if (existingTarget is PositionTarget positionTarget)
@@ -33,9 +32,10 @@ private Vector3 protectPoint = Vector3.zero;
         return new PositionTarget(random);  
     }
 
-    private Vector3 GetRandomPosition(IActionReceiver agent)
+    private Vector3 GetRandomPosition(IActionReceiver agent, IComponentReference references)
     {
-        if (protectPoint == Vector3.zero) protectPoint = agent.Transform.position;
+        var ai = references?.GetCachedComponent<BaseAI>();
+        Vector3 protectPoint = (ai != null && ai.SpawnPosition != Vector3.zero) ? ai.SpawnPosition : agent.Transform.position;
 
         int territoryArea = NavMesh.GetAreaFromName("Territory");
         int walkableArea = NavMesh.GetAreaFromName("Walkable");

@@ -8,8 +8,11 @@ public class MageAgentTypeFactory : AgentTypeFactoryBase
             var factory = CreateBuilder("MageAgent");
             
             factory.AddCapability<WanderCapabilityFactory>();
+            factory.AddCapability<AttackCapabilityFactory>();
             factory.AddCapability<SkillCapabilityFactory>();
             factory.AddCapability<BasicCapabilityFactory>();
+            factory.AddCapability<SquadCapabilityFactory>();
+            factory.AddCapability<SurvivalCapabilityFactory>();
 
             return factory.Build();
         }

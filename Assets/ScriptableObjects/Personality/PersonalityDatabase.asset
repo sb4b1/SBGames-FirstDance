@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39fde94aaf5f11f4183d0982a1692ef5, type: 3}
+  m_Name: PersonalityDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Personality.Data.PersonalityDatabaseSO
+  availableTraits:
+  - {fileID: 11400000, guid: 2200bc203b2961847b887e1743c65149, type: 2}
+  - {fileID: 11400000, guid: 914e93307b7dae54eb2944cc02cd7544, type: 2}
+  - {fileID: 11400000, guid: bd0108e5251bcf849ae93673ca4d9051, type: 2}
+  - {fileID: 11400000, guid: 7a167f013f0ce474698a11ea92e14d76, type: 2}
+  - {fileID: 11400000, guid: 5b1c895806ebdef43ba0d8b662f52642, type: 2}
+  - {fileID: 11400000, guid: ad03cf1aff1ce23459b93c0c052735da, type: 2}
+  availableRaces:
+  - {fileID: 11400000, guid: c80e4028274e868418f366e41ff6840e, type: 2}
+  - {fileID: 11400000, guid: 0e09e1c339b9d1c4d98371a664e868c4, type: 2}
+  - {fileID: 11400000, guid: a386b56dfed439a4d84484bd9a55f22d, type: 2}
+  archetypeRaces: []

@@ -12,33 +12,37 @@ public class AwarenessSensor : MultiSensorBase
         this.AddLocalWorldSensor<ThreatLevel>((agent, references) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-
+            if (data == null) return 0;
             return (int)data.ThreatLevel;
         });
 
         this.AddLocalWorldSensor<FearLevel>((agent, references) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-
-            return (int) data.FearLevel;
+            if (data == null) return 0;
+            return (int)data.FearLevel;
         });
 
         this.AddLocalWorldSensor<AgentLife>((agent, references) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-
-            return (int) data.AgentLife;
+            if (data == null) return 0;
+            return (int)data.AgentLife;
         });
 
         this.AddLocalWorldSensor<AgentMana>((agent, references) =>
         {
             var data = references?.GetCachedComponent<BaseAI>();
-
-            return (int) data.AgentMana;
+            if (data == null) return 0;
+            return (int)data.AgentMana;
         });
 
         this.AddLocalTargetSensor<SelfTarget>((agent, references, target) =>
         {
+            if (target is TransformTarget transformTarget)
+            {
+                return transformTarget.SetTransform(agent.Transform);
+            }
             return new TransformTarget(agent.Transform);
         });
     }

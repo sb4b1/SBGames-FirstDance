@@ -19,6 +19,33 @@ public class AnimationObjectController : MonoBehaviour
     private readonly HashSet<int> parameterHashes = new();
     protected bool hasGetHitParam;
 
+    private float cachedCastDuration = -1f;
+    private bool cachedHasCastCompleteEvent = false;
+
+    public float CastAnimationDuration
+    {
+        get
+        {
+            if (cachedCastDuration < 0f)
+            {
+                CacheCastAnimationInfo();
+            }
+            return cachedCastDuration;
+        }
+    }
+
+    public bool HasCastCompleteEvent
+    {
+        get
+        {
+            if (cachedCastDuration < 0f)
+            {
+                CacheCastAnimationInfo();
+            }
+            return cachedHasCastCompleteEvent;
+        }
+    }
+
     public Animator Animator => animator;
     public SpriteRenderer Sprite => sprite;
 
@@ -28,6 +55,7 @@ public class AnimationObjectController : MonoBehaviour
         if (sprite == null) sprite = GetComponent<SpriteRenderer>();
 
         CacheAnimatorParameters();
+        CacheCastAnimationInfo();
     }
 
     public virtual void CacheAnimatorParameters()
@@ -47,6 +75,43 @@ public class AnimationObjectController : MonoBehaviour
             if (parameter.nameHash == HASH_GET_HIT)
             {
                 hasGetHitParam = true;
+            }
+        }
+    }
+
+    public void CacheCastAnimationInfo()
+    {
+        cachedCastDuration = 0f;
+        cachedHasCastCompleteEvent = false;
+
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>() ?? GetComponentInChildren<Animator>();
+        }
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+
+        var clips = animator.runtimeAnimatorController.animationClips;
+        if (clips == null) return;
+
+        foreach (var clip in clips)
+        {
+            if (clip != null && clip.name.IndexOf("Cast", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                cachedCastDuration = clip.length;
+                var events = clip.events;
+                if (events != null)
+                {
+                    for (int i = 0; i < events.Length; i++)
+                    {
+                        string fn = events[i].functionName;
+                        if (fn == "AnimationEvent_CastSkillComplete" || fn == "OnCastAnimationEnd")
+                        {
+                            cachedHasCastCompleteEvent = true;
+                            break;
+                        }
+                    }
+                }
+                break;
             }
         }
     }

@@ -23,6 +23,17 @@ namespace SBGames.Shop.Data
         [SerializeField] private Vector2Int footprint;
         [SerializeField] private GameObject prefab;
         [SerializeField] private MonsterStats stats;
+        [SerializeField] private SBGames.Personality.Data.RaceInstinctSO raceInstinct;
+        [SerializeField] private SBGames.Personality.Data.CharacterTraitSO trait;
+
+        public SBGames.Personality.Data.RaceInstinctSO RaceInstinct => raceInstinct;
+        public SBGames.Personality.Data.CharacterTraitSO Trait => trait;
+
+        public void SetPersonality(SBGames.Personality.Data.RaceInstinctSO race, SBGames.Personality.Data.CharacterTraitSO characterTrait)
+        {
+            raceInstinct = race;
+            trait = characterTrait;
+        }
 
         /// <summary>
         /// Unique runtime identifier for this generated shop offer instance.

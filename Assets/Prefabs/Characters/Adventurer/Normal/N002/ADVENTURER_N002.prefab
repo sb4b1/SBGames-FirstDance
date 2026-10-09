@@ -1131,9 +1131,12 @@ MonoBehaviour:
   motionController: {fileID: 3003596417790388034}
   skillController: {fileID: 8058071398215529301}
   vision: {fileID: 858829395588064072}
-  goals: []
-  skills: []
-  agentType: AdventurerAgent
+  goals:
+  - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
+  - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+  skills:
+  - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
+  agentType: MageAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
   enemyTargets: []
