@@ -24,3 +24,19 @@ _Avoid_: Mass edit, global multiplier
 An inline visual indicator on a catalog entry signifying data anomalies, missing references, or out-of-bound attribute thresholds.
 _Avoid_: Error tag, status icon
 
+**Boss Phase Goal**:
+A high-priority GOAP Utility Goal that hard-evaluates to maximum urgency when a boss unit crosses health or time thresholds, triggering instant action interruption and phase transition mechanics.
+_Avoid_: Boss state machine, enrage script
+
+**Swarm Courage**:
+A dynamic morale buffer derived from local friendly unit density, scaling down fear intake and lowering survival panic thresholds for pack-based archetypes.
+_Avoid_: Pack buff, swarm aura
+
+**Morale Shock**:
+An emergent route state triggered when a pack's Alpha leader falls or severe pack casualties occur, temporarily overriding combat behavior with panic or flight.
+_Avoid_: Fear trigger, pack scatter
+
+**Archetype Threat Policy**:
+A ScriptableObject configuration defining normalized scoring weights (proximity, health deficit, damage intake, cluster density) used to rank target priority for AI perception.
+_Avoid_: Aggro table, threat list
+
