@@ -388,7 +388,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.mousePosition;
+            return UnityEngine.Input.mousePosition;
 #else
             return Vector2.zero;
 #endif
@@ -403,7 +403,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetMouseButtonDown(0);
+            return UnityEngine.Input.GetMouseButtonDown(0);
 #else
             return false;
 #endif
@@ -418,7 +418,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetMouseButtonDown(1);
+            return UnityEngine.Input.GetMouseButtonDown(1);
 #else
             return false;
 #endif
@@ -433,7 +433,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.Space);
+            return UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Space);
 #else
             return false;
 #endif
@@ -448,7 +448,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.G);
+            return UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.G);
 #else
             return false;
 #endif
@@ -463,7 +463,7 @@ namespace SBGames.Placement
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.E);
+            return UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.E);
 #else
             return false;
 #endif

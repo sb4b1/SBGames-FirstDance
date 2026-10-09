@@ -1,0 +1,6 @@
+root = true
+
+[*.cs]
+# Disable "Namespace does not match folder structure" analyzer (IDE0130)
+# Unity source code lives under Assets/Scripts/ which causes false positives with custom root namespaces.
+dotnet_diagnostic.IDE0130.severity = none

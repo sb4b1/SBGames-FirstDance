@@ -1049,6 +1049,7 @@ MonoBehaviour:
   dungeonMaster: {fileID: 1281072019}
   coreGameLoop: {fileID: 525693412}
   characterDatabase: {fileID: 11400000, guid: 4d9f5e1144fa8c7428366827d5a6ad1d, type: 2}
+  personalityDatabase: {fileID: 0}
   shopConfig:
     slotCount: 5
     manualRerollCost: 2
@@ -1060,6 +1061,63 @@ MonoBehaviour:
   onShopRefreshed:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1001 &700440375
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4830914496021483776, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_Name
+      value: SKILL_WA002
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 3.40965
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.88771
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9021630918044538424, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 2bb6fb63516e5a244b85624989848956, type: 3}
 --- !u!1 &765988091
 GameObject:
   m_ObjectHideFlags: 0
@@ -5479,6 +5537,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 903183993}
     - target: {fileID: 8072826638222970858, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
+      propertyPath: stats
+      value: 
+      objectReference: {fileID: 1922264339}
+    - target: {fileID: 8072826638222970858, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
       propertyPath: agentType
       value: MageAgent
       objectReference: {fileID: 0}
@@ -5549,3 +5611,4 @@ SceneRoots:
   - {fileID: 1988939315}
   - {fileID: 60123960}
   - {fileID: 8015110572603347517}
+  - {fileID: 700440375}
