@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using SBGames.Loop;
 using UnityEngine;
 using UnityEngine.Events;
@@ -169,6 +170,20 @@ namespace SBGames.Placement
             SyncPhaseWithCoreLoop(loopPhase);
         }
 
+        public void SetCoreGameLoop(SBGames.Loop.CoreGameLoop loop)
+        {
+            if (coreGameLoop != null)
+            {
+                coreGameLoop.OnPhaseChanged -= HandleCoreLoopPhaseChanged;
+            }
+            coreGameLoop = loop;
+            if (coreGameLoop != null)
+            {
+                coreGameLoop.OnPhaseChanged += HandleCoreLoopPhaseChanged;
+                SyncPhaseWithCoreLoop(coreGameLoop.CurrentPhase);
+            }
+        }
+
         private void SyncPhaseWithCoreLoop(SBGames.Loop.GamePhase loopPhase)
         {
             if (PhaseManager == null) return;
@@ -179,6 +194,15 @@ namespace SBGames.Placement
                 : DungeonPhase.CombatPhase;
 
             PhaseManager.SetPhase(targetDungeonPhase);
+
+            if (targetDungeonPhase == DungeonPhase.BuildPhase)
+            {
+                CleanupDestroyedUnits();
+                if (Bench.BenchManager.Instance != null)
+                {
+                    Bench.BenchManager.Instance.CleanupDestroyedUnits();
+                }
+            }
         }
 
         private void Start()
@@ -272,6 +296,47 @@ namespace SBGames.Placement
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Cleans up any placed units whose GameObject instances were destroyed (e.g. killed during battle),
+        /// releasing their grid occupancy and capacity pool allocation without refunding energy.
+        /// </summary>
+        public int CleanupDestroyedUnits()
+        {
+            if (System == null || OccupancyTracker == null) return 0;
+
+            var allUnits = OccupancyTracker.GetAllPlacedUnits();
+            List<PlacedUnitInstance> destroyedList = null;
+
+            foreach (var unit in allUnits)
+            {
+                if (unit != null && unit.GameObjectInstance == null)
+                {
+                    destroyedList ??= new List<PlacedUnitInstance>();
+                    destroyedList.Add(unit);
+                }
+            }
+
+            if (destroyedList == null) return 0;
+
+            int count = 0;
+            for (int i = 0; i < destroyedList.Count; i++)
+            {
+                var unit = destroyedList[i];
+                if (OccupancyTracker.UnregisterUnit(unit.GridPosition, out _))
+                {
+                    CapacityPool?.Release(unit.CapacityConsumed);
+                    count++;
+                }
+            }
+
+            if (count > 0 && CapacityPool != null)
+            {
+                onCapacityChanged?.Invoke(CapacityPool.CurrentCapacityUsed, CapacityPool.MaxCapacity);
+            }
+
+            return count;
         }
 
         private void HandleUnitPlaced(PlacedUnitInstance unit)

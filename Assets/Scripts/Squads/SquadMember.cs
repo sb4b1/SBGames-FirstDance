@@ -19,6 +19,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
     public Vector3 RallyPoint => HasLeader ? currentLeader.Blackboard.RallyPoint : transform.position;
 
     public BaseAI BaseAI => baseAI ??= GetComponentInChildren<BaseAI>();
+    public CharacterStatsManager StatsManager => statsManager ??= (GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
 
     private void Awake()
     {
@@ -41,6 +42,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
 
     public void AssignLeader(PartyLeader newLeader)
     {
+        if (currentLeader == newLeader) return;
         currentLeader = newLeader;
     }
 

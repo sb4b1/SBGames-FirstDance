@@ -66,8 +66,8 @@ public class BaseAI : MonoBehaviour
 
     public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
     public float TargetDistance { get => targetDistance; private set => targetDistance = value; }
-    public List<Transform> EnemyTargets { get => enemyTargets; private set => enemyTargets = value; }
-    public List<Transform> AllyTargets { get => allyTargets; private set => allyTargets = value; }
+    public List<Transform> EnemyTargets { get => enemyTargets; internal set => enemyTargets = value; }
+    public List<Transform> AllyTargets { get => allyTargets; internal set => allyTargets = value; }
 
     public bool HasSquadLeader => SquadMember != null && SquadMember.HasLeader;
     public SquadOrderType SquadOrder => SquadMember != null ? SquadMember.CurrentOrder : SquadOrderType.None;

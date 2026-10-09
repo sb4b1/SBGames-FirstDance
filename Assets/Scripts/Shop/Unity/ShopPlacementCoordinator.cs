@@ -246,6 +246,10 @@ namespace SBGames.Shop.Unity
 
                 onShopMonsterSummoned?.Invoke(shopItem, placedUnit);
                 CancelPendingSummon();
+                if (cursorController != null && cursorController.CurrentUnit == shopItem)
+                {
+                    cursorController.DeselectUnit();
+                }
             }
         }
 

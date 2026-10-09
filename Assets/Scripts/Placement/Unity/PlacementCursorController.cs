@@ -123,7 +123,6 @@ namespace SBGames.Placement
             if (!isBuildMenuOpen)
             {
                 isSellModeActive = false;
-                DeselectUnit();
             }
         }
 

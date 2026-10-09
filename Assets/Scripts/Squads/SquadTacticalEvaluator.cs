@@ -62,7 +62,8 @@ public class SquadTacticalEvaluator : MonoBehaviour
             var m = members[i];
             if (m == null || !m.IsAlive) continue;
 
-            if (m.TryGetComponent<CharacterStatsManager>(out var mStats) && mStats.MaxLife.Value > 0f)
+            var mStats = m.StatsManager;
+            if (mStats != null && mStats.MaxLife.Value > 0f)
             {
                 totalHealthRatio += Mathf.Clamp01(mStats.Life / mStats.MaxLife.Value);
                 activeCount++;

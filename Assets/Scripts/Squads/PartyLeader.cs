@@ -51,6 +51,10 @@ public class PartyLeader : MonoBehaviour
     public void RegisterMember(SquadMember member)
     {
         if (member == null || members.Contains(member)) return;
+        if (member.Leader != null && member.Leader != this)
+        {
+            member.LeaveSquad();
+        }
         members.Add(member);
         member.AssignLeader(this);
     }
@@ -91,9 +95,10 @@ public class PartyLeader : MonoBehaviour
     {
         for (int i = members.Count - 1; i >= 0; i--)
         {
-            if (members[i] != null)
+            var m = members[i];
+            if (m != null)
             {
-                members[i].LeaveSquad();
+                m.AssignLeader(null);
             }
         }
         members.Clear();
@@ -128,8 +133,15 @@ public class PartyLeader : MonoBehaviour
 
     private void PromoteToLeader(SquadMember successor)
     {
-        // Unregister successor from old squad
+        if (successor == null)
+        {
+            DisbandSquad();
+            return;
+        }
+
+        // Unregister successor from old squad and clear its member status
         members.Remove(successor);
+        successor.LeaveSquad();
 
         // Attach PartyLeader component to successor if not present
         if (!successor.TryGetComponent<PartyLeader>(out var newLeader))
@@ -137,7 +149,22 @@ public class PartyLeader : MonoBehaviour
             newLeader = successor.gameObject.AddComponent<PartyLeader>();
         }
 
-        // Migrate existing members to new leader
+        // Inherit tactical parameters
+        newLeader.leashDistance = this.leashDistance;
+        newLeader.fallBackHealthThreshold = this.fallBackHealthThreshold;
+        newLeader.allowSuccession = this.allowSuccession;
+
+        // If current leader had SquadTacticalEvaluator, preserve autonomous AI on successor
+        if (TryGetComponent<SquadTacticalEvaluator>(out var oldEvaluator))
+        {
+            if (!successor.TryGetComponent<SquadTacticalEvaluator>(out var newEvaluator))
+            {
+                newEvaluator = successor.gameObject.AddComponent<SquadTacticalEvaluator>();
+            }
+            newEvaluator.AutonomousAI = oldEvaluator.AutonomousAI;
+        }
+
+        // Migrate remaining living members to new leader
         for (int i = 0; i < members.Count; i++)
         {
             var m = members[i];

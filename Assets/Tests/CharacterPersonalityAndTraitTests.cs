@@ -192,5 +192,86 @@ namespace SBGames.Tests
 
             Object.DestroyImmediate(mgrGo);
         }
+
+        [Test]
+        public void AltarEventManager_ConfirmTransmutation_FailsGracefully_WhenTargetUnitDestroyed()
+        {
+            var dmGo = new GameObject("Test_DM");
+            var dm = dmGo.AddComponent<DungeonMaster>();
+            dm.Initialize(startingEssence: 100, startingEnergy: 50);
+
+            var altarMgrGo = new GameObject("Test_AltarMgr");
+            var altarMgr = altarMgrGo.AddComponent<AltarEventManager>();
+
+            var unitGo = new GameObject("Test_TargetUnit");
+            var pers = unitGo.AddComponent<CharacterPersonality>();
+
+            var trait = ScriptableObject.CreateInstance<CharacterTraitSO>();
+
+            var target = new AltarUnitTarget("Test_TargetUnit", true, Vector2Int.zero, -1, pers, null, null);
+            altarMgr.SelectUnit(target);
+
+            // Destroy the unit's GameObject before confirmation
+            Object.DestroyImmediate(unitGo);
+
+            Assert.IsFalse(target.IsValid, "Target should not be valid once GameObject is destroyed.");
+
+            bool result = altarMgr.ConfirmTransmutation(trait, keepCurrentTrait: false);
+            Assert.IsFalse(result, "ConfirmTransmutation must return false when unit is destroyed without throwing exception.");
+            Assert.AreEqual(100, dm.Essence, "Essence must not be deducted when unit is destroyed.");
+
+            Object.DestroyImmediate(dmGo);
+            Object.DestroyImmediate(altarMgrGo);
+            Object.DestroyImmediate(trait);
+        }
+
+        [Test]
+        public void AltarEventManager_ConfirmTransmutation_DeductsCurrencyWithFallbackDM()
+        {
+            var dmGo = new GameObject("Test_DM");
+            var dm = dmGo.AddComponent<DungeonMaster>();
+            dm.Initialize(startingEssence: 100, startingEnergy: 50);
+
+            var altarMgrGo = new GameObject("Test_AltarMgr");
+            var altarMgr = altarMgrGo.AddComponent<AltarEventManager>();
+
+            var unitGo = new GameObject("Test_TargetUnit");
+            var pers = unitGo.AddComponent<CharacterPersonality>();
+            var trait = ScriptableObject.CreateInstance<CharacterTraitSO>();
+
+            var target = new AltarUnitTarget("Test_TargetUnit", true, Vector2Int.zero, -1, pers, null, null);
+            altarMgr.SelectUnit(target);
+
+            var soMgr = new UnityEditor.SerializedObject(altarMgr);
+            soMgr.FindProperty("_activeCurrencyType").enumValueIndex = (int)AltarCurrencyType.Blood;
+            soMgr.FindProperty("_activeCost").intValue = 25;
+            soMgr.ApplyModifiedPropertiesWithoutUndo();
+
+            bool result = altarMgr.ConfirmTransmutation(trait, keepCurrentTrait: false);
+            Assert.IsTrue(result, "ConfirmTransmutation should succeed with valid unit and sufficient currency.");
+            Assert.AreEqual(75, dm.Essence, "Essence should be reduced by 25.");
+            Assert.AreSame(trait, pers.ActiveTrait, "Unit should have the new trait applied.");
+
+            Object.DestroyImmediate(unitGo);
+            Object.DestroyImmediate(dmGo);
+            Object.DestroyImmediate(altarMgrGo);
+            Object.DestroyImmediate(trait);
+        }
+
+        [Test]
+        public void DungeonEventManager_ResolveActiveEvent_ForceClosesAltarUI()
+        {
+            var altarMgrGo = new GameObject("Test_AltarMgr");
+            var altarMgr = altarMgrGo.AddComponent<AltarEventManager>();
+
+            var mgrGo = new GameObject("Test_EventMgr");
+            var mgr = mgrGo.AddComponent<DungeonEventManager>();
+
+            // Assert that calling ResolveActiveEvent does not throw even when no active event
+            Assert.DoesNotThrow(() => mgr.ResolveActiveEvent());
+
+            Object.DestroyImmediate(altarMgrGo);
+            Object.DestroyImmediate(mgrGo);
+        }
     }
 }

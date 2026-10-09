@@ -11,14 +11,16 @@ public class BeamSkill : MonoBehaviour
     private void Awake()
     {
         skill = GetComponent<SkillInstance>();
-        targeting = GetComponent<SkillTargeting>();
+        targeting = GetComponent<SkillTargeting>() ?? GetComponentInChildren<SkillTargeting>();
         hitResolver = GetComponent<SkillHitResolver>();
     }
 
     private void Update()
     {
+        if (skill == null || targeting == null) return;
+
         tickTimer -= Time.deltaTime;
-        if (tickTimer > 0) return;
+        if (tickTimer > 0f) return;
 
         tickTimer = skill.Stats != null ? skill.Stats.BeamTickInterval.Value : (skill.Data != null ? skill.Data.beamTickInterval : 0.1f);
 

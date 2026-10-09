@@ -101,6 +101,7 @@ namespace SBGames.Placement.Bench
         {
             assignedSlotIndex = -1;
             if (unit == null) return false;
+            if (slots == null || slots.Count == 0) InitializeSlots();
 
             for (int i = 0; i < slots.Count; i++)
             {
@@ -108,6 +109,7 @@ namespace SBGames.Placement.Bench
                 {
                     slots[i].Assign(unit);
                     assignedSlotIndex = i;
+                    unit.GridPosition = new Vector2Int(-1, -1);
 
                     if (unit.GameObjectInstance != null)
                     {
@@ -129,14 +131,19 @@ namespace SBGames.Placement.Bench
         public bool TryAssignToSlot(int slotIndex, PlacedUnitInstance unit, out PlacedUnitInstance previousUnit)
         {
             previousUnit = null;
+            if (slots == null || slots.Count == 0) InitializeSlots();
             if (slotIndex < 0 || slotIndex >= slots.Count) return false;
 
             previousUnit = slots[slotIndex].Clear();
             slots[slotIndex].Assign(unit);
 
-            if (unit != null && unit.GameObjectInstance != null)
+            if (unit != null)
             {
-                unit.GameObjectInstance.transform.position = GetSlotWorldPosition(slotIndex);
+                unit.GridPosition = new Vector2Int(-1, -1);
+                if (unit.GameObjectInstance != null)
+                {
+                    unit.GameObjectInstance.transform.position = GetSlotWorldPosition(slotIndex);
+                }
             }
 
             if (previousUnit != null)
@@ -159,6 +166,7 @@ namespace SBGames.Placement.Bench
         public bool TryRemoveFromBench(int slotIndex, out PlacedUnitInstance unit)
         {
             unit = null;
+            if (slots == null || slots.Count == 0) InitializeSlots();
             if (slotIndex < 0 || slotIndex >= slots.Count) return false;
             if (slots[slotIndex].IsEmpty) return false;
 
@@ -173,6 +181,7 @@ namespace SBGames.Placement.Bench
         /// </summary>
         public bool SwapBenchSlots(int indexA, int indexB)
         {
+            if (slots == null || slots.Count == 0) InitializeSlots();
             if (indexA < 0 || indexA >= slots.Count || indexB < 0 || indexB >= slots.Count) return false;
             if (indexA == indexB) return true;
 
@@ -194,6 +203,32 @@ namespace SBGames.Placement.Bench
 
             onBenchChanged?.Invoke();
             return true;
+        }
+
+        /// <summary>
+        /// Clears any bench slots where the unit's GameObject was destroyed.
+        /// </summary>
+        public int CleanupDestroyedUnits()
+        {
+            if (slots == null || slots.Count == 0) return 0;
+
+            int cleaned = 0;
+            for (int i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                if (!slot.IsEmpty && slot.UnitInstance != null && slot.UnitInstance.GameObjectInstance == null)
+                {
+                    slot.Clear();
+                    cleaned++;
+                }
+            }
+
+            if (cleaned > 0)
+            {
+                onBenchChanged?.Invoke();
+            }
+
+            return cleaned;
         }
 
         /// <summary>

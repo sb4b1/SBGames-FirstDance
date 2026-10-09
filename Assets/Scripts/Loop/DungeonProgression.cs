@@ -259,17 +259,17 @@ namespace SBGames.Loop
 
         #region Cross-Rank Probability Engine
 
+        private readonly float[] _cachedProbabilities = new float[DungeonRankExtensions.RankCount];
+
         /// <summary>
-        /// Calculates the normalized probability distribution for all six ranks attempting a dungeon of the given rank.
-        /// Normalizes weights across all valid ranks to account for boundary clamping (e.g. at Rank E or Rank S)
-        /// and incorporates Fame Tier probability modulation.
+        /// Populates the provided float array with normalized probability distribution for all six ranks.
+        /// Zero allocations when passing a pre-allocated array.
         /// </summary>
-        /// <param name="dungeonRank">The dungeon rank to evaluate.</param>
-        /// <returns>A float array of size 6 where index corresponds to <see cref="DungeonRank"/> enum value.</returns>
-        public float[] GetNormalizedProbabilities(DungeonRank dungeonRank)
+        public void GetNormalizedProbabilities(DungeonRank dungeonRank, float[] probabilities)
         {
+            if (probabilities == null || probabilities.Length < DungeonRankExtensions.RankCount) return;
+
             var config = GetConfig();
-            float[] probabilities = new float[DungeonRankExtensions.RankCount];
             float totalWeight = 0f;
 
             // 1. Accumulate raw relative weights for each rank and apply fame boosts
@@ -295,14 +295,26 @@ namespace SBGames.Loop
                 {
                     probabilities[r] = (r == (int)dungeonRank) ? 1.0f : 0.0f;
                 }
-                return probabilities;
+                return;
             }
 
             for (int r = 0; r < DungeonRankExtensions.RankCount; r++)
             {
                 probabilities[r] /= totalWeight;
             }
+        }
 
+        /// <summary>
+        /// Calculates the normalized probability distribution for all six ranks attempting a dungeon of the given rank.
+        /// Normalizes weights across all valid ranks to account for boundary clamping (e.g. at Rank E or Rank S)
+        /// and incorporates Fame Tier probability modulation.
+        /// </summary>
+        /// <param name="dungeonRank">The dungeon rank to evaluate.</param>
+        /// <returns>A float array of size 6 where index corresponds to <see cref="DungeonRank"/> enum value.</returns>
+        public float[] GetNormalizedProbabilities(DungeonRank dungeonRank)
+        {
+            float[] probabilities = new float[DungeonRankExtensions.RankCount];
+            GetNormalizedProbabilities(dungeonRank, probabilities);
             return probabilities;
         }
 
@@ -326,12 +338,12 @@ namespace SBGames.Loop
         public DungeonRank DetermineAttemptRank(float normalizedRoll)
         {
             float clampedRoll = Mathf.Clamp(normalizedRoll, 0.0f, 0.999999f);
-            float[] probabilities = GetNormalizedProbabilities(currentRank);
+            GetNormalizedProbabilities(currentRank, _cachedProbabilities);
 
             float cumulative = 0f;
-            for (int r = 0; r < probabilities.Length; r++)
+            for (int r = 0; r < _cachedProbabilities.Length; r++)
             {
-                cumulative += probabilities[r];
+                cumulative += _cachedProbabilities[r];
                 if (clampedRoll < cumulative)
                 {
                     var selectedRank = (DungeonRank)r;
@@ -560,13 +572,17 @@ namespace SBGames.Loop
 
         #region Private Helpers
 
+        private DungeonProgressionConfigSO _fallbackConfig;
+
         private DungeonProgressionConfigSO GetConfig()
         {
             if (customConfig != null) return customConfig;
 
-            // Generate lazy runtime fallback instance with default serialized values
-            var fallback = ScriptableObject.CreateInstance<DungeonProgressionConfigSO>();
-            return fallback;
+            if (_fallbackConfig == null)
+            {
+                _fallbackConfig = ScriptableObject.CreateInstance<DungeonProgressionConfigSO>();
+            }
+            return _fallbackConfig;
         }
 
         private void InitializeRankStats()

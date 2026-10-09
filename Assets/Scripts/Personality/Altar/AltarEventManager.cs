@@ -28,6 +28,11 @@ namespace SBGames.Personality.Altar
         public RaceInstinctSO Race => Personality != null ? Personality.RaceInstinct : RuntimeInstance != null ? RuntimeInstance.RaceInstinct : null;
         public CharacterTraitSO CurrentTrait => Personality != null ? Personality.ActiveTrait : RuntimeInstance != null ? RuntimeInstance.ActiveTrait : null;
 
+        /// <summary>
+        /// Validates that the underlying unit and its Personality component have not been destroyed or desynced.
+        /// </summary>
+        public bool IsValid => Personality != null && Personality.gameObject != null;
+
         public AltarUnitTarget(
             string displayName,
             bool isOnGrid,
@@ -257,7 +262,11 @@ namespace SBGames.Personality.Altar
         /// </summary>
         public bool ConfirmTransmutation(CharacterTraitSO chosenTrait, bool keepCurrentTrait)
         {
-            if (_selectedUnit == null) return false;
+            if (_selectedUnit == null || !_selectedUnit.IsValid)
+            {
+                Debug.LogWarning("[AltarEventManager] Cannot transmute: Selected unit is null or has been destroyed.");
+                return false;
+            }
 
             if (keepCurrentTrait)
             {
@@ -273,7 +282,7 @@ namespace SBGames.Personality.Altar
                 return false;
             }
 
-            var dm = DungeonMaster.Instance;
+            var dm = DungeonMaster.Instance ?? FindAnyObjectByType<DungeonMaster>();
             if (dm != null)
             {
                 if (_activeCurrencyType == AltarCurrencyType.Blood)
@@ -305,6 +314,18 @@ namespace SBGames.Personality.Altar
         public void SkipAltar()
         {
             CloseAndResolve();
+        }
+
+        /// <summary>
+        /// Forcefully dismisses the Altar session without invoking completion callbacks (e.g. on round transition cleanup).
+        /// </summary>
+        public void CloseAltarForcefully()
+        {
+            _onCompleteCallback = null;
+            if (AltarEventUIController.Instance != null)
+            {
+                AltarEventUIController.Instance.CloseModal();
+            }
         }
 
         private void CloseAndResolve()

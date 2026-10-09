@@ -230,6 +230,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
         if (context == HitContext.Direct &&
             RemainingChains > 0 &&
+            targeting != null &&
             targeting.TryGetTarget(this, out var next))
         {
             RemainingChains--;
@@ -278,6 +279,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     public void OnDespawn()
     {
+        isActive = false;
         currentTarget = null;
         CasterGameObject = null;
         casterID = null;
@@ -290,7 +292,6 @@ public class SkillInstance : MonoBehaviour, IPoolable
         RemainingChains = 0;
         HasDetonated = false;
         HitTargets.Clear();
-        ReturnToPool();
     }
 
     public void ActivateHitbox()

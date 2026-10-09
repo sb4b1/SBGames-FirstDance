@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SBGames.Loop;
+using SBGames.Personality.Altar;
 using SBGames.Placement;
 using SBGames.Placement.Bench;
 using UnityEngine;
@@ -199,6 +200,12 @@ namespace SBGames.Events
         public void ResolveActiveEvent()
         {
             if (_activeEvent == null) return;
+
+            // Ensure any active sub-event UI (such as Altar modal or reopen pill) is closed cleanly
+            if (AltarEventManager.Instance != null)
+            {
+                AltarEventManager.Instance.CloseAltarForcefully();
+            }
 
             var resolvedEvt = _activeEvent;
             _activeEvent = null;

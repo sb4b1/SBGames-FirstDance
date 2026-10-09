@@ -48,22 +48,11 @@ namespace SBGames.Shop.Core
             LevelCostMultiplier = levelCostMultiplier;
         }
 
-        /// <summary>
-        /// Calculates rank probability distribution weights (E to S) based on the current round number and DungeonRank tier.
-        /// Weights represent relative percentages summing to 100%.
-        /// </summary>
-        /// <param name="roundNumber">Current game round (1-indexed).</param>
-        /// <param name="playerRank">Current progression rank tier of the dungeon/player.</param>
-        /// <returns>Dictionary mapping each DungeonRank to its roll weight.</returns>
-        public virtual IReadOnlyDictionary<DungeonRank, float> GetRankProbabilities(int roundNumber, DungeonRank playerRank)
+        private static readonly Dictionary<DungeonRank, float>[] CachedRankProbabilities;
+        private static readonly Dictionary<int, float>[] CachedLevelProbabilities;
+
+        static ShopConfig()
         {
-            roundNumber = Mathf.Max(1, roundNumber);
-
-            // Calculate effective tier index from round and rank (weighted blend)
-            int roundTier = Mathf.Clamp((roundNumber - 1) / 3, 0, 5);
-            int rankTier = (int)playerRank;
-            int effectiveTier = Mathf.Clamp(Mathf.Max(roundTier, rankTier), 0, 5);
-
             // Matrix: [Tier 0..5][Rank E..S]
             float[,] oddsMatrix = new float[,]
             {
@@ -81,17 +70,46 @@ namespace SBGames.Shop.Core
                 {  2f,  8f, 20f, 30f, 25f, 15f }
             };
 
-            var weights = new Dictionary<DungeonRank, float>
+            CachedRankProbabilities = new Dictionary<DungeonRank, float>[6];
+            for (int t = 0; t < 6; t++)
             {
-                [DungeonRank.E] = oddsMatrix[effectiveTier, 0],
-                [DungeonRank.D] = oddsMatrix[effectiveTier, 1],
-                [DungeonRank.C] = oddsMatrix[effectiveTier, 2],
-                [DungeonRank.B] = oddsMatrix[effectiveTier, 3],
-                [DungeonRank.A] = oddsMatrix[effectiveTier, 4],
-                [DungeonRank.S] = oddsMatrix[effectiveTier, 5]
-            };
+                CachedRankProbabilities[t] = new Dictionary<DungeonRank, float>
+                {
+                    [DungeonRank.E] = oddsMatrix[t, 0],
+                    [DungeonRank.D] = oddsMatrix[t, 1],
+                    [DungeonRank.C] = oddsMatrix[t, 2],
+                    [DungeonRank.B] = oddsMatrix[t, 3],
+                    [DungeonRank.A] = oddsMatrix[t, 4],
+                    [DungeonRank.S] = oddsMatrix[t, 5]
+                };
+            }
 
-            return weights;
+            CachedLevelProbabilities = new Dictionary<int, float>[]
+            {
+                new() { [1] = 95f, [2] = 5f,  [3] = 0f },
+                new() { [1] = 85f, [2] = 12f, [3] = 3f },
+                new() { [1] = 75f, [2] = 18f, [3] = 7f },
+                new() { [1] = 65f, [2] = 23f, [3] = 10f, [4] = 2f },
+                new() { [1] = 55f, [2] = 25f, [3] = 14f, [4] = 5f, [5] = 1f }
+            };
+        }
+
+        /// <summary>
+        /// Calculates rank probability distribution weights (E to S) based on the current round number and DungeonRank tier.
+        /// Weights represent relative percentages summing to 100%.
+        /// </summary>
+        /// <param name="roundNumber">Current game round (1-indexed).</param>
+        /// <param name="playerRank">Current progression rank tier of the dungeon/player.</param>
+        /// <returns>Dictionary mapping each DungeonRank to its roll weight.</returns>
+        public virtual IReadOnlyDictionary<DungeonRank, float> GetRankProbabilities(int roundNumber, DungeonRank playerRank)
+        {
+            roundNumber = Mathf.Max(1, roundNumber);
+
+            int roundTier = Mathf.Clamp((roundNumber - 1) / 3, 0, 5);
+            int rankTier = (int)playerRank;
+            int effectiveTier = Mathf.Clamp(Mathf.Max(roundTier, rankTier), 0, 5);
+
+            return CachedRankProbabilities[effectiveTier];
         }
 
         /// <summary>
@@ -106,14 +124,7 @@ namespace SBGames.Shop.Core
             roundNumber = Mathf.Max(1, roundNumber);
             int tier = Mathf.Clamp((roundNumber - 1) / 4 + (int)playerRank / 2, 0, 4);
 
-            return tier switch
-            {
-                0 => new Dictionary<int, float> { [1] = 95f, [2] = 5f,  [3] = 0f },
-                1 => new Dictionary<int, float> { [1] = 85f, [2] = 12f, [3] = 3f },
-                2 => new Dictionary<int, float> { [1] = 75f, [2] = 18f, [3] = 7f },
-                3 => new Dictionary<int, float> { [1] = 65f, [2] = 23f, [3] = 10f, [4] = 2f },
-                _ => new Dictionary<int, float> { [1] = 55f, [2] = 25f, [3] = 14f, [4] = 5f, [5] = 1f }
-            };
+            return CachedLevelProbabilities[tier];
         }
     }
 }

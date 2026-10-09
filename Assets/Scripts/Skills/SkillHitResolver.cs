@@ -13,9 +13,10 @@ public class SkillHitResolver : MonoBehaviour
             return;
         }
 
+        DamageType damageType = skill != null && skill.Data != null ? skill.Data.damageType : DamageType.Physical;
         damagable.TakeDamage(new DamageData(
-            skill.CurrentDamage,
-            skill.Data.damageType,
+            skill != null ? skill.CurrentDamage : 0f,
+            damageType,
             skill
         ));
 
@@ -23,12 +24,17 @@ public class SkillHitResolver : MonoBehaviour
         if (sem == null)
             return;
 
-        foreach (var application in skill.Data.statusEffects)
+        if (skill?.Data != null && skill.Data.statusEffects != null)
         {
-            if (Random.value > application.procChance)
-                continue;
-
-            sem.ApplyEffect(application.effect);
+            var effects = skill.Data.statusEffects;
+            for (int i = 0; i < effects.Count; i++)
+            {
+                var application = effects[i];
+                if (application != null && Random.value <= application.procChance)
+                {
+                    sem.ApplyEffect(application.effect);
+                }
+            }
         }
     }
 }
