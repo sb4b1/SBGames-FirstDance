@@ -114,7 +114,7 @@ public class AIDecisionThrottler : MonoBehaviour
 
     private float GetStatValue(Stat stat, float fallback)
     {
-        return (statsManager != null && stat != null) ? stat.Value : fallback;
+        return (statsManager != null && stat != null && stat.Value > 0f) ? stat.Value : fallback;
     }
 
     private void ResolveDependencies()

@@ -7,7 +7,7 @@ public class UtilityWanderGoal : UtilityGoal
 
     public override float Evaluate(BaseAI context)
     {
-        if (context.ThreatLevel > 0 || context.FearLevel > 0)
+        if (context == null || context.ThreatLevel > 0 || context.FearLevel > 0 || context.SquadOrder == SquadOrderType.Standby)
         {
             return 0;
         }

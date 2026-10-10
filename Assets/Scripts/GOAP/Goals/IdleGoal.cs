@@ -1,3 +1,3 @@
 using CrashKonijn.Goap.Runtime;
 
-public class WanderGoal : GoalBase {}
+public class IdleGoal : GoalBase {}

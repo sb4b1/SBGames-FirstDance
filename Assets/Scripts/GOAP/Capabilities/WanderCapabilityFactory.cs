@@ -8,7 +8,7 @@ public class WanderCapabilityFactory : CapabilityFactoryBase
     {
         var builder = new CapabilityBuilder("WanderCapability");
 
-        builder.AddGoal<WanderGoal>()
+        builder.AddGoal<IdleGoal>()
             .AddCondition<IsIdle>(Comparison.GreaterThanOrEqual, 1)
             .SetBaseCost(1);
 

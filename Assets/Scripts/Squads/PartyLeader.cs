@@ -86,6 +86,11 @@ public class PartyLeader : MonoBehaviour
         blackboard.SetOrder(SquadOrderType.FallBack, null, rally);
     }
 
+    public void OrderStandby()
+    {
+        blackboard.SetOrder(SquadOrderType.Standby, null, transform.position);
+    }
+
     public void ClearOrder()
     {
         blackboard.ClearOrder();

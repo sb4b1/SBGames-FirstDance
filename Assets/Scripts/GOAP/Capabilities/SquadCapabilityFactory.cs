@@ -20,10 +20,28 @@ public class SquadCapabilityFactory : CapabilityFactoryBase
             .AddCondition<FearLevel>(Comparison.SmallerThanOrEqual, 0)
             .SetBaseCost(1);
 
+        builder.AddGoal<StandbyGoal>()
+            .AddCondition<IsIdle>(Comparison.GreaterThanOrEqual, 1)
+            .SetBaseCost(1);
+
+        builder.AddGoal<AlertAlliesGoal>()
+            .AddCondition<HasAlertedAllies>(Comparison.GreaterThanOrEqual, 1)
+            .SetBaseCost(1);
+
         // Actions
         builder.AddAction<FollowLeaderAction>()
             .SetTarget<LeaderTarget>()
             .AddEffect<IsIdle>(EffectType.Increase)
+            .SetBaseCost(1);
+
+        builder.AddAction<IdleAction>()
+            .SetTarget<SelfTarget>()
+            .AddEffect<IsIdle>(EffectType.Increase)
+            .SetBaseCost(1);
+
+        builder.AddAction<AlertAlliesAction>()
+            .SetTarget<SelfTarget>()
+            .AddEffect<HasAlertedAllies>(EffectType.Increase)
             .SetBaseCost(1);
 
         builder.AddAction<FocusFireAction>()

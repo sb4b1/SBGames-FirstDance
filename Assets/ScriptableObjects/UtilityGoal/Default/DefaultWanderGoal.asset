@@ -10,6 +10,5 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32fe1fe6b7700ba488cc11ffda094204, type: 3}
-  m_Name: DefaultWanderGoal
   m_EditorClassIdentifier: Assembly-CSharp::UtilityWanderGoal
-  wanderScore: 0.3
+  score: 0.4

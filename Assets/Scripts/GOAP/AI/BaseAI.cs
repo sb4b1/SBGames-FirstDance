@@ -66,8 +66,47 @@ public class BaseAI : MonoBehaviour
 
     public Transform CurrentTarget { get => currentTarget; private set => currentTarget = value; }
     public float TargetDistance { get => targetDistance; private set => targetDistance = value; }
-    public List<Transform> EnemyTargets { get => enemyTargets; internal set => enemyTargets = value; }
-    public List<Transform> AllyTargets { get => allyTargets; internal set => allyTargets = value; }
+    public List<Transform> EnemyTargets { get => enemyTargets; set => enemyTargets = value; }
+    public List<Transform> AllyTargets { get => allyTargets; set => allyTargets = value; }
+
+    [SerializeField] private List<KnownEnemyRecord> localKnownEnemies = new(8);
+    [SerializeField] private bool hasAlertedAllies = true;
+    [SerializeField] private float alertShoutRadius = 12f;
+    [SerializeField] private float alertShoutCooldown = 4f;
+    private float lastAlertShoutTime = -999f;
+    private static readonly Collider2D[] proximityAlertBuffer = new Collider2D[16];
+
+    public System.Action<Transform> OnAlertShout;
+
+    public bool HasAlertedAllies { get => hasAlertedAllies; internal set => hasAlertedAllies = value; }
+    public float AlertShoutRadius { get => alertShoutRadius; set => alertShoutRadius = value; }
+    public float AlertShoutCooldown { get => alertShoutCooldown; set => alertShoutCooldown = value; }
+    public float LastAlertShoutTime => lastAlertShoutTime;
+    public List<KnownEnemyRecord> LocalKnownEnemies => localKnownEnemies;
+
+    public IReadOnlyList<KnownEnemyRecord> KnownEnemies
+    {
+        get
+        {
+            if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+            {
+                return SquadMember.Leader.Blackboard.KnownEnemies;
+            }
+            return localKnownEnemies;
+        }
+    }
+
+    public bool HasKnownEnemies
+    {
+        get
+        {
+            if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+            {
+                return SquadMember.Leader.Blackboard.HasKnownEnemies;
+            }
+            return localKnownEnemies.Count > 0;
+        }
+    }
 
     public bool HasSquadLeader => SquadMember != null && SquadMember.HasLeader;
     public SquadOrderType SquadOrder => SquadMember != null ? SquadMember.CurrentOrder : SquadOrderType.None;
@@ -285,13 +324,178 @@ public class BaseAI : MonoBehaviour
             allyTargets = vision.AllyTargets;
         }
 
-        // Ghost threat cleanup: if no enemies remain in perception, clean up threat/fear
-        if ((enemyTargets == null || enemyTargets.Count == 0) && threatLevel > 0)
+        float currentTime = Time.time;
+
+        // Synchronize directly seen enemies into known enemies
+        if (enemyTargets != null && enemyTargets.Count > 0)
+        {
+            for (int i = 0; i < enemyTargets.Count; i++)
+            {
+                var enemy = enemyTargets[i];
+                if (enemy == null) continue;
+
+                // Update local known enemies
+                bool existsLocally = false;
+                for (int j = 0; j < localKnownEnemies.Count; j++)
+                {
+                    if (localKnownEnemies[j].Target == enemy)
+                    {
+                        var record = localKnownEnemies[j];
+                        record.UpdatePosition(enemy.position, currentTime);
+                        localKnownEnemies[j] = record;
+                        existsLocally = true;
+                        break;
+                    }
+                }
+                if (!existsLocally)
+                {
+                    localKnownEnemies.Add(new KnownEnemyRecord(enemy, enemy.position, currentTime));
+                }
+
+                // If in squad, report to squad blackboard
+                if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+                {
+                    SquadMember.Leader.Blackboard.ReportEnemy(enemy, enemy.position, currentTime);
+                }
+            }
+
+            // If we have spotted enemies and shout cooldown has elapsed, mark unalerted to allow alert shout
+            if (hasAlertedAllies && (currentTime - lastAlertShoutTime) >= alertShoutCooldown)
+            {
+                hasAlertedAllies = false;
+            }
+        }
+
+        // Prune expired local known enemies
+        for (int i = localKnownEnemies.Count - 1; i >= 0; i--)
+        {
+            if (!localKnownEnemies[i].IsValid(currentTime))
+            {
+                localKnownEnemies.RemoveAt(i);
+            }
+        }
+
+        // Ghost threat cleanup: if no enemies remain in direct perception or known enemies, clean up threat/fear
+        if ((enemyTargets == null || enemyTargets.Count == 0) && !HasKnownEnemies && threatLevel > 0)
         {
             threatLevel = 0;
             if (!IsFearLocked)
             {
                 fearLevel = 0;
+            }
+            hasAlertedAllies = true;
+        }
+    }
+
+    public void ReceiveAlert(Transform enemy, Vector3 lastKnownPosition, float duration = 6f)
+    {
+        if (enemy == null) return;
+
+        float currentTime = Time.time;
+        bool existsLocally = false;
+        for (int i = 0; i < localKnownEnemies.Count; i++)
+        {
+            if (localKnownEnemies[i].Target == enemy)
+            {
+                var record = localKnownEnemies[i];
+                record.UpdatePosition(lastKnownPosition, currentTime);
+                localKnownEnemies[i] = record;
+                existsLocally = true;
+                break;
+            }
+        }
+        if (!existsLocally)
+        {
+            localKnownEnemies.Add(new KnownEnemyRecord(enemy, lastKnownPosition, currentTime, duration));
+        }
+
+        if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+        {
+            SquadMember.Leader.Blackboard.ReportEnemy(enemy, lastKnownPosition, currentTime, duration);
+        }
+
+        // Elevate ThreatLevel to enter combat readiness stance
+        threatLevel = Mathf.Max(threatLevel, Mathf.RoundToInt(15 * EffectiveThreatMultiplier));
+    }
+
+    public void PerformAlertShout()
+    {
+        hasAlertedAllies = true;
+        lastAlertShoutTime = Time.time;
+
+        Transform primaryTarget = currentTarget;
+        if (primaryTarget == null && enemyTargets != null && enemyTargets.Count > 0)
+        {
+            primaryTarget = enemyTargets[0];
+        }
+        else if (primaryTarget == null && HasKnownEnemies)
+        {
+            var known = KnownEnemies;
+            if (known.Count > 0) primaryTarget = known[0].Target;
+        }
+
+        Vector3 targetPos = primaryTarget != null ? primaryTarget.position : transform.position;
+
+        OnAlertShout?.Invoke(primaryTarget);
+
+        // 1. Squad Communication: Notify squad leader and all fellow squad members
+        if (HasSquadLeader && SquadMember.Leader != null)
+        {
+            var leader = SquadMember.Leader;
+            if (primaryTarget != null)
+            {
+                leader.Blackboard.ReportEnemy(primaryTarget, targetPos, lastAlertShoutTime);
+            }
+
+            var leaderAI = leader.GetComponentInChildren<BaseAI>();
+            if (leaderAI != null && leaderAI != this)
+            {
+                leaderAI.ReceiveAlert(primaryTarget, targetPos);
+            }
+
+            var members = leader.Members;
+            if (members != null)
+            {
+                for (int i = 0; i < members.Count; i++)
+                {
+                    var m = members[i];
+                    if (m != null && m.IsAlive && m.BaseAI != null && m.BaseAI != this)
+                    {
+                        m.BaseAI.ReceiveAlert(primaryTarget, targetPos);
+                    }
+                }
+            }
+        }
+
+        // 2. Proximity Alert Broadcast: Alert nearby non-squad allies within shout radius
+        var factionMember = GetComponentInParent<FactionMember>();
+        int hitCount = Physics2D.OverlapCircleNonAlloc(transform.position, alertShoutRadius, proximityAlertBuffer);
+        for (int i = 0; i < hitCount; i++)
+        {
+            var col = proximityAlertBuffer[i];
+            if (col == null) continue;
+
+            bool isAlly = false;
+            if (factionMember != null)
+            {
+                isAlly = factionMember.IsAllyOf(col.gameObject);
+            }
+            else
+            {
+                if ((CompareTag("Adventurer") && col.CompareTag("Adventurer")) ||
+                    (CompareTag("Monster") && col.CompareTag("Monster")))
+                {
+                    isAlly = true;
+                }
+            }
+
+            if (isAlly)
+            {
+                var allyAI = col.GetComponentInChildren<BaseAI>() ?? col.GetComponentInParent<BaseAI>();
+                if (allyAI != null && allyAI != this)
+                {
+                    allyAI.ReceiveAlert(primaryTarget, targetPos);
+                }
             }
         }
     }
@@ -361,8 +565,15 @@ public class BaseAI : MonoBehaviour
         UtilityGoal bestGoal = null;
         float highestScore = 0f;
 
-        foreach (var goal in goals)
+#if UNITY_EDITOR
+        goalScores.Clear();
+#endif
+
+        for (int i = 0; i < goals.Count; i++)
         {
+            var goal = goals[i];
+            if (goal == null) continue;
+
             float score = goal.Evaluate(this);
 
             if (score > highestScore)
@@ -370,22 +581,18 @@ public class BaseAI : MonoBehaviour
                 highestScore = score;
                 bestGoal = goal;
             }
-        }
 
 #if UNITY_EDITOR
-        // Update the current goal key and scores for debugging purposes
-        currentGoalKey = bestGoal != null ? bestGoal.GetGOAPGoalKey().ToString() : EnumUtilGoal.None.ToString();
-        goalScores.Clear();
-
-        foreach (var goal in goals)
-        {
-            float score = goal.Evaluate(this);
             goalScores.GetPairs().Add(new SerializableDictionary<EnumUtilGoal, float>.Pair
             {
                 Key = goal.GetGOAPGoalKey(),
                 Value = score
             });
+#endif
         }
+
+#if UNITY_EDITOR
+        currentGoalKey = bestGoal != null ? bestGoal.GetGOAPGoalKey().ToString() : EnumUtilGoal.None.ToString();
 #endif
 
         return bestGoal != null ? bestGoal.GetGOAPGoalKey() : EnumUtilGoal.None;
@@ -465,10 +672,12 @@ public class BaseAI : MonoBehaviour
 
     private void Planner(EnumUtilGoal goalKey)
     {
+        if (provider == null || provider.AgentType == null) return;
+
         switch (goalKey)
         {
             case EnumUtilGoal.Wander:
-                provider.RequestGoal<WanderGoal>();
+                provider.RequestGoal<IdleGoal>();
                 break;
             case EnumUtilGoal.KillEnemy:
                 provider.RequestGoal<KillEnemyGoal>();
@@ -487,6 +696,12 @@ public class BaseAI : MonoBehaviour
                 break;
             case EnumUtilGoal.KeepDistance:
                 provider.RequestGoal<KeepDistanceGoal>();
+                break;
+            case EnumUtilGoal.Standby:
+                provider.RequestGoal<StandbyGoal>();
+                break;
+            case EnumUtilGoal.AlertAllies:
+                provider.RequestGoal<AlertAlliesGoal>();
                 break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);

@@ -37,6 +37,13 @@ public class AwarenessSensor : MultiSensorBase
             return (int)data.AgentMana;
         });
 
+        this.AddLocalWorldSensor<HasAlertedAllies>((agent, references) =>
+        {
+            var data = references?.GetCachedComponent<BaseAI>();
+            if (data == null) return 1;
+            return data.HasAlertedAllies ? 1 : 0;
+        });
+
         this.AddLocalTargetSensor<SelfTarget>((agent, references, target) =>
         {
             if (target is TransformTarget transformTarget)

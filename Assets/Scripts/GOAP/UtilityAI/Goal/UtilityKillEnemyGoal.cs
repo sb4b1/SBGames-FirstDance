@@ -6,7 +6,7 @@ public class UtilityKillEnemyGoal : UtilityGoal
     private const float MIN_VALUE = 0f;
     private const float MAX_VALUE = 1f;
     [SerializeField] private AnimationCurve threatCurve = AnimationCurve.Linear(0, 0, 1, 1);
-    [SerializeField] private AnimationCurve fearCurve = AnimationCurve.Linear(0, 0, 1, 1);
+    [SerializeField] private AnimationCurve fearCurve = AnimationCurve.Linear(0, 0, 1, 0.5f);
 
 
     public override float Evaluate(BaseAI context)
@@ -16,11 +16,20 @@ public class UtilityKillEnemyGoal : UtilityGoal
             return 0f;
         }
 
+        // Suppress engaging enemies autonomously when held in Standby
+        if (context.SquadOrder == SquadOrderType.Standby)
+        {
+            return 0f;
+        }
+
         float effectiveThreat = context.ThreatLevel * context.EffectiveThreatMultiplier;
         float effectiveFear = context.IsFearLocked ? 0f : context.FearLevel * context.EffectiveFearMultiplier;
 
-        float threatValue = threatCurve.Evaluate(Map(effectiveThreat, 0f, 100f));
-        float fearValue = fearCurve.Evaluate(Map(effectiveFear, 0f, 100f));
+        float normalizedThreat = Mathf.Clamp01(Map(effectiveThreat, 0f, 100f));
+        float normalizedFear = Mathf.Clamp01(Map(effectiveFear, 0f, 100f));
+
+        float threatValue = threatCurve.Evaluate(normalizedThreat);
+        float fearValue = fearCurve.Evaluate(normalizedFear);
 
         return Mathf.Clamp01(threatValue - fearValue);
     }

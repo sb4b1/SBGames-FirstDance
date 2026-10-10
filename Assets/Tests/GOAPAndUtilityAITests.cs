@@ -262,6 +262,7 @@ namespace SBGames.Tests
 
             // Mock agent action receiver
             var agentGo = new GameObject("Test_Agent");
+            agentGo.transform.SetParent(_holderGo.transform);
             var receiver = agentGo.AddComponent<CrashKonijn.Agent.Runtime.AgentBehaviour>();
 
             // Destroy t2 (simulate enemy killed this tick)
@@ -292,11 +293,15 @@ namespace SBGames.Tests
             // Setup healthy enemy (100/100 HP) at distance 5
             var healthyGo = new GameObject("Enemy_Healthy");
             var healthyStats = healthyGo.AddComponent<CharacterStatsManager>();
+            healthyStats.MaxLife.BaseValue = 100f;
+            healthyStats.RestoreLife(100f);
             healthyGo.transform.position = new Vector3(5f, 0f, 0f);
 
             // Setup wounded enemy (20/100 HP, <=30% execution threshold) at distance 5
             var woundedGo = new GameObject("Enemy_Wounded");
             var woundedStats = woundedGo.AddComponent<CharacterStatsManager>();
+            woundedStats.MaxLife.BaseValue = 100f;
+            woundedStats.RestoreLife(100f);
             woundedStats.TakeDamage(new DamageData(80f, DamageType.True)); // 100 - 80 = 20 HP
             woundedGo.transform.position = new Vector3(5f, 0f, 0f);
 
@@ -322,6 +327,176 @@ namespace SBGames.Tests
             Object.DestroyImmediate(healthyGo);
             Object.DestroyImmediate(woundedGo);
             Object.DestroyImmediate(trait);
+        }
+
+        #endregion
+
+        #region Known Enemies and Alert System Tests
+
+        [Test]
+        public void SquadBlackboard_ReportEnemy_UpdatesAndPrunesCorrectly()
+        {
+            var blackboard = new SquadBlackboard();
+            var enemyGo = new GameObject("Test_Enemy");
+            var enemyTrans = enemyGo.transform;
+            enemyTrans.position = new Vector3(5f, 0f, 0f);
+
+            // Report enemy at t=10s with 5s duration
+            blackboard.ReportEnemy(enemyTrans, enemyTrans.position, 10f, 5f);
+            Assert.AreEqual(1, blackboard.KnownEnemies.Count);
+            Assert.AreEqual(enemyTrans, blackboard.KnownEnemies[0].Target);
+            Assert.AreEqual(new Vector3(5f, 0f, 0f), blackboard.KnownEnemies[0].LastKnownPosition);
+
+            // Update position at t=12s
+            blackboard.ReportEnemy(enemyTrans, new Vector3(8f, 0f, 0f), 12f, 5f);
+            Assert.AreEqual(1, blackboard.KnownEnemies.Count, "Should update existing record without adding duplicates.");
+            Assert.AreEqual(new Vector3(8f, 0f, 0f), blackboard.KnownEnemies[0].LastKnownPosition);
+            Assert.AreEqual(12f, blackboard.KnownEnemies[0].LastSpottedTime);
+
+            // At t=16s, record is still valid (16 - 12 = 4 <= 5)
+            blackboard.PruneExpiredEnemies(16f);
+            Assert.AreEqual(1, blackboard.KnownEnemies.Count);
+
+            // At t=18s, record is expired (18 - 12 = 6 > 5)
+            blackboard.SetOrder(SquadOrderType.FocusFire, enemyTrans);
+            blackboard.PruneExpiredEnemies(18f);
+            Assert.AreEqual(0, blackboard.KnownEnemies.Count);
+            Assert.IsNull(blackboard.FocusFireTarget, "FocusFireTarget should be cleared when target expires.");
+
+            Object.DestroyImmediate(enemyGo);
+        }
+
+        [Test]
+        public void UtilityAlertAlliesGoal_EvaluatesOnlyWhenUnalertedWithAllies()
+        {
+            var goal = ScriptableObject.CreateInstance<UtilityAlertAlliesGoal>();
+            var ai = _holderGo.AddComponent<BaseAI>();
+            var squadMember = _holderGo.AddComponent<SquadMember>();
+
+            var leaderGo = new GameObject("Test_Leader");
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            var enemyGo = new GameObject("Test_Enemy");
+
+            // 1. No enemies -> 0
+            Assert.AreEqual(0f, goal.Evaluate(ai));
+
+            // 2. Solo agent with enemies -> 0
+            ai.EnemyTargets = new List<Transform> { enemyGo.transform };
+            ai.HasAlertedAllies = false;
+            Assert.AreEqual(0f, goal.Evaluate(ai), "Solo agent without allies should skip shouting.");
+
+            // 3. In squad with enemies and unalerted -> 0.95
+            leader.RegisterMember(squadMember);
+            Assert.AreEqual(0.95f, goal.Evaluate(ai), 0.001f);
+
+            // 4. Already alerted -> 0
+            ai.HasAlertedAllies = true;
+            Assert.AreEqual(0f, goal.Evaluate(ai));
+
+            Object.DestroyImmediate(enemyGo);
+            Object.DestroyImmediate(leaderGo);
+            Object.DestroyImmediate(goal);
+        }
+
+        [Test]
+        public void BaseAI_PerformAlertShout_BroadcastsToSquad()
+        {
+            var leaderGo = new GameObject("Test_Leader");
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+
+            var scoutGo = new GameObject("Test_Scout");
+            var scout = scoutGo.AddComponent<SquadMember>();
+            var scoutAI = scoutGo.AddComponent<BaseAI>();
+            leader.RegisterMember(scout);
+
+            var allyGo = new GameObject("Test_Ally");
+            var ally = allyGo.AddComponent<SquadMember>();
+            var allyAI = allyGo.AddComponent<BaseAI>();
+            leader.RegisterMember(ally);
+
+            var enemyGo = new GameObject("Test_Enemy");
+            enemyGo.transform.position = new Vector3(10f, 0f, 0f);
+
+            bool shoutFired = false;
+            scoutAI.OnAlertShout += (t) => { shoutFired = true; };
+
+            scoutAI.EnemyTargets = new List<Transform> { enemyGo.transform };
+            scoutAI.HasAlertedAllies = false;
+
+            // Scout performs alert shout
+            scoutAI.PerformAlertShout();
+
+            Assert.IsTrue(shoutFired, "OnAlertShout event must fire.");
+            Assert.IsTrue(scoutAI.HasAlertedAllies, "Scout should be marked as alerted.");
+            Assert.IsTrue(leader.Blackboard.HasKnownEnemies, "Squad blackboard must register the known enemy.");
+            Assert.IsTrue(allyAI.HasKnownEnemies, "Fellow squad member must see known enemy via squad blackboard.");
+            Assert.Greater(allyAI.ThreatLevel, 0, "Fellow ally ThreatLevel must elevate upon receiving alert.");
+
+            Object.DestroyImmediate(enemyGo);
+            Object.DestroyImmediate(allyGo);
+            Object.DestroyImmediate(scoutGo);
+            Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void EnemyTargetSensor_SeamlesslyTargetsKnownEnemyWhenDirectSightAbsent()
+        {
+            var sensor = new EnemyTargetSensor();
+            var ai = _holderGo.AddComponent<BaseAI>();
+            var squadMember = _holderGo.AddComponent<SquadMember>();
+
+            var leaderGo = new GameObject("Test_Leader");
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            leader.RegisterMember(squadMember);
+
+            var enemyGo = new GameObject("Test_KnownEnemy");
+            enemyGo.transform.position = new Vector3(8f, 0f, 0f);
+
+            var receiver = _holderGo.AddComponent<CrashKonijn.Agent.Runtime.AgentBehaviour>();
+
+            // Direct visual targets is empty
+            ai.EnemyTargets = new List<Transform>();
+
+            // But squad blackboard has reported enemy
+            leader.Blackboard.ReportEnemy(enemyGo.transform, enemyGo.transform.position, Time.time, 10f);
+
+            var target = sensor.Sense(receiver, null, null);
+
+            Assert.IsNotNull(target, "EnemyTargetSensor must acquire target from known enemies fallback.");
+            Assert.AreEqual(enemyGo.transform, ai.CurrentTarget);
+            Assert.AreEqual(8f, ai.TargetDistance, 0.001f);
+
+            Object.DestroyImmediate(enemyGo);
+            Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void SquadTacticalEvaluator_IssuesFocusFireOnKnownEnemyWhenLeaderHasNoDirectSight()
+        {
+            var leaderGo = new GameObject("Test_Leader");
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            leaderGo.AddComponent<CharacterStatsManager>();
+            var evaluator = leaderGo.AddComponent<SquadTacticalEvaluator>();
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+
+            var enemyGo = new GameObject("Test_Enemy");
+            enemyGo.transform.position = new Vector3(6f, 0f, 0f);
+
+            // Leader has 0 direct visual targets
+            leaderAI.EnemyTargets = new List<Transform>();
+
+            // Squad member reports enemy to blackboard
+            leader.Blackboard.ReportEnemy(enemyGo.transform, enemyGo.transform.position, Time.time, 10f);
+
+            // Evaluator evaluates tactics
+            evaluator.EvaluateTactics();
+
+            Assert.AreEqual(SquadOrderType.FocusFire, leader.Blackboard.CurrentOrder, "Commander must issue FocusFire based on squad known enemies.");
+            Assert.AreEqual(enemyGo.transform, leader.Blackboard.FocusFireTarget);
+
+            Object.DestroyImmediate(enemyGo);
+            Object.DestroyImmediate(leaderGo);
         }
 
         #endregion

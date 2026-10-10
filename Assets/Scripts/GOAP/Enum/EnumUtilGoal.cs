@@ -7,5 +7,7 @@ public enum EnumUtilGoal
     FocusFire,
     FallBack,
     Survive,
-    KeepDistance
+    KeepDistance,
+    Standby,
+    AlertAllies
 }

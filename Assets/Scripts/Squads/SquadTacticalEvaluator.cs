@@ -42,6 +42,8 @@ public class SquadTacticalEvaluator : MonoBehaviour
     /// </summary>
     public void EvaluateTactics()
     {
+        if (leader == null) leader = GetComponent<PartyLeader>();
+        if (leader == null) return;
         if (baseAI == null) baseAI = GetComponentInChildren<BaseAI>();
         if (statsManager == null) statsManager = GetComponent<CharacterStatsManager>();
 
@@ -70,10 +72,14 @@ public class SquadTacticalEvaluator : MonoBehaviour
             }
         }
 
-        float avgHealth = activeCount > 0 ? (totalHealthRatio / activeCount) : 0f;
+        float avgHealth = activeCount > 0 ? (totalHealthRatio / activeCount) : 1f;
         leader.Blackboard.UpdateSquadMetrics(avgHealth, activeCount);
 
-        bool hasEnemies = baseAI != null && baseAI.EnemyTargets != null && baseAI.EnemyTargets.Count > 0;
+        leader.Blackboard.PruneExpiredEnemies(Time.time);
+
+        bool hasDirectEnemies = baseAI != null && baseAI.EnemyTargets != null && baseAI.EnemyTargets.Count > 0;
+        bool hasKnownEnemies = leader.Blackboard.HasKnownEnemies;
+        bool hasEnemies = hasDirectEnemies || hasKnownEnemies;
 
         // 2. Fall Back if average health is critically low and enemies are threatening
         if (hasEnemies && avgHealth < leader.FallBackHealthThreshold)
@@ -85,11 +91,11 @@ public class SquadTacticalEvaluator : MonoBehaviour
             return;
         }
 
-        // 3. Focus Fire if leader has enemies
+        // 3. Focus Fire if leader or squad knows of enemies
         if (hasEnemies)
         {
-            Transform bestTarget = baseAI.CurrentTarget;
-            if (bestTarget == null)
+            Transform bestTarget = baseAI != null ? baseAI.CurrentTarget : null;
+            if (bestTarget == null && hasDirectEnemies)
             {
                 // Select first valid enemy in list
                 for (int i = 0; i < baseAI.EnemyTargets.Count; i++)
@@ -99,6 +105,29 @@ public class SquadTacticalEvaluator : MonoBehaviour
                     {
                         bestTarget = t;
                         break;
+                    }
+                }
+            }
+
+            // If no direct target, select best target from known enemies using trait & proximity weighting
+            if (bestTarget == null && hasKnownEnemies)
+            {
+                float bestScore = float.MinValue;
+                var known = leader.Blackboard.KnownEnemies;
+                Vector3 myPos = transform.position;
+
+                for (int i = 0; i < known.Count; i++)
+                {
+                    var record = known[i];
+                    if (!record.IsValid(Time.time)) continue;
+
+                    float dist = Vector3.Distance(myPos, record.Target.position);
+                    float score = baseAI != null ? baseAI.GetTraitWeightedTargetScore(record.Target, dist) : (100f / (1f + dist));
+
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestTarget = record.Target;
                     }
                 }
             }

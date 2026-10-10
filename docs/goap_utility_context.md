@@ -103,7 +103,7 @@ using CrashKonijn.Goap.Runtime;
 public class KillEnemyGoal : GoalBase {}
 ```
 
-Location: `GOAP/Goals/`. Current goals: `WanderGoal`, `KillEnemyGoal`, `KeepDistanceGoal`, `SurviveGoal`.
+Location: `GOAP/Goals/`. Current goals: `IdleGoal`, `KillEnemyGoal`, `KeepDistanceGoal`, `SurviveGoal`.
 Goals carry no logic. Their conditions and base cost are declared in a **Capability** (§1.5).
 Both `KeepDistanceGoal` and `SurviveGoal` are registered in `SurvivalCapabilityFactory` and paired with `FleeAction`.
 
@@ -123,6 +123,7 @@ Both `KeepDistanceGoal` and `SurviveGoal` are registered in `SurvivalCapabilityF
 | Action | Target | Calls | Range |
 |---|---|---|---|
 | `WanderAction` | `WanderTarget` | none (random timer 2–5 s in `Start`) | default |
+| `IdleAction` | `SelfTarget` / default | none (timer 1–3 s in `Start`) | default / in range |
 | `AttackAction` | `EnemyTarget` | `CharacterCombatController.Attack()` → `CharacterBrain.TryStartAttack()` | `Stats.AttackRange` |
 | `CastSkillAction` | `EnemyTarget` | `CharacterCombatController.CastSkill()` → `CharacterBrain.TryCastSkill()` | `Stats.AttackRange` |
 
@@ -205,10 +206,10 @@ public class AttackCapabilityFactory : CapabilityFactoryBase
 
 | Capability | Goals | Actions | Sensors |
 |---|---|---|---|
-| `WanderCapability` | `WanderGoal` (`IsIdle >= 1`) | `WanderAction` → `IsIdle` ↑ | `WanderTargetSensor` → `WanderTarget` |
+| `WanderCapability` | `IdleGoal` (`IsIdle >= 1`) | `WanderAction` → `IsIdle` ↑ | `WanderTargetSensor` → `WanderTarget` |
 | `AttackCapability` | `KillEnemyGoal` (`ThreatLevel <= 0`) | `AttackAction` → `ThreatLevel` ↓, cost 2 | none |
 | `SkillCapability` | none | `CastSkillAction` (`IsSkillReady >= 1`, `AgentMana >= 5`) → `ThreatLevel` ↓, cost 1 | none |
-| `SquadCapability` | `FollowLeaderGoal`, `FocusFireGoal`, `FallBackGoal` | `FollowLeaderAction`, `FocusFireAction`, `FallBackAction` | `SquadOrderSensor`, `LeaderTargetSensor`, `FocusFireTargetSensor` |
+| `SquadCapability` | `FollowLeaderGoal`, `FocusFireGoal`, `FallBackGoal`, `StandbyGoal` | `FollowLeaderAction`, `FocusFireAction`, `FallBackAction`, `IdleAction` | `SquadOrderSensor`, `LeaderTargetSensor`, `FocusFireTargetSensor` |
 | `SurvivalCapability` | `SurviveGoal`, `KeepDistanceGoal` | `FleeAction` → `FearLevel` ↓, cost 1 | none (`KeepDistanceTarget` provided by `EnemyDistanceSensor`) |
 | `BasicCapability` | none | none | `EnemyTargetSensor` → `EnemyTarget`; multi: `AwarenessSensor`, `CombatStatusSensor`, `EnemyDistanceSensor` |
 
