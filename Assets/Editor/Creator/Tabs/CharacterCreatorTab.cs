@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
 using Micosmo.SensorToolkit;
 using SBGames.Database;
+using SBGames.Editor.Animation;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Stats;
 using SBGames.Personality;
@@ -42,6 +44,7 @@ namespace SBGames.Editor.Creator.Tabs
         // ----------------------------------------------------
         // Visuals & Animation
         // ----------------------------------------------------
+        [SerializeField] private Texture2D spriteSheet;
         [SerializeField] private Sprite sprite;
         [SerializeField] private RuntimeAnimatorController animatorController;
         [SerializeField] private Vector3 modelScale = new(5f, 5f, 1f);
@@ -396,6 +399,32 @@ namespace SBGames.Editor.Creator.Tabs
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
+                spriteSheet = (Texture2D)EditorGUILayout.ObjectField(new GUIContent("Source Sprite Sheet", "Optional source spritesheet for automated clip & controller generation"), spriteSheet, typeof(Texture2D), false);
+
+                if (spriteSheet != null)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        if (GUILayout.Button("⚡ Quick Generate & Assign Controller", EditorStyles.miniButtonLeft))
+                        {
+                            QuickGenerateAnimations();
+                        }
+                        if (GUILayout.Button("🎬 Open Generator Window...", EditorStyles.miniButtonRight))
+                        {
+                            OpenAnimationGeneratorWindow();
+                        }
+                    }
+                    EditorGUILayout.Space(2);
+                }
+                else
+                {
+                    if (GUILayout.Button("🎬 Open Sprite Animation Generator Window...", EditorStyles.miniButton))
+                    {
+                        OpenAnimationGeneratorWindow();
+                    }
+                    EditorGUILayout.Space(2);
+                }
+
                 sprite = (Sprite)EditorGUILayout.ObjectField("Default Sprite", sprite, typeof(Sprite), false);
                 animatorController = (RuntimeAnimatorController)EditorGUILayout.ObjectField("Animator Controller", animatorController, typeof(RuntimeAnimatorController), false);
                 modelScale = EditorGUILayout.Vector3Field("Model Scale", modelScale);
@@ -403,6 +432,97 @@ namespace SBGames.Editor.Creator.Tabs
                 EditorGUILayout.Space(2);
                 sortingLayerName = EditorGUILayout.TextField("Sorting Layer", sortingLayerName);
                 sortingOrder = EditorGUILayout.IntField("Sorting Order", sortingOrder);
+            }
+        }
+
+        private string GetDefaultAnimatorFolder()
+        {
+            string cleanId = string.IsNullOrWhiteSpace(characterId) ? "NewCharacter" : characterId.Trim();
+            switch (archetype)
+            {
+                case CharacterArchetype.MinionMonster:
+                    return $"Assets/Animators/Characters/Monsters/Minion/{cleanId}";
+                case CharacterArchetype.NormalMonster:
+                    return $"Assets/Animators/Characters/Monsters/Normal/{cleanId}";
+                case CharacterArchetype.EliteMonster:
+                    return $"Assets/Animators/Characters/Monsters/Elite/{cleanId}";
+                case CharacterArchetype.BossMonster:
+                    return $"Assets/Animators/Characters/Monsters/Boss/{cleanId}";
+                case CharacterArchetype.Adventurer:
+                    return $"Assets/Animators/Characters/Adventurers/{cleanId}";
+                default:
+                    return $"Assets/Animators/Characters/{cleanId}";
+            }
+        }
+
+        private void OpenAnimationGeneratorWindow()
+        {
+            string folder = GetDefaultAnimatorFolder();
+            string cleanId = string.IsNullOrWhiteSpace(characterId) ? (spriteSheet != null ? spriteSheet.name : "Character") : characterId.Trim();
+            SpriteAnimationGeneratorWindow.OpenWithContext(spriteSheet, folder, cleanId, (controller, defaultSpr) =>
+            {
+                if (controller != null) animatorController = controller;
+                if (defaultSpr != null && sprite == null) sprite = defaultSpr;
+            });
+        }
+
+        private void QuickGenerateAnimations()
+        {
+            if (spriteSheet == null) return;
+
+            if (!SpriteAnimationBuilder.ValidateTextureImporter(spriteSheet, out string error))
+            {
+                bool fix = EditorUtility.DisplayDialog("Texture Importer Notice", $"The texture requires multiple sprite mode:\n{error}\n\nAuto-configure now?", "Fix & Continue", "Cancel");
+                if (fix)
+                {
+                    SpriteAnimationBuilder.FixTextureImporterSettings(spriteSheet);
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            var sprites = SpriteAnimationBuilder.ExtractSprites(spriteSheet, SpriteSortMode.NaturalNumericName);
+            if (sprites.Length == 0)
+            {
+                EditorUtility.DisplayDialog("Error", "No sliced sprites found in the sprite sheet.", "OK");
+                return;
+            }
+
+            string folder = GetDefaultAnimatorFolder();
+            string cleanId = string.IsNullOrWhiteSpace(characterId) ? spriteSheet.name : characterId.Trim();
+
+            var presets = SpriteAnimationBuilder.GetStandardPresets();
+            var preset = (archetype == CharacterArchetype.MinionMonster) ? presets[2] : presets[0];
+
+            // If sprite count doesn't match preset, fallback to auto-split
+            var actions = (sprites.Length >= 18) 
+                ? preset.actions.Select(a => a.Clone()).ToList() 
+                : SpriteAnimationBuilder.CreateAutoSplitPreset(sprites.Length, 4);
+
+            var settings = new AnimationGenerationSettings
+            {
+                sourceTexture = spriteSheet,
+                sortMode = SpriteSortMode.NaturalNumericName,
+                outputFolderPath = folder,
+                baseName = cleanId,
+                actions = actions,
+                generateAnimatorController = true,
+                includeStandardParameters = true
+            };
+
+            var res = SpriteAnimationBuilder.GenerateFromSettings(settings);
+            if (res.Success)
+            {
+                if (res.CreatedController != null) animatorController = res.CreatedController;
+                if (sprites.Length > 0) sprite = sprites[0];
+
+                EditorUtility.DisplayDialog("Success", $"Animation clips and controller '{cleanId}' successfully generated!\n\nDestination: {folder}", "Great!");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Failed", $"Animation generation failed:\n{res.Message}", "OK");
             }
         }
 

@@ -37,8 +37,14 @@ namespace SBGames.Editor.Creator
             window.SelectTab(0);
         }
 
+        [MenuItem("SBGames/Characters/Sprite Animation Generator", priority = 15)]
+        public static void OpenAnimationGenerator()
+        {
+            SpriteAnimationGeneratorWindow.OpenWindow();
+        }
+
         [MenuItem("SBGames/Items/Item & Object Creator Wizard", priority = 20)]
-        [MenuItem("Assets/Create/SBGames/Item & Object Creator Wizard", priority = 51)]
+        [MenuItem("Assets/Create/SBGames/Item & Object Creator Wizard", priority = 54)]
         public static void OpenItemCreator()
         {
             var window = OpenWindow();
@@ -46,7 +52,7 @@ namespace SBGames.Editor.Creator
         }
 
         [MenuItem("SBGames/Skills/Skill Creator Wizard", priority = 30)]
-        [MenuItem("Assets/Create/SBGames/Skill Creator Wizard", priority = 52)]
+        [MenuItem("Assets/Create/SBGames/Skill Creator Wizard", priority = 55)]
         public static void OpenSkillCreator()
         {
             var window = OpenWindow();
@@ -103,6 +109,11 @@ namespace SBGames.Editor.Creator
                 }
 
                 GUILayout.FlexibleSpace();
+
+                if (GUILayout.Button("🎬 Animation Generator", EditorStyles.toolbarButton, GUILayout.Height(24), GUILayout.Width(150)))
+                {
+                    SpriteAnimationGeneratorWindow.OpenWindow();
+                }
 
                 if (GUILayout.Button("📊 Stats & Balance Manager", EditorStyles.toolbarButton, GUILayout.Height(24), GUILayout.Width(170)))
                 {
