@@ -1,4 +1,4 @@
-﻿using Assets.PixelHeroes.Scripts.EditorScripts;
+using Assets.PixelHeroes.Scripts.EditorScripts;
 using UnityEditor;
 using UnityEditor.U2D.Sprites;
 using UnityEngine;
@@ -43,9 +43,37 @@ namespace Assets.PixelHeroes.Scripts.Editor
             Slice(AssetDatabase.LoadAssetAtPath<Texture2D>(path));
         }
 
+        private static string GetExampleTexturePath()
+        {
+            const string guid = "629546c43494c7a46a0bb0e05c431ce3";
+            var path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!string.IsNullOrEmpty(path) && AssetDatabase.LoadAssetAtPath<Texture2D>(path) != null)
+            {
+                return path;
+            }
+
+            var guids = AssetDatabase.FindAssets("Example t:Texture2D");
+            foreach (var g in guids)
+            {
+                var p = AssetDatabase.GUIDToAssetPath(g);
+                if (p.EndsWith("Example.png") && p.Contains("PixelHeroes"))
+                {
+                    return p;
+                }
+            }
+
+            const string thirdPartyPath = "Assets/ThirdParty/PixelHeroes/Images/Example.png";
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(thirdPartyPath) != null)
+            {
+                return thirdPartyPath;
+            }
+
+            return "Assets/PixelHeroes/Images/Example.png";
+        }
+
         private static bool Slice(Texture2D texture)
         {
-            const string examplePath = "Assets/PixelHeroes/Images/Example.png";
+            var examplePath = GetExampleTexturePath();
             var exampleTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(examplePath);
 
             if (texture == null)
