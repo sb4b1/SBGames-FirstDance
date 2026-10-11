@@ -76,6 +76,7 @@ public class SquadTacticalEvaluator : MonoBehaviour
         leader.Blackboard.UpdateSquadMetrics(avgHealth, activeCount);
 
         leader.Blackboard.PruneExpiredEnemies(Time.time);
+        leader.Blackboard.PruneExpiredHazards(Time.time);
 
         bool hasDirectEnemies = baseAI != null && baseAI.EnemyTargets != null && baseAI.EnemyTargets.Count > 0;
         bool hasKnownEnemies = leader.Blackboard.HasKnownEnemies;

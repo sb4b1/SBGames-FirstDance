@@ -33,6 +33,13 @@ namespace SBGames.Personality.Data
         public float LowHealthTargetPriority;   // Weight bias towards low-HP targets (Bloodthirsty)
         public float BleedingTargetPriority;    // Weight bias towards bleeding targets (Beast)
 
+        // --- Memory & Retention Modifiers ---
+        public float HazardMemoryDurationMultiplier; // Cowardly / Cautious > 1, Reckless < 1
+        public float GrudgeWeightMultiplier;          // Reckless / Bloodthirsty > 1
+        public float BurstDamagePanicMultiplier;      // Cowardly > 1, Reckless < 1
+        public bool HasTunnelVision;                  // Reckless / Bloodthirsty has tunnel vision in combat
+        public float TargetPruneDelayMultiplier;      // Pragmatic quickly prunes unreachable/immune targets
+
         public static PersonalityModifierSnapshot Default => new PersonalityModifierSnapshot
         {
             ThreatMultiplier = 1.0f,
@@ -48,7 +55,12 @@ namespace SBGames.Personality.Data
             PeelingHealthThreshold = 0.35f,
             PeelingBonusMultiplier = 1.0f,
             LowHealthTargetPriority = 1.0f,
-            BleedingTargetPriority = 1.0f
+            BleedingTargetPriority = 1.0f,
+            HazardMemoryDurationMultiplier = 1.0f,
+            GrudgeWeightMultiplier = 1.0f,
+            BurstDamagePanicMultiplier = 1.0f,
+            HasTunnelVision = false,
+            TargetPruneDelayMultiplier = 1.0f
         };
     }
 }

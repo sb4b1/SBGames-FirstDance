@@ -48,16 +48,29 @@ public class UtilitySurviveGoal : UtilityGoal
         }
 
         float hpPercent = Mathf.Clamp01(context.AgentLife / maxHp);
+
+        // Burst damage velocity check from Dual-Layer Tactical Combat Memory
+        float burstDamage = context.AIMemory != null ? context.AIMemory.GetRecentDamage(2.0f) : 0f;
+        float burstPanicMultiplier = context.Personality != null ? context.Personality.Snapshot.BurstDamagePanicMultiplier : 1.0f;
+        bool isPanicFromBurst = burstDamage > 0f && (burstDamage * burstPanicMultiplier >= maxHp * 0.25f);
+
         if (hpPercent > threshold)
         {
-            // If HP is above fear threshold, only panic if fear is exceedingly high
-            if (context.FearLevel < 80 || context.IsFearLocked)
+            // If HP is above fear threshold, only panic if sudden burst damage velocity or exceedingly high fear
+            if (!isPanicFromBurst && (context.FearLevel < 80 || context.IsFearLocked))
                 return 0f;
         }
 
         // Calculate health deficit (0 when at threshold, 1 when at 0 HP)
         float hpDeficit = threshold > 0f ? Mathf.Clamp01((threshold - hpPercent) / threshold) : 0f;
         float urgency = healthUrgencyCurve.Evaluate(hpDeficit);
+
+        // Burst damage urgency boost
+        if (isPanicFromBurst)
+        {
+            float burstRatio = Mathf.Clamp01(burstDamage / (maxHp * 0.5f)) * burstPanicMultiplier;
+            urgency = Mathf.Max(urgency, burstRatio);
+        }
 
         // Fear contribution
         float effectiveFear = context.IsFearLocked ? 0f : context.FearLevel * context.EffectiveFearMultiplier;

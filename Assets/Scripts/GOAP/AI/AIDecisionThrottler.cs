@@ -21,6 +21,7 @@ public class AIDecisionThrottler : MonoBehaviour
     [Header("Runtime Status (Read-Only)")]
     [SerializeField] private float nextDecisionTime;
     [SerializeField] private bool isDecisionLocked;
+    private float lastMemoryTickTime;
 
     public float DecisionInterval => GetStatValue(statsManager?.DecisionInterval, defaultDecisionInterval);
     public float IntervalJitter => GetStatValue(statsManager?.IntervalJitter, defaultIntervalJitter);
@@ -42,6 +43,7 @@ public class AIDecisionThrottler : MonoBehaviour
         // Stagger initial execution randomly across agents to eliminate frame spikes on spawn
         float initialInterval = Mathf.Max(0.05f, DecisionInterval);
         nextDecisionTime = Time.time + Random.Range(0f, initialInterval);
+        lastMemoryTickTime = Time.time;
         isDecisionLocked = false;
     }
 
@@ -65,6 +67,14 @@ public class AIDecisionThrottler : MonoBehaviour
         if (Time.time < nextDecisionTime)
         {
             return;
+        }
+
+        // Synchronized throttled memory decay (runs every 0.2s - 0.4s instead of per-frame Update)
+        float elapsedMemoryTime = Time.time - lastMemoryTickTime;
+        lastMemoryTickTime = Time.time;
+        if (baseAI != null && baseAI.AIMemory != null)
+        {
+            baseAI.AIMemory.TickMemoryDecay(elapsedMemoryTime);
         }
 
         // If the agent is currently executing an attack or skill, defer strategic re-evaluation

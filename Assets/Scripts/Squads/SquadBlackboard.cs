@@ -12,6 +12,7 @@ public class SquadBlackboard
     [SerializeField] private int livingMemberCount = 1;
     [SerializeField] private int orderVersion = 0;
     [SerializeField] private System.Collections.Generic.List<KnownEnemyRecord> knownEnemies = new(8);
+    [SerializeField] private System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> sharedHazards = new(16);
 
     public Transform LeaderTransform
     {
@@ -27,6 +28,8 @@ public class SquadBlackboard
     public int OrderVersion => orderVersion;
     public System.Collections.Generic.List<KnownEnemyRecord> KnownEnemies => knownEnemies;
     public bool HasKnownEnemies => knownEnemies.Count > 0;
+    public System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> SharedHazards => sharedHazards;
+    public bool HasSharedHazards => sharedHazards.Count > 0;
 
     public void ReportEnemy(Transform target, Vector3 position, float currentTime, float duration = 6f)
     {
@@ -80,5 +83,72 @@ public class SquadBlackboard
     {
         averageSquadHealth = avgHealth;
         livingMemberCount = livingCount;
+    }
+
+    public void ReportHazard(Vector2Int gridPos, Vector3 worldPos, float dangerLevel, float duration = 30f)
+    {
+        float expireTime = Time.time + duration;
+        for (int i = 0; i < sharedHazards.Count; i++)
+        {
+            if (sharedHazards[i].GridPos == gridPos || (sharedHazards[i].WorldPos - worldPos).sqrMagnitude < 0.25f)
+            {
+                var existing = sharedHazards[i];
+                existing.ExpirationTime = Mathf.Max(existing.ExpirationTime, expireTime);
+                existing.DangerLevel = Mathf.Max(existing.DangerLevel, dangerLevel);
+                sharedHazards[i] = existing;
+                return;
+            }
+        }
+
+        if (sharedHazards.Count < 16)
+        {
+            sharedHazards.Add(new CharacterAIMemory.HazardMemoryRecord(gridPos, worldPos, dangerLevel, expireTime));
+        }
+        else
+        {
+            int oldestIndex = 0;
+            float oldestTime = float.MaxValue;
+            for (int i = 0; i < sharedHazards.Count; i++)
+            {
+                if (sharedHazards[i].ExpirationTime < oldestTime)
+                {
+                    oldestTime = sharedHazards[i].ExpirationTime;
+                    oldestIndex = i;
+                }
+            }
+            sharedHazards[oldestIndex] = new CharacterAIMemory.HazardMemoryRecord(gridPos, worldPos, dangerLevel, expireTime);
+        }
+    }
+
+    public bool IsPositionHazardous(Vector3 worldPos, float safetyRadius = 1.2f)
+    {
+        float sqrRadius = safetyRadius * safetyRadius;
+        float currentTime = Time.time;
+        for (int i = 0; i < sharedHazards.Count; i++)
+        {
+            var hazard = sharedHazards[i];
+            if (hazard.ExpirationTime < currentTime) continue;
+            if ((hazard.WorldPos - worldPos).sqrMagnitude <= sqrRadius)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void PruneExpiredHazards(float currentTime)
+    {
+        for (int i = sharedHazards.Count - 1; i >= 0; i--)
+        {
+            if (sharedHazards[i].ExpirationTime <= currentTime)
+            {
+                sharedHazards.RemoveAt(i);
+            }
+        }
+    }
+
+    public void ClearHazards()
+    {
+        sharedHazards.Clear();
     }
 }

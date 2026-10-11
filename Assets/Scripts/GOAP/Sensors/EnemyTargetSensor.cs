@@ -29,10 +29,11 @@ public class EnemyTargetSensor : LocalTargetSensorBase
         }
 
         Transform bestTarget = null;
-        float bestSqrDist = float.MaxValue;
+        float bestScore = -1f;
+        float bestDist = 0f;
         Vector3 agentPos = agentTransform.position;
 
-        // 1. Direct Visual Targets
+        // 1. Direct Visual Targets (weighted by distance, low health, and memory grudge)
         if (brain.EnemyTargets != null && brain.EnemyTargets.Count > 0)
         {
             for (int i = 0; i < brain.EnemyTargets.Count; i++)
@@ -40,11 +41,13 @@ public class EnemyTargetSensor : LocalTargetSensorBase
                 var t = brain.EnemyTargets[i];
                 if (t == null) continue;
 
-                float sqrDist = (t.position - agentPos).sqrMagnitude;
-                if (sqrDist < bestSqrDist)
+                float dist = (t.position - agentPos).magnitude;
+                float score = brain.GetTraitWeightedTargetScore(t, dist);
+                if (score > bestScore)
                 {
-                    bestSqrDist = sqrDist;
+                    bestScore = score;
                     bestTarget = t;
+                    bestDist = dist;
                 }
             }
         }
@@ -59,22 +62,37 @@ public class EnemyTargetSensor : LocalTargetSensorBase
                 var record = known[i];
                 if (!record.IsValid(currentTime) || record.Target == null) continue;
 
-                float sqrDist = (record.Target.position - agentPos).sqrMagnitude;
-                if (sqrDist < bestSqrDist)
+                float dist = (record.Target.position - agentPos).magnitude;
+                float score = brain.GetTraitWeightedTargetScore(record.Target, dist);
+                if (score > bestScore)
                 {
-                    bestSqrDist = sqrDist;
+                    bestScore = score;
                     bestTarget = record.Target;
+                    bestDist = dist;
                 }
             }
         }
 
+        // 3. Fallback to Dual-Layer AI Memory: Last Known Target / Position
         if (bestTarget == null)
         {
+            if (brain.AIMemory != null && brain.AIMemory.HasLastKnownTarget)
+            {
+                Vector3 lastPos = brain.AIMemory.LastKnownPosition;
+                brain.SetTarget(brain.AIMemory.LastKnownTarget, (lastPos - agentPos).magnitude);
+
+                if (existingTarget is PositionTarget positionTarget)
+                {
+                    return positionTarget.SetPosition(lastPos);
+                }
+                return new PositionTarget(lastPos);
+            }
+
             if (brain.CurrentTarget != null) brain.SetTarget(null);
             return null;
         }
 
-        brain.SetTarget(bestTarget, Mathf.Sqrt(bestSqrDist));
+        brain.SetTarget(bestTarget, bestDist);
         
         if (existingTarget is TransformTarget transformTarget)
         {

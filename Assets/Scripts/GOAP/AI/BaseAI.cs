@@ -25,12 +25,14 @@ public class BaseAI : MonoBehaviour
     [SerializeField] private List<UtilitySkill> skills = new();
 
     [SerializeField] private CharacterPersonality personality;
+    [SerializeField] private CharacterAIMemory aiMemory;
 
     public CharacterBrain Brain => brain ??= GetComponentInParent<CharacterBrain>();
     public CharacterStatsManager StatsManager => stats ??= GetComponentInParent<CharacterStatsManager>();
     public CharacterSkillController SkillController => skillController;
-    public SquadMember SquadMember => squadMember ??= GetComponentInParent<SquadMember>();
-    public CharacterPersonality Personality => personality ??= GetComponentInParent<CharacterPersonality>();
+    public SquadMember SquadMember => squadMember ??= (GetComponent<SquadMember>() ?? GetComponentInParent<SquadMember>() ?? GetComponentInChildren<SquadMember>());
+    public CharacterPersonality Personality => personality ??= (GetComponent<CharacterPersonality>() ?? GetComponentInParent<CharacterPersonality>() ?? GetComponentInChildren<CharacterPersonality>());
+    public CharacterAIMemory AIMemory => aiMemory ??= (GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>());
     public List<UtilitySkill> Skills => skills;
 
     // --- Precomputed Zero-Alloc Personality Biases ---
@@ -160,6 +162,11 @@ public class BaseAI : MonoBehaviour
         {
             gameObject.AddComponent<AIDecisionThrottler>();
         }
+
+        if (GetComponent<CharacterAIMemory>() == null && GetComponentInParent<CharacterAIMemory>() == null && GetComponentInChildren<CharacterAIMemory>() == null)
+        {
+            gameObject.AddComponent<CharacterAIMemory>();
+        }
     }
 
     private void Start()
@@ -186,6 +193,15 @@ public class BaseAI : MonoBehaviour
             if (vision == null) vision = GetComponentInChildren<VisionController>();
             if (vision == null) vision = GetComponentInParent<VisionController>();
             if (vision == null && transform.root != null) vision = transform.root.GetComponentInChildren<VisionController>();
+        }
+
+        // Auto-find CharacterAIMemory if not assigned
+        if (aiMemory == null)
+        {
+            aiMemory = GetComponent<CharacterAIMemory>();
+            if (aiMemory == null) aiMemory = GetComponentInChildren<CharacterAIMemory>();
+            if (aiMemory == null) aiMemory = GetComponentInParent<CharacterAIMemory>();
+            if (aiMemory == null && transform.root != null) aiMemory = transform.root.GetComponentInChildren<CharacterAIMemory>();
         }
 
         if (spawnPosition == Vector3.zero)
@@ -375,8 +391,18 @@ public class BaseAI : MonoBehaviour
             }
         }
 
-        // Ghost threat cleanup: if no enemies remain in direct perception or known enemies, clean up threat/fear
-        if ((enemyTargets == null || enemyTargets.Count == 0) && !HasKnownEnemies && threatLevel > 0)
+        // Check if current target broke direct visual contact: record last known position
+        if (currentTarget != null && (enemyTargets == null || !enemyTargets.Contains(currentTarget)))
+        {
+            if (AIMemory != null)
+            {
+                AIMemory.RecordLastKnownPosition(currentTarget, currentTarget.position, 6f);
+            }
+        }
+
+        // Ghost threat cleanup: if no enemies remain in direct perception, known enemies, or last known target memory, clean up threat/fear
+        bool hasMemoryTarget = AIMemory != null && AIMemory.HasLastKnownTarget;
+        if ((enemyTargets == null || enemyTargets.Count == 0) && !HasKnownEnemies && !hasMemoryTarget && threatLevel > 0)
         {
             threatLevel = 0;
             if (!IsFearLocked)
@@ -731,6 +757,24 @@ public class BaseAI : MonoBehaviour
                 {
                     score *= LowHealthTargetPriority;
                 }
+            }
+        }
+
+        // Dual-Layer Memory: Grudge & Retaliation weighting
+        if (AIMemory != null)
+        {
+            int targetId = target.gameObject.GetEntityId().GetHashCode();
+            float grudge = AIMemory.GetGrudgeScore(targetId);
+            if (grudge > 0f)
+            {
+                score += grudge;
+            }
+
+            // Rapid retaliation bonus against immediate attacker within window
+            if (AIMemory.HasRecentAttacker && AIMemory.LastAttackerTransform == target)
+            {
+                float grudgeMultiplier = Personality != null ? Personality.Snapshot.GrudgeWeightMultiplier : 1.0f;
+                score += 50f * grudgeMultiplier;
             }
         }
 

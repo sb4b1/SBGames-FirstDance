@@ -52,6 +52,10 @@ public class WanderTargetSensor : LocalTargetSensorBase
 
             if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, areaMask))
             {
+                if (ai != null && ai.AIMemory != null && ai.AIMemory.IsPositionHazardous(hit.position, 1.2f))
+                {
+                    continue;
+                }
                 return hit.position;
             }
         }
@@ -64,6 +68,10 @@ public class WanderTargetSensor : LocalTargetSensorBase
 
             if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, areaMask))
             {
+                if (ai != null && ai.AIMemory != null && ai.AIMemory.IsPositionHazardous(hit.position, 1.2f))
+                {
+                    continue;
+                }
                 return hit.position;
             }
         }
@@ -76,6 +84,10 @@ public class WanderTargetSensor : LocalTargetSensorBase
 
             if (NavMesh.SamplePosition(position, out NavMeshHit hit, 2f, NavMesh.AllAreas))
             {
+                if (ai != null && ai.AIMemory != null && ai.AIMemory.IsPositionHazardous(hit.position, 1.2f))
+                {
+                    continue;
+                }
                 return hit.position;
             }
         }

@@ -56,6 +56,22 @@ namespace SBGames.Personality.Data
         [Tooltip("Priority weight towards low-health targets (Bloodthirsty).")]
         [SerializeField, Range(1f, 3f)] private float lowHealthTargetPriority = 1.0f;
 
+        [Header("Memory & Retention Biases")]
+        [Tooltip("Multiplier applied to hazard retention duration (Cowardly/Cautious prolongs, Reckless shortens).")]
+        [SerializeField, Range(0.1f, 3f)] private float hazardMemoryDurationMultiplier = 1.0f;
+
+        [Tooltip("Multiplier applied to Grudge weighting against recent attackers (Bloodthirsty/Reckless possesses extreme grudge).")]
+        [SerializeField, Range(0.1f, 4f)] private float grudgeWeightMultiplier = 1.0f;
+
+        [Tooltip("Multiplier applied to panic calculation from burst damage (Cowardly panics much faster).")]
+        [SerializeField, Range(0.1f, 3f)] private float burstDamagePanicMultiplier = 1.0f;
+
+        [Tooltip("If true, unit exhibits tunnel vision in combat (ignores/diminishes trap hazard memory while engaging enemies).")]
+        [SerializeField] private bool hasTunnelVision = false;
+
+        [Tooltip("Multiplier applied to target pruning delay (Pragmatic/Cautious quickly prunes unreachable/immune targets).")]
+        [SerializeField, Range(0.2f, 2f)] private float targetPruneDelayMultiplier = 1.0f;
+
         public string TraitId => traitId;
         public string DisplayName => displayName;
         public string Description => description;
@@ -75,6 +91,12 @@ namespace SBGames.Personality.Data
         public float PeelingHealthThreshold => peelingHealthThreshold;
         public float PeelingBonusMultiplier => peelingBonusMultiplier;
         public float LowHealthTargetPriority => lowHealthTargetPriority;
+
+        public float HazardMemoryDurationMultiplier => hazardMemoryDurationMultiplier;
+        public float GrudgeWeightMultiplier => grudgeWeightMultiplier;
+        public float BurstDamagePanicMultiplier => burstDamagePanicMultiplier;
+        public bool HasTunnelVision => hasTunnelVision;
+        public float TargetPruneDelayMultiplier => targetPruneDelayMultiplier;
 
         /// <summary>
         /// Combines this trait with the unit's RaceInstinctSO into an immutable, precomputed snapshot
@@ -130,6 +152,44 @@ namespace SBGames.Personality.Data
             // Target Priority
             snap.LowHealthTargetPriority = lowHealthTargetPriority;
             snap.BleedingTargetPriority = raceWoundedBias;
+
+            // Memory & Biases
+            float hazDuration = hazardMemoryDurationMultiplier;
+            float grudgeMul = grudgeWeightMultiplier;
+            float burstPanic = burstDamagePanicMultiplier;
+            bool tunnelVision = hasTunnelVision;
+            float pruneDelay = targetPruneDelayMultiplier;
+
+            // Archetype heuristics for built-in traits if inspector values remain at defaults (1.0f)
+            if (traitId == "Cowardly" || fearMultiplier >= 1.8f)
+            {
+                if (Mathf.Approximately(hazDuration, 1.0f)) hazDuration = 2.0f;
+                if (Mathf.Approximately(burstPanic, 1.0f)) burstPanic = 2.0f;
+                if (Mathf.Approximately(grudgeMul, 1.0f)) grudgeMul = 0.7f;
+            }
+            else if (traitId == "Reckless" || zeroFear || neverFlee)
+            {
+                if (!tunnelVision) tunnelVision = true;
+                if (Mathf.Approximately(grudgeMul, 1.0f)) grudgeMul = 2.5f;
+                if (Mathf.Approximately(hazDuration, 1.0f)) hazDuration = 0.5f;
+                if (Mathf.Approximately(burstPanic, 1.0f)) burstPanic = 0.2f;
+            }
+            else if (traitId == "Bloodthirsty" || lowHealthTargetPriority >= 1.5f)
+            {
+                if (!tunnelVision) tunnelVision = true;
+                if (Mathf.Approximately(grudgeMul, 1.0f)) grudgeMul = 2.0f;
+            }
+            else if (traitId == "Pragmatic")
+            {
+                if (Mathf.Approximately(hazDuration, 1.0f)) hazDuration = 1.5f;
+                if (Mathf.Approximately(pruneDelay, 1.0f)) pruneDelay = 0.5f;
+            }
+
+            snap.HazardMemoryDurationMultiplier = hazDuration;
+            snap.GrudgeWeightMultiplier = grudgeMul;
+            snap.BurstDamagePanicMultiplier = burstPanic;
+            snap.HasTunnelVision = tunnelVision;
+            snap.TargetPruneDelayMultiplier = pruneDelay;
 
             return snap;
         }

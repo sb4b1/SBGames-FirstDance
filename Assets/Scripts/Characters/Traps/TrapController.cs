@@ -42,11 +42,13 @@ namespace SBGames.Characters.Traps
         public UnityEvent onTrapDestroyed = new();
 
         // C# Events for decoupled system listeners
+        public static event Action<TrapController, IDamageable, DamageData> OnAnyTrapTriggered;
         public event Action<TrapController, IDamageable, DamageData> OnTrapTriggered;
         public event Action<TrapController> OnArmedStateChanged;
         public event Action<TrapController> OnDestroyed;
 
         // Internal State
+        private static readonly Collider2D[] _witnessBuffer = new Collider2D[16];
         private Collider2D _triggerCollider;
         private Coroutine _delayedDetonationCoroutine;
         private readonly HashSet<IDamageable> _occupyingDamageables = new();
@@ -54,6 +56,18 @@ namespace SBGames.Characters.Traps
         private float _tickTimer = 0f;
         private CoreGameLoop _coreGameLoop;
         private DungeonPlacementManager _placementManager;
+
+        public Vector2Int GridPosition
+        {
+            get
+            {
+                if (DungeonPlacementManager.Instance != null)
+                {
+                    return DungeonPlacementManager.Instance.WorldToGridPosition(transform.position);
+                }
+                return new Vector2Int(Mathf.RoundToInt(transform.position.x), Mathf.RoundToInt(transform.position.y));
+            }
+        }
 
         public TrapDataSO Data => trapData;
         public bool IsArmed => isArmed;
@@ -437,6 +451,26 @@ namespace SBGames.Characters.Traps
 
             onTriggerVisualEffect?.Invoke(transform.position);
             OnTrapTriggered?.Invoke(this, target, payload);
+            OnAnyTrapTriggered?.Invoke(this, target, payload);
+
+            // Notify victim directly
+            Vector2Int gridPos = GridPosition;
+            float danger = trapData != null ? trapData.DamageAmount : 50f;
+            if (target is Component comp)
+            {
+                var victimMem = comp.GetComponentInChildren<CharacterAIMemory>() ?? comp.GetComponentInParent<CharacterAIMemory>();
+                victimMem?.RecordHazard(gridPos, transform.position, danger);
+            }
+
+            // Notify nearby witnesses without allocations
+            int witnessCount = Physics2D.OverlapCircleNonAlloc(transform.position, 8f, _witnessBuffer, targetLayerMask);
+            for (int i = 0; i < witnessCount; i++)
+            {
+                var col = _witnessBuffer[i];
+                if (col == null) continue;
+                var witnessMem = col.GetComponentInChildren<CharacterAIMemory>() ?? col.GetComponentInParent<CharacterAIMemory>();
+                witnessMem?.RecordHazard(gridPos, transform.position, danger);
+            }
         }
 
         private IEnumerator DelayedDetonationRoutine()
