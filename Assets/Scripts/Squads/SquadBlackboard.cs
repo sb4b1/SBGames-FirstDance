@@ -31,6 +31,9 @@ public class SquadBlackboard
     public System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> SharedHazards => sharedHazards;
     public bool HasSharedHazards => sharedHazards.Count > 0;
 
+    public event Action<Transform, Vector3> OnEnemyReported;
+    public event Action<Vector2Int, Vector3, float> OnHazardReported;
+
     public void ReportEnemy(Transform target, Vector3 position, float currentTime, float duration = 6f)
     {
         if (target == null) return;
@@ -42,11 +45,13 @@ public class SquadBlackboard
                 var record = knownEnemies[i];
                 record.UpdatePosition(position, currentTime);
                 knownEnemies[i] = record;
+                OnEnemyReported?.Invoke(target, position);
                 return;
             }
         }
 
         knownEnemies.Add(new KnownEnemyRecord(target, position, currentTime, duration));
+        OnEnemyReported?.Invoke(target, position);
     }
 
     public void PruneExpiredEnemies(float currentTime)
@@ -96,6 +101,7 @@ public class SquadBlackboard
                 existing.ExpirationTime = Mathf.Max(existing.ExpirationTime, expireTime);
                 existing.DangerLevel = Mathf.Max(existing.DangerLevel, dangerLevel);
                 sharedHazards[i] = existing;
+                OnHazardReported?.Invoke(gridPos, worldPos, dangerLevel);
                 return;
             }
         }
@@ -118,6 +124,8 @@ public class SquadBlackboard
             }
             sharedHazards[oldestIndex] = new CharacterAIMemory.HazardMemoryRecord(gridPos, worldPos, dangerLevel, expireTime);
         }
+
+        OnHazardReported?.Invoke(gridPos, worldPos, dangerLevel);
     }
 
     public bool IsPositionHazardous(Vector3 worldPos, float safetyRadius = 1.2f)

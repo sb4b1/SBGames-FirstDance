@@ -28,6 +28,14 @@ public class SquadCapabilityFactory : CapabilityFactoryBase
             .AddCondition<HasAlertedAllies>(Comparison.GreaterThanOrEqual, 1)
             .SetBaseCost(1);
 
+        builder.AddGoal<ScoutReconGoal>()
+            .AddCondition<HasScoutedArea>(Comparison.GreaterThanOrEqual, 1)
+            .SetBaseCost(1);
+
+        builder.AddGoal<DebriefLeaderGoal>()
+            .AddCondition<HasDebriefedLeader>(Comparison.GreaterThanOrEqual, 1)
+            .SetBaseCost(1);
+
         // Actions
         builder.AddAction<FollowLeaderAction>()
             .SetTarget<LeaderTarget>()
@@ -44,6 +52,16 @@ public class SquadCapabilityFactory : CapabilityFactoryBase
             .AddEffect<HasAlertedAllies>(EffectType.Increase)
             .SetBaseCost(1);
 
+        builder.AddAction<ScoutReconAction>()
+            .SetTarget<ScoutReconTarget>()
+            .AddEffect<HasScoutedArea>(EffectType.Increase)
+            .SetBaseCost(1);
+
+        builder.AddAction<DebriefLeaderAction>()
+            .SetTarget<LeaderTarget>()
+            .AddEffect<HasDebriefedLeader>(EffectType.Increase)
+            .SetBaseCost(1);
+
         builder.AddAction<FocusFireAction>()
             .SetTarget<FocusFireTarget>()
             .AddEffect<ThreatLevel>(EffectType.Decrease)
@@ -58,6 +76,7 @@ public class SquadCapabilityFactory : CapabilityFactoryBase
         builder.AddMultiSensor<SquadOrderSensor>();
         builder.AddTargetSensor<LeaderTargetSensor>().SetTarget<LeaderTarget>();
         builder.AddTargetSensor<FocusFireTargetSensor>().SetTarget<FocusFireTarget>();
+        builder.AddTargetSensor<ScoutReconTargetSensor>().SetTarget<ScoutReconTarget>();
 
         return builder.Build();
     }

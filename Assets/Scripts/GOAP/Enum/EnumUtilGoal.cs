@@ -9,5 +9,7 @@ public enum EnumUtilGoal
     Survive,
     KeepDistance,
     Standby,
-    AlertAllies
+    AlertAllies,
+    ScoutRecon,
+    DebriefLeader
 }

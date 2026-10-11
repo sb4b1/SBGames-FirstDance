@@ -4,6 +4,7 @@ public enum SquadOrderType
     FollowLeader = 1,
     FocusFire = 2,
     FallBack = 3,
-    Standby = 4
+    Standby = 4,
+    ScoutAhead = 5
 }
 

@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="scout-intel-hud-container" class="hud-container">
+        <ui:VisualElement name="hud-header" class="hud-header">
+            <ui:Label text="RECON INTEL FEED" name="hud-title" class="hud-title" />
+            <ui:Label text="IDLE" name="status-badge" class="status-badge status-idle" />
+        </ui:VisualElement>
+        <ui:Label text="No Active Scout" name="scout-name-label" class="scout-name-label" />
+        <ui:ScrollView name="intel-log-scrollview" class="intel-log-scrollview" show-vertical-scroller="false" show-horizontal-scroller="false" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -130,6 +130,12 @@ public class CharacterAIMemory : MonoBehaviour
     [SerializeField] private int hazardCount;
     [SerializeField] private float defaultHazardDuration = 30f;
 
+    [Header("Spatial Visitation Tracking (0B GC)")]
+    private const int VISITATION_HISTORY_CAPACITY = 32;
+    [SerializeField] private Vector2Int[] visitedTiles = new Vector2Int[VISITATION_HISTORY_CAPACITY];
+    [SerializeField] private int visitedTilesHead = 0;
+    [SerializeField] private int visitedTilesCount = 0;
+
     private CoreGameLoop coreGameLoop;
 
     // =========================================================
@@ -390,6 +396,36 @@ public class CharacterAIMemory : MonoBehaviour
     // Spatial & Dungeon Knowledge Memory API
     // =========================================================
 
+    public void RecordVisitedPosition(Vector3 worldPos)
+    {
+        Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(worldPos.x), Mathf.RoundToInt(worldPos.y));
+
+        for (int i = 0; i < visitedTilesCount; i++)
+        {
+            if (visitedTiles[i] == gridPos) return;
+        }
+
+        visitedTiles[visitedTilesHead] = gridPos;
+        visitedTilesHead = (visitedTilesHead + 1) % VISITATION_HISTORY_CAPACITY;
+        if (visitedTilesCount < VISITATION_HISTORY_CAPACITY)
+        {
+            visitedTilesCount++;
+        }
+    }
+
+    public float GetUnexploredFactor(Vector3 worldPos)
+    {
+        Vector2Int gridPos = new Vector2Int(Mathf.RoundToInt(worldPos.x), Mathf.RoundToInt(worldPos.y));
+        for (int i = 0; i < visitedTilesCount; i++)
+        {
+            if (visitedTiles[i] == gridPos)
+            {
+                return 0.1f; // Already visited
+            }
+        }
+        return 1.0f; // Unexplored
+    }
+
     /// <summary>
     /// Caches grid coordinates and world position of a triggered or witnessed trap hazard.
     /// Immediately synchronizes with SquadBlackboard if this character belongs to a squad.
@@ -410,7 +446,10 @@ public class CharacterAIMemory : MonoBehaviour
             {
                 hazardRecords[i].ExpirationTime = Mathf.Max(hazardRecords[i].ExpirationTime, expirationTime);
                 hazardRecords[i].DangerLevel = Mathf.Max(hazardRecords[i].DangerLevel, dangerLevel);
-                SyncHazardToSquad(gridCoord, worldPos, dangerLevel, effectiveDuration);
+                if (!IsScoutingActive())
+                {
+                    SyncHazardToSquad(gridCoord, worldPos, dangerLevel, effectiveDuration);
+                }
                 return;
             }
         }
@@ -437,8 +476,22 @@ public class CharacterAIMemory : MonoBehaviour
             hazardRecords[earliestIndex] = new HazardMemoryRecord(gridCoord, worldPos, dangerLevel, expirationTime);
         }
 
-        SyncHazardToSquad(gridCoord, worldPos, dangerLevel, effectiveDuration);
+        if (!IsScoutingActive())
+        {
+            SyncHazardToSquad(gridCoord, worldPos, dangerLevel, effectiveDuration);
+        }
     }
+
+    private bool IsScoutingActive()
+    {
+        if (BaseAI != null && BaseAI.SquadMember != null)
+        {
+            return BaseAI.SquadMember.IsScouting || BaseAI.SquadOrder == SquadOrderType.ScoutAhead;
+        }
+        return false;
+    }
+
+    public HazardMemoryRecord[] GetHazardRecords() => hazardRecords;
 
     private void SyncHazardToSquad(Vector2Int gridCoord, Vector3 worldPos, float dangerLevel, float duration)
     {

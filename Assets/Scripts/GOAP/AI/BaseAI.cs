@@ -90,6 +90,10 @@ public class BaseAI : MonoBehaviour
     {
         get
         {
+            if (IsScoutingActive)
+            {
+                return localKnownEnemies;
+            }
             if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
             {
                 return SquadMember.Leader.Blackboard.KnownEnemies;
@@ -97,6 +101,8 @@ public class BaseAI : MonoBehaviour
             return localKnownEnemies;
         }
     }
+
+    public bool IsScoutingActive => SquadMember != null && (SquadMember.IsScouting || SquadOrder == SquadOrderType.ScoutAhead);
 
     public bool HasKnownEnemies
     {
@@ -435,7 +441,7 @@ public class BaseAI : MonoBehaviour
             localKnownEnemies.Add(new KnownEnemyRecord(enemy, lastKnownPosition, currentTime, duration));
         }
 
-        if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+        if (!IsScoutingActive && HasSquadLeader && SquadMember.Leader.Blackboard != null)
         {
             SquadMember.Leader.Blackboard.ReportEnemy(enemy, lastKnownPosition, currentTime, duration);
         }
@@ -463,6 +469,12 @@ public class BaseAI : MonoBehaviour
         Vector3 targetPos = primaryTarget != null ? primaryTarget.position : transform.position;
 
         OnAlertShout?.Invoke(primaryTarget);
+
+        // If scout is on active reconnaissance, do not alert squad or shout to allies
+        if (IsScoutingActive)
+        {
+            return;
+        }
 
         // 1. Squad Communication: Notify squad leader and all fellow squad members
         if (HasSquadLeader && SquadMember.Leader != null)
@@ -549,6 +561,7 @@ public class BaseAI : MonoBehaviour
 
     public void SetAgentLife(float life) => AgentLife = life;
     public void SetAgentMana(float mana) => AgentMana = mana;
+    public void SetFearLevel(int level) => FearLevel = level;
 
     public void SetGoal(bool force = false)
     {
@@ -728,6 +741,12 @@ public class BaseAI : MonoBehaviour
                 break;
             case EnumUtilGoal.AlertAllies:
                 provider.RequestGoal<AlertAlliesGoal>();
+                break;
+            case EnumUtilGoal.ScoutRecon:
+                provider.RequestGoal<ScoutReconGoal>();
+                break;
+            case EnumUtilGoal.DebriefLeader:
+                provider.RequestGoal<DebriefLeaderGoal>();
                 break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);

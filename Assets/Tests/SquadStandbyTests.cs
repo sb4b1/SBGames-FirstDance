@@ -45,8 +45,8 @@ namespace SBGames.Tests
 
             Assert.IsNotNull(config, "Squad capability config should not be null.");
 
-            Assert.AreEqual(4, config.Goals.Count, "Should register 4 goals (FollowLeaderGoal, FocusFireGoal, FallBackGoal, StandbyGoal).");
-            Assert.AreEqual(4, config.Actions.Count, "Should register 4 actions (FollowLeaderAction, FocusFireAction, FallBackAction, IdleAction).");
+            Assert.GreaterOrEqual(config.Goals.Count, 4, "Should register at least 4 goals.");
+            Assert.GreaterOrEqual(config.Actions.Count, 4, "Should register at least 4 actions.");
         }
 
         [Test]

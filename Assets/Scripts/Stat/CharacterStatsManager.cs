@@ -16,6 +16,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStatSO baseStats;
     public CharacterBaseStatSO BaseStats => baseStats;
+    public CharacterClass CharacterClass => baseStats != null ? baseStats.characterClass : CharacterClass.None;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;
@@ -83,6 +84,12 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         Life = MaxLife.Value;
         Mana = MaxMana.Value;
         NotifyLifeChanged();
+    }
+
+    public void SetBaseStats(CharacterBaseStatSO newBaseStats)
+    {
+        baseStats = newBaseStats;
+        InitializeStats();
     }
 
     private void ApplyBaseStats()

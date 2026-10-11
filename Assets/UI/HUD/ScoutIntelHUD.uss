@@ -1,0 +1,52 @@
+.hud-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 320px;
+    max-height: 240px;
+    background-color: rgba(20, 24, 32, 0.9);
+    border-width: 1px;
+    border-color: rgba(64, 78, 102, 0.8);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.hud-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.hud-title {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(115, 190, 255);
+}
+
+.status-badge {
+    font-size: 10px;
+    -unity-font-style: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background-color: rgb(46, 52, 64);
+    color: rgb(160, 160, 160);
+}
+
+.scout-name-label {
+    font-size: 10px;
+    color: rgba(180, 180, 180, 0.9);
+    margin-bottom: 4px;
+}
+
+.intel-log-scrollview {
+    flex-grow: 1;
+    height: 140px;
+}
+
+.log-entry {
+    font-size: 10px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    white-space: normal;
+}
