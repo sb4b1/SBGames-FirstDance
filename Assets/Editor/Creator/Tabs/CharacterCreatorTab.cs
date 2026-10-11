@@ -7,6 +7,8 @@ using Micosmo.SensorToolkit;
 using SBGames.Database;
 using SBGames.Inventory.Character;
 using SBGames.Inventory.Stats;
+using SBGames.Personality;
+using SBGames.Personality.Data;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEngine;
@@ -16,6 +18,7 @@ namespace SBGames.Editor.Creator.Tabs
 {
     public enum CharacterArchetype
     {
+        MinionMonster,
         NormalMonster,
         EliteMonster,
         BossMonster,
@@ -81,6 +84,22 @@ namespace SBGames.Editor.Creator.Tabs
         [SerializeField] private List<UtilityGoal> defaultGoals = new();
 
         // ----------------------------------------------------
+        // Personality Settings
+        // ----------------------------------------------------
+        [SerializeField] private RaceInstinctSO raceInstinct;
+        [SerializeField] private CharacterTraitSO activeTrait;
+
+        private static readonly string[] KnownAgentTypes = new[]
+        {
+            "MinionAgent",
+            "NormalAgent",
+            "MageAgent",
+            "EliteAgent",
+            "BossAgent",
+            "Custom..."
+        };
+
+        // ----------------------------------------------------
         // Skills & Points
         // ----------------------------------------------------
         [SerializeField] public List<GameObject> startingSkillPrefabs = new();
@@ -135,10 +154,70 @@ namespace SBGames.Editor.Creator.Tabs
 
             if (defaultGoals.Count == 0)
             {
-                var killGoal = AssetDatabase.LoadAssetAtPath<UtilityGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultKillEnemyGoal.asset");
-                var wanderGoal = AssetDatabase.LoadAssetAtPath<UtilityGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultWanderGoal.asset");
-                if (killGoal != null) defaultGoals.Add(killGoal);
-                if (wanderGoal != null) defaultGoals.Add(wanderGoal);
+                if (agentType == "MinionAgent" || archetype == CharacterArchetype.MinionMonster)
+                {
+                    SetMinionDefaultGoals();
+                    SetMinionDefaultPersonality();
+                }
+                else
+                {
+                    var killGoal = AssetDatabase.LoadAssetAtPath<UtilityGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultKillEnemyGoal.asset");
+                    var wanderGoal = AssetDatabase.LoadAssetAtPath<UtilityGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultWanderGoal.asset");
+                    if (killGoal != null) defaultGoals.Add(killGoal);
+                    if (wanderGoal != null) defaultGoals.Add(wanderGoal);
+                }
+            }
+        }
+
+        public void SetMinionDefaults()
+        {
+            agentType = "MinionAgent";
+            decisionInterval = 0.40f;
+            intervalJitter = 0.05f;
+            startingSkillPrefabs.Clear();
+            SetMinionDefaultGoals();
+            SetMinionDefaultPersonality();
+        }
+
+        public void SetMinionDefaultGoals()
+        {
+            defaultGoals.Clear();
+            AddGoalAssetIfExists<UtilityFallBackGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFallBackGoal.asset");
+            AddGoalAssetIfExists<UtilityFocusFireGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFocusFireGoal.asset");
+            AddGoalAssetIfExists<UtilityFollowLeaderGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFollowLeaderGoal.asset");
+            AddGoalAssetIfExists<UtilityKillEnemyGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultKillEnemyGoal.asset");
+            AddGoalAssetIfExists<UtilitySurviveGoal>("Assets/ScriptableObjects/UtilityGoal/Default/MinionSurviveGoal.asset");
+            AddGoalAssetIfExists<UtilityWanderGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultWanderGoal.asset");
+        }
+
+        public void SetMinionDefaultPersonality()
+        {
+            if (raceInstinct == null)
+            {
+                raceInstinct = AssetDatabase.LoadAssetAtPath<RaceInstinctSO>("Assets/ScriptableObjects/Personality/Races/Race_Undead.asset");
+            }
+            if (activeTrait == null)
+            {
+                activeTrait = AssetDatabase.LoadAssetAtPath<CharacterTraitSO>("Assets/ScriptableObjects/Personality/Traits/Trait_Reckless.asset");
+            }
+        }
+
+        private void AddGoalAssetIfExists<T>(string path) where T : UtilityGoal
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset != null)
+            {
+                defaultGoals.Add(asset);
+            }
+            else
+            {
+                string[] guids = AssetDatabase.FindAssets($"t:{typeof(T).Name}");
+                if (guids.Length > 0)
+                {
+                    string foundPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    var found = AssetDatabase.LoadAssetAtPath<T>(foundPath);
+                    if (found != null) defaultGoals.Add(found);
+                }
             }
         }
 
@@ -181,7 +260,12 @@ namespace SBGames.Editor.Creator.Tabs
 
         public void Generate()
         {
-            CreateCharacterPrefab();
+            CreateCharacterPrefab(true);
+        }
+
+        public void GenerateSilent()
+        {
+            CreateCharacterPrefab(false);
         }
 
         private void DrawArchetypeSelector()
@@ -197,7 +281,8 @@ namespace SBGames.Editor.Creator.Tabs
                 }
 
                 EditorGUILayout.BeginHorizontal();
-                if (GUILayout.Button("Normal Monster", EditorStyles.miniButtonLeft)) { archetype = CharacterArchetype.NormalMonster; ApplyArchetypePreset(archetype); }
+                if (GUILayout.Button("Minion Monster", EditorStyles.miniButtonLeft)) { archetype = CharacterArchetype.MinionMonster; ApplyArchetypePreset(archetype); }
+                if (GUILayout.Button("Normal Monster", EditorStyles.miniButtonMid)) { archetype = CharacterArchetype.NormalMonster; ApplyArchetypePreset(archetype); }
                 if (GUILayout.Button("Elite Monster", EditorStyles.miniButtonMid)) { archetype = CharacterArchetype.EliteMonster; ApplyArchetypePreset(archetype); }
                 if (GUILayout.Button("Boss Monster", EditorStyles.miniButtonMid)) { archetype = CharacterArchetype.BossMonster; ApplyArchetypePreset(archetype); }
                 if (GUILayout.Button("Adventurer Character", EditorStyles.miniButtonRight)) { archetype = CharacterArchetype.Adventurer; ApplyArchetypePreset(archetype); }
@@ -209,6 +294,27 @@ namespace SBGames.Editor.Creator.Tabs
         {
             switch (type)
             {
+                case CharacterArchetype.MinionMonster:
+                    rootTag = "Monster";
+                    rootLayer = 6;
+                    controlMode = ControlMode.AI;
+                    agentStatus = AgentStatus.Active;
+                    hasAI = true;
+                    agentType = "MinionAgent";
+                    characterRank = CharacterRank.D;
+                    maxLife = 50f;
+                    maxMana = 0f;
+                    damage = 6f;
+                    moveSpeed = 3.0f;
+                    attackRange = 1.2f;
+                    attackTimeInterval = 1.0f;
+                    decisionInterval = 0.40f;
+                    intervalJitter = 0.05f;
+                    prefabFolderPath = "Assets/Prefabs/Characters/Monsters/Normal";
+                    statsFolderPath = "Assets/ScriptableObjects/Character/Monster/Normal";
+                    SetMinionDefaults();
+                    break;
+
                 case CharacterArchetype.NormalMonster:
                     rootTag = "Monster";
                     rootLayer = 6;
@@ -350,9 +456,44 @@ namespace SBGames.Editor.Creator.Tabs
                 if (hasAI)
                 {
                     EditorGUILayout.Space(4);
-                    agentType = EditorGUILayout.TextField(new GUIContent("Agent Type", "GOAP Agent Type name (e.g. NormalAgent)"), agentType);
+                    int currentTypeIndex = Array.IndexOf(KnownAgentTypes, agentType);
+                    if (currentTypeIndex < 0) currentTypeIndex = KnownAgentTypes.Length - 1; // Custom
 
-                    EditorGUILayout.Space(2);
+                    EditorGUI.BeginChangeCheck();
+                    int newTypeIndex = EditorGUILayout.Popup("Agent Type Preset", currentTypeIndex, KnownAgentTypes);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        if (newTypeIndex >= 0 && newTypeIndex < KnownAgentTypes.Length - 1)
+                        {
+                            agentType = KnownAgentTypes[newTypeIndex];
+                            if (agentType == "MinionAgent")
+                            {
+                                SetMinionDefaults();
+                            }
+                        }
+                    }
+
+                    if (newTypeIndex == KnownAgentTypes.Length - 1 || currentTypeIndex == KnownAgentTypes.Length - 1)
+                    {
+                        agentType = EditorGUILayout.TextField(new GUIContent("Custom Agent Type", "GOAP Agent Type name (e.g. MinionAgent, NormalAgent)"), agentType);
+                    }
+
+                    if (agentType == "MinionAgent")
+                    {
+                        EditorGUILayout.Space(2);
+                        EditorGUILayout.HelpBox("MinionAgent uses lightweight basic capabilities without skills. 6 Utility Goals and personality defaults are auto-assigned.", MessageType.Info);
+                        if (GUILayout.Button("↺ Reset to Minion Defaults (6 Goals & Personality)", EditorStyles.miniButton))
+                        {
+                            SetMinionDefaults();
+                        }
+                    }
+
+                    EditorGUILayout.Space(4);
+                    EditorGUILayout.LabelField("Dual-Layer Personality (Psychology Model)", EditorStyles.miniBoldLabel);
+                    raceInstinct = (RaceInstinctSO)EditorGUILayout.ObjectField("Race Instinct", raceInstinct, typeof(RaceInstinctSO), false);
+                    activeTrait = (CharacterTraitSO)EditorGUILayout.ObjectField("Character Trait", activeTrait, typeof(CharacterTraitSO), false);
+
+                    EditorGUILayout.Space(4);
                     EditorGUILayout.LabelField("Default Utility Goals", EditorStyles.miniBoldLabel);
                     for (int i = 0; i < defaultGoals.Count; i++)
                     {
@@ -453,12 +594,13 @@ namespace SBGames.Editor.Creator.Tabs
             }
         }
 
-        private void CreateCharacterPrefab()
+        public GameObject CreateCharacterPrefab(bool interactive = true)
         {
             if (string.IsNullOrWhiteSpace(characterId))
             {
-                EditorUtility.DisplayDialog("Validation Error", "Character ID cannot be empty!", "OK");
-                return;
+                if (interactive) EditorUtility.DisplayDialog("Validation Error", "Character ID cannot be empty!", "OK");
+                else Debug.LogError("[CharacterCreatorTab] Character ID cannot be empty!");
+                return null;
             }
 
             string cleanId = characterId.Trim();
@@ -473,15 +615,15 @@ namespace SBGames.Editor.Creator.Tabs
             string prefabPath = Path.Combine(prefabFolderPath, $"{cleanId}.prefab").Replace("\\", "/");
             if (File.Exists(prefabPath))
             {
-                if (!EditorUtility.DisplayDialog("Prefab Exists", $"A prefab at '{prefabPath}' already exists. Overwrite it?", "Overwrite", "Cancel"))
+                if (interactive && !EditorUtility.DisplayDialog("Prefab Exists", $"A prefab at '{prefabPath}' already exists. Overwrite it?", "Overwrite", "Cancel"))
                 {
-                    return;
+                    return null;
                 }
             }
 
             try
             {
-                EditorUtility.DisplayProgressBar("Character Creator", "Generating BaseStatSO...", 0.2f);
+                if (interactive) EditorUtility.DisplayProgressBar("Character Creator", "Generating BaseStatSO...", 0.2f);
 
                 CharacterBaseStatSO statAsset = existingBaseStatsSO;
                 if (createBaseStatsSO)
@@ -509,6 +651,7 @@ namespace SBGames.Editor.Creator.Tabs
 
                     EditorUtility.SetDirty(statAsset);
                     AssetDatabase.SaveAssets();
+                    statAsset = AssetDatabase.LoadAssetAtPath<CharacterBaseStatSO>(statPath);
                 }
 
                 EditorUtility.DisplayProgressBar("Character Creator", "Constructing Hierarchy...", 0.5f);
@@ -540,6 +683,19 @@ namespace SBGames.Editor.Creator.Tabs
                 var identifier = rootGo.AddComponent<CharacterIdentifier>();
                 var inventoryManager = rootGo.AddComponent<CharacterInventoryManager>();
                 var combatPower = rootGo.AddComponent<CharacterCombatPower>();
+
+                var factionMember = rootGo.AddComponent<FactionMember>();
+                factionMember.Faction = (rootTag == "Adventurer") ? FactionId.Adventurer : FactionId.Monster;
+
+                var squadMember = rootGo.AddComponent<SquadMember>();
+
+                var personality = rootGo.AddComponent<CharacterPersonality>();
+                if (raceInstinct != null || activeTrait != null)
+                {
+                    CreatorEditorUtils.SetPrivateField(personality, "raceInstinct", raceInstinct);
+                    CreatorEditorUtils.SetPrivateField(personality, "activeTrait", activeTrait);
+                    personality.Initialize(raceInstinct, activeTrait);
+                }
 
                 CreatorEditorUtils.SetPrivateField(statsManager, "baseStats", statAsset);
                 CreatorEditorUtils.SetPrivateField(statsManager, "level", characterLevel);
@@ -694,6 +850,8 @@ namespace SBGames.Editor.Creator.Tabs
                     CreatorEditorUtils.SetPrivateField(baseAI, "skillController", skillController);
                     CreatorEditorUtils.SetPrivateField(baseAI, "vision", visionController);
                     CreatorEditorUtils.SetPrivateField(baseAI, "agentType", agentType);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "squadMember", squadMember);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "personality", personality);
 
                     var goalsList = new List<UtilityGoal>();
                     if (defaultGoals != null)
@@ -751,7 +909,7 @@ namespace SBGames.Editor.Creator.Tabs
                 CreatorEditorUtils.SetPrivateField(skillController, "skillTargeting", skillTargeting);
                 CreatorEditorUtils.SetPrivateField(skillController, "skillSpawnPoint", spawnPointGo);
 
-                EditorUtility.DisplayProgressBar("Character Creator", "Saving Prefab Asset...", 0.8f);
+                if (interactive) EditorUtility.DisplayProgressBar("Character Creator", "Saving Prefab Asset...", 0.8f);
 
                 GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(rootGo, prefabPath);
                 UnityEngine.Object.DestroyImmediate(rootGo);
@@ -764,19 +922,28 @@ namespace SBGames.Editor.Creator.Tabs
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
 
-                EditorUtility.ClearProgressBar();
+                if (interactive) EditorUtility.ClearProgressBar();
 
                 Selection.activeObject = savedPrefab;
                 EditorGUIUtility.PingObject(savedPrefab);
 
                 Debug.Log($"<color=green>[CharacterCreatorTab]</color> Successfully created character prefab at '{prefabPath}'!");
-                EditorUtility.DisplayDialog("Success", $"Character Prefab '{cleanId}' successfully created!\n\nPrefab: {prefabPath}\nBaseStats: {(statAsset != null ? AssetDatabase.GetAssetPath(statAsset) : "None")}", "Awesome!");
+                if (interactive)
+                {
+                    EditorUtility.DisplayDialog("Success", $"Character Prefab '{cleanId}' successfully created!\n\nPrefab: {prefabPath}\nBaseStats: {(statAsset != null ? AssetDatabase.GetAssetPath(statAsset) : "None")}", "Awesome!");
+                }
+
+                return savedPrefab;
             }
             catch (Exception ex)
             {
-                EditorUtility.ClearProgressBar();
+                if (interactive) EditorUtility.ClearProgressBar();
                 Debug.LogError($"[CharacterCreatorTab] Failed to create character prefab: {ex}");
-                EditorUtility.DisplayDialog("Error", $"Failed to create character prefab:\n{ex.Message}", "OK");
+                if (interactive)
+                {
+                    EditorUtility.DisplayDialog("Error", $"Failed to create character prefab:\n{ex.Message}", "OK");
+                }
+                return null;
             }
         }
 

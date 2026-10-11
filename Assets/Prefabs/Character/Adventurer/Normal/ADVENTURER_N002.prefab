@@ -49,7 +49,8 @@ MonoBehaviour:
   baseAI: {fileID: 8072826638222970858}
   brain: {fileID: 6769856459707252562}
   skillTargeting: {fileID: 445898926109784483}
-  skills: []
+  skills:
+  - skillPrefab: {fileID: 6763311900486502215}
   skillSpawnPoint: {fileID: 3128990964235290654}
 --- !u!1 &2993446703575919795
 GameObject:
@@ -452,7 +453,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   level: 1
-  baseStats: {fileID: 0}
+  baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
   isImmortal: 0
   life: 0
   mana: 0
@@ -479,7 +480,7 @@ MonoBehaviour:
   controlMode: 1
   agentStatus: 1
   aiAugment: {fileID: 8156641959742805057}
-  statsManager: {fileID: 0}
+  statsManager: {fileID: 6814028911414347165}
   animController: {fileID: 8604098746812900886}
   skillController: {fileID: 8058071398215529301}
 --- !u!114 &3003596417790388034
@@ -499,7 +500,7 @@ MonoBehaviour:
   dashCooldown: 1
   rb: {fileID: 2087420900739459375}
   brain: {fileID: 6769856459707252562}
-  stats: {fileID: 0}
+  stats: {fileID: 6814028911414347165}
 --- !u!114 &8996163782249249517
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -516,6 +517,7 @@ MonoBehaviour:
   stats: {fileID: 0}
   attackPoint: {fileID: 0}
   attackRadius: 0.4
+  factionMember: {fileID: 0}
 --- !u!114 &584137540111647113
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -838,7 +840,8 @@ MonoBehaviour:
     AllowedTags:
     - Adventurer
     - Monster
-  DetectionMode: 0
+    - Dummy
+  DetectionMode: 1
   Shape: 0
   Circle:
     Radius: 5
@@ -849,14 +852,14 @@ MonoBehaviour:
     Height: 1
   DetectsOnLayers:
     serializedVersion: 2
-    m_Bits: 65
+    m_Bits: 193
   IgnoreTriggerColliders: 0
   pulseRoutine:
     Mode:
-      value: 2
+      value: 1
     UpdateFunction: 0
     Interval:
-      value: 1
+      value: 0.2
 --- !u!114 &4308003283456528453
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1027,6 +1030,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4308003283456528453}
   brain: {fileID: 8072826638222970858}
+  factionMember: {fileID: 0}
 --- !u!1 &8156641959742805057
 GameObject:
   m_ObjectHideFlags: 0
@@ -1042,7 +1046,7 @@ GameObject:
   - component: {fileID: 8072826638222970858}
   - component: {fileID: 1810567172314739955}
   m_Layer: 0
-  m_Name: NormalAI
+  m_Name: MageAI
   m_TagString: AI_Augment
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1127,20 +1131,27 @@ MonoBehaviour:
   agent: {fileID: 6132600860009908400}
   agentBehaviour: {fileID: 7390590795274520434}
   brain: {fileID: 6769856459707252562}
-  stats: {fileID: 0}
+  stats: {fileID: 6814028911414347165}
   motionController: {fileID: 3003596417790388034}
   skillController: {fileID: 8058071398215529301}
   vision: {fileID: 858829395588064072}
+  squadMember: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   skills:
   - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
+  personality: {fileID: 0}
   agentType: MageAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
   enemyTargets: []
   allyTargets: []
+  localKnownEnemies: []
+  hasAlertedAllies: 1
+  alertShoutRadius: 12
+  alertShoutCooldown: 4
+  spawnPosition: {x: 0, y: 0, z: 0}
   threatLevel: 0
   fearLevel: 0
   agentLife: 0
@@ -1166,7 +1177,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AIDecisionThrottler
   baseAI: {fileID: 8072826638222970858}
   characterBrain: {fileID: 6769856459707252562}
-  statsManager: {fileID: 0}
+  statsManager: {fileID: 6814028911414347165}
   defaultDecisionInterval: 0.3
   defaultIntervalJitter: 0.05
   nextDecisionTime: 0
@@ -1219,6 +1230,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7139744567928438274, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: spawnType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7139744567928438274, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: targeting
+      value: 
+      objectReference: {fileID: 445898926109784483}
+    - target: {fileID: 7139744567928438274, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: skillSpawnPoint
+      value: 
+      objectReference: {fileID: 6785917886292104977}
     - target: {fileID: 8476384533851095864, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
       propertyPath: m_Name
       value: SKILL_WI001
@@ -1231,5 +1254,10 @@ PrefabInstance:
 --- !u!4 &4167947638410439996 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+  m_PrefabInstance: {fileID: 2917829557105247359}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &6763311900486502215 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8476384533851095864, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
   m_PrefabInstance: {fileID: 2917829557105247359}
   m_PrefabAsset: {fileID: 0}

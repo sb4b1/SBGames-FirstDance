@@ -65,3 +65,42 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: MONSTER_MINION_TEST_WIZARD
+    characterName: New Monster
+    prefab: {fileID: 1778415428086064179, guid: ab859a368a9038f419adb5d554f2562b, type: 3}
+    baseStats: {fileID: 11400000, guid: 5989d6ead3392e24083d88a9d359b827, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
+  - id: MONSTER_MINION_AUTO_002
+    characterName: New Monster
+    prefab: {fileID: 5423902146521080805, guid: 4616235ae0b9b9d45a0367501f745aa1, type: 3}
+    baseStats: {fileID: 11400000, guid: 739db48d06551b641bc98f546d338fe5, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
+  - id: MONSTER_N003
+    characterName: Axe Goblin
+    prefab: {fileID: 6664999883879676430, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
+    baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
