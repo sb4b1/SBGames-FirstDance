@@ -1,0 +1,383 @@
+fileFormatVersion: 2
+guid: 315aaa70b080a994dbf3525cfe3f912d
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2470693614702905708
+    second: ADVENTURER_N004_OTHER2_0_Die_0_0
+  - first:
+      213: -5534636354493590970
+    second: ADVENTURER_N004_OTHER2_0_Die_0_1
+  - first:
+      213: 4335982072294441038
+    second: ADVENTURER_N004_OTHER2_0_Die_0_2
+  - first:
+      213: 6712087050607995636
+    second: ADVENTURER_N004_OTHER2_0_Die_0_3
+  - first:
+      213: -4357064367365490259
+    second: ADVENTURER_N004_OTHER2_0_Die_0_4
+  - first:
+      213: -6440002604803294596
+    second: ADVENTURER_N004_OTHER2_0_Die_0_5
+  - first:
+      213: -6556273753047596795
+    second: ADVENTURER_N004_OTHER2_0_Die_0_6
+  - first:
+      213: 8447372508674439334
+    second: ADVENTURER_N004_OTHER2_0_Die_0_7
+  - first:
+      213: 4580514408070967569
+    second: ADVENTURER_N004_OTHER2_0_Die_0_8
+  - first:
+      213: -401902590351216351
+    second: ADVENTURER_N004_OTHER2_0_Die_0_9
+  - first:
+      213: 6155124900620184333
+    second: ADVENTURER_N004_OTHER2_0_Die_0_10
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_0
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 1864
+        width: 107
+        height: 111
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c69413590caa94220800000000000000
+      internalID: 2470693614702905708
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_1
+      rect:
+        serializedVersion: 2
+        x: 315
+        y: 1865
+        width: 106
+        height: 119
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64252713f850133b0800000000000000
+      internalID: -5534636354493590970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_2
+      rect:
+        serializedVersion: 2
+        x: 575
+        y: 1868
+        width: 106
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e408293c8b08c2c30800000000000000
+      internalID: 4335982072294441038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_3
+      rect:
+        serializedVersion: 2
+        x: 862
+        y: 1867
+        width: 102
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fa2df04c9f162d50800000000000000
+      internalID: 6712087050607995636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_4
+      rect:
+        serializedVersion: 2
+        x: 1112
+        y: 1845
+        width: 126
+        height: 89
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da9faa7ea099883c0800000000000000
+      internalID: -4357064367365490259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_5
+      rect:
+        serializedVersion: 2
+        x: 1355
+        y: 1859
+        width: 142
+        height: 86
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7afb1460c380a6a0800000000000000
+      internalID: -6440002604803294596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_6
+      rect:
+        serializedVersion: 2
+        x: 1612
+        y: 1858
+        width: 141
+        height: 87
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 501816b12cf6305a0800000000000000
+      internalID: -6556273753047596795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_7
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 1858
+        width: 141
+        height: 87
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a8b0f06a881b3570800000000000000
+      internalID: 8447372508674439334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_9
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 1602
+        width: 141
+        height: 87
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1217ec339b72c6af0800000000000000
+      internalID: -401902590351216351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_OTHER2_0_Die_0_10
+      rect:
+        serializedVersion: 2
+        x: 332
+        y: 1602
+        width: 141
+        height: 87
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0ba0a16c756b6550800000000000000
+      internalID: 6155124900620184333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 385d2a8ebc675bb4b9fcab562b468f03
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ADVENTURER_N004_OTHER2_0_Die_0_0: 2470693614702905708
+      ADVENTURER_N004_OTHER2_0_Die_0_1: -5534636354493590970
+      ADVENTURER_N004_OTHER2_0_Die_0_10: 6155124900620184333
+      ADVENTURER_N004_OTHER2_0_Die_0_2: 4335982072294441038
+      ADVENTURER_N004_OTHER2_0_Die_0_3: 6712087050607995636
+      ADVENTURER_N004_OTHER2_0_Die_0_4: -4357064367365490259
+      ADVENTURER_N004_OTHER2_0_Die_0_5: -6440002604803294596
+      ADVENTURER_N004_OTHER2_0_Die_0_6: -6556273753047596795
+      ADVENTURER_N004_OTHER2_0_Die_0_7: 8447372508674439334
+      ADVENTURER_N004_OTHER2_0_Die_0_8: 4580514408070967569
+      ADVENTURER_N004_OTHER2_0_Die_0_9: -401902590351216351
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

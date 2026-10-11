@@ -58,6 +58,8 @@ namespace SBGames.Personality.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrapInScene()
         {
+            if (SBGames.Testing.CombatTestEnvironmentBootstrap.ShouldBypassMetaAutoBootstrap()) return;
+
             var existing = FindAnyObjectByType<AltarEventUIController>();
             if (existing != null) return;
 

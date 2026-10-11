@@ -174,7 +174,6 @@ GameObject:
   - component: {fileID: 5428398996806826353}
   - component: {fileID: 1572073683444042681}
   - component: {fileID: 8160419001341953279}
-  - component: {fileID: 981039397981567467}
   - component: {fileID: 8604098746812900886}
   - component: {fileID: 3387174742673512593}
   - component: {fileID: 5270531673025652101}
@@ -282,20 +281,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &981039397981567467
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3250189461162024747}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b78f1274a2dd444b9f0d8d8d60ddde3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterFlipRotator
-  rootTransform: {fileID: 0}
-  flipAxis: 0
 --- !u!114 &8604098746812900886
 MonoBehaviour:
   m_ObjectHideFlags: 0

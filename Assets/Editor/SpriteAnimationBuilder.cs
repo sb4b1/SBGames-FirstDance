@@ -160,6 +160,124 @@ namespace SBGames.Editor.Animation
     }
 
     /// <summary>
+    /// Configuration schema for an action mapped to its own individual sprite sheet texture.
+    /// </summary>
+    [Serializable]
+    public class MultiSheetActionConfig
+    {
+        [SerializeField] public string actionName = "Idle";
+        [SerializeField] public Texture2D sourceTexture;
+        [SerializeField] public bool useAllFrames = true;
+        [SerializeField] public int startFrame = 0;
+        [SerializeField] public int frameCount = 4;
+        [SerializeField] public float frameRate = 10f;
+        [SerializeField] public bool isLooping = true;
+
+        [Header("Animation Events")]
+        [SerializeField] public bool addEvents = false;
+        [SerializeField] public int impactFrameOffset = 2;
+        [SerializeField] public string impactEventName = "AnimationEvent_Attack";
+        [SerializeField] public bool addCompleteEvent = true;
+        [SerializeField] public string completeEventName = "AnimationEvent_AttackComplete";
+
+        public MultiSheetActionConfig() { }
+
+        public MultiSheetActionConfig(string name, Texture2D texture, bool loop, float fps = 10f, bool events = false, int impactFrame = 0, string impactName = "", bool complete = false, string completeName = "")
+        {
+            actionName = name;
+            sourceTexture = texture;
+            useAllFrames = true;
+            startFrame = 0;
+            frameCount = 4;
+            frameRate = fps;
+            isLooping = loop;
+            addEvents = events;
+            impactFrameOffset = impactFrame;
+            impactEventName = impactName;
+            addCompleteEvent = complete;
+            completeEventName = completeName;
+        }
+
+        public MultiSheetActionConfig Clone()
+        {
+            return new MultiSheetActionConfig
+            {
+                actionName = this.actionName,
+                sourceTexture = this.sourceTexture,
+                useAllFrames = this.useAllFrames,
+                startFrame = this.startFrame,
+                frameCount = this.frameCount,
+                frameRate = this.frameRate,
+                isLooping = this.isLooping,
+                addEvents = this.addEvents,
+                impactFrameOffset = this.impactFrameOffset,
+                impactEventName = this.impactEventName,
+                addCompleteEvent = this.addCompleteEvent,
+                completeEventName = this.completeEventName
+            };
+        }
+
+        public bool IsValid(int totalAvailableSprites, out string error)
+        {
+            if (string.IsNullOrWhiteSpace(actionName))
+            {
+                error = "Action name cannot be empty.";
+                return false;
+            }
+
+            if (sourceTexture == null)
+            {
+                error = "No texture assigned.";
+                return false;
+            }
+
+            if (!useAllFrames)
+            {
+                if (startFrame < 0)
+                {
+                    error = $"Start frame ({startFrame}) cannot be negative.";
+                    return false;
+                }
+
+                if (frameCount <= 0)
+                {
+                    error = $"Frame count ({frameCount}) must be greater than zero.";
+                    return false;
+                }
+
+                if (totalAvailableSprites > 0 && startFrame + frameCount > totalAvailableSprites)
+                {
+                    error = $"Frame range [{startFrame}..{startFrame + frameCount - 1}] exceeds total sliced sprites ({totalAvailableSprites}).";
+                    return false;
+                }
+            }
+
+            if (frameRate <= 0)
+            {
+                error = $"Frame rate ({frameRate}) must be positive.";
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Encapsulated settings for generating character animation clips & controller from multiple sprite sheets.
+    /// </summary>
+    [Serializable]
+    public class MultiSheetGenerationSettings
+    {
+        public string baseName = "ADVENTURER_N001";
+        public string outputFolderPath = "Assets/Animators/Characters/Adventurers/N001";
+        public List<MultiSheetActionConfig> actions = new();
+        public SpriteSortMode sortMode = SpriteSortMode.NaturalNumericName;
+        public bool generateAnimatorController = true;
+        public bool includeStandardParameters = true;
+    }
+
+    /// <summary>
     /// Result information returned from generation process.
     /// </summary>
     public class GenerationResult
@@ -825,6 +943,267 @@ namespace SBGames.Editor.Animation
             {
                 result.Success = false;
                 result.Message = $"Exception during generation: {ex.Message}";
+                result.Errors.Add(ex.ToString());
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Constructs standard multi-sheet action slots (Idle, Move, Attack, CastSkill, Hit, Die)
+        /// with standard loop and event settings pre-configured.
+        /// </summary>
+        public static List<MultiSheetActionConfig> GetDefaultMultiSheetActions()
+        {
+            return new List<MultiSheetActionConfig>
+            {
+                new("Idle", null, true, 10f),
+                new("Move", null, true, 12f),
+                new("Attack", null, false, 12f, events: true, impactFrame: 2, impactName: EVENT_ATTACK, complete: true, completeName: EVENT_ATTACK_COMPLETE),
+                new("CastSkill", null, false, 12f, events: true, impactFrame: 2, impactName: EVENT_CAST_SKILL, complete: true, completeName: EVENT_CAST_SKILL_COMPLETE),
+                new("Hit", null, false, 10f),
+                new("Die", null, false, 10f)
+            };
+        }
+
+        /// <summary>
+        /// Given a collection of textures, matches each texture to an appropriate action by keyword.
+        /// Unmatched textures are appended as custom actions.
+        /// </summary>
+        public static List<MultiSheetActionConfig> AutoMatchMultiSheetActions(IEnumerable<Texture2D> textures, List<MultiSheetActionConfig> existingActions = null)
+        {
+            var result = (existingActions != null && existingActions.Count > 0)
+                ? existingActions.Select(a => a.Clone()).ToList()
+                : GetDefaultMultiSheetActions();
+
+            if (textures == null) return result;
+
+            var textureList = textures.Where(t => t != null).Distinct().ToList();
+            var usedTextures = new HashSet<Texture2D>();
+
+            // Find matching slot for each standard action
+            foreach (var act in result)
+            {
+                string name = act.actionName.ToLowerInvariant();
+                Texture2D match = null;
+
+                if (name == "idle")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) && t.name.ToLowerInvariant().Contains("idle"));
+                }
+                else if (name == "move" || name == "walk" || name == "run")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("move") || t.name.ToLowerInvariant().Contains("walk") || t.name.ToLowerInvariant().Contains("run")));
+                }
+                else if (name == "castskill" || name == "skill" || name == "cast")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("skill") || t.name.ToLowerInvariant().Contains("magic") || t.name.ToLowerInvariant().Contains("charge") || t.name.ToLowerInvariant().Contains("cast")));
+                }
+                else if (name.StartsWith("attack") || name == "atk")
+                {
+                    // Prefer normal attack over skill/magic
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("attack_normal") || t.name.ToLowerInvariant().Contains("normal_attack")));
+                    if (match == null)
+                    {
+                        match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                            (t.name.ToLowerInvariant().Contains("attack") || t.name.ToLowerInvariant().Contains("atk")) &&
+                            !t.name.ToLowerInvariant().Contains("skill") && !t.name.ToLowerInvariant().Contains("charge"));
+                    }
+                }
+                else if (name == "hit" || name == "gethit" || name == "hurt" || name == "damage")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("damage") || t.name.ToLowerInvariant().Contains("hurt") || t.name.ToLowerInvariant().Contains("hit")));
+                }
+                else if (name == "die" || name == "death" || name == "dead")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("die") || t.name.ToLowerInvariant().Contains("death") || t.name.ToLowerInvariant().Contains("dead")));
+                }
+
+                if (match != null)
+                {
+                    act.sourceTexture = match;
+                    usedTextures.Add(match);
+                }
+            }
+
+            // Append any remaining unused textures as custom actions
+            foreach (var unused in textureList)
+            {
+                if (!usedTextures.Contains(unused))
+                {
+                    string actionName = unused.name;
+                    int lastUnder = actionName.LastIndexOf('_');
+                    if (lastUnder > 0 && lastUnder < actionName.Length - 1)
+                    {
+                        actionName = actionName.Substring(lastUnder + 1);
+                    }
+                    if (string.IsNullOrWhiteSpace(actionName)) actionName = unused.name;
+
+                    result.Add(new MultiSheetActionConfig(actionName, unused, false, 10f));
+                    usedTextures.Add(unused);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Auto-matches multi-sheet actions by scanning all textures in a folder path.
+        /// </summary>
+        public static List<MultiSheetActionConfig> AutoMatchMultiSheetActionsFromFolder(string folderPath, List<MultiSheetActionConfig> existingActions = null)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+            {
+                return existingActions ?? GetDefaultMultiSheetActions();
+            }
+
+            string[] filePaths = Directory.GetFiles(folderPath, "*.png", SearchOption.TopDirectoryOnly);
+            var textures = new List<Texture2D>();
+            foreach (var file in filePaths)
+            {
+                if (file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
+                string rel = file.Replace("\\", "/");
+                if (rel.StartsWith(Application.dataPath))
+                {
+                    rel = "Assets" + rel.Substring(Application.dataPath.Length);
+                }
+                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rel);
+                if (tex != null) textures.Add(tex);
+            }
+
+            return AutoMatchMultiSheetActions(textures, existingActions);
+        }
+
+        /// <summary>
+        /// Executes full generation pipeline from multi-sheet settings: slices sprites per assigned sheet,
+        /// generates AnimationClips with events, creates AnimatorController, and refreshes the AssetDatabase.
+        /// </summary>
+        public static GenerationResult GenerateFromMultiSheetSettings(MultiSheetGenerationSettings settings)
+        {
+            var result = new GenerationResult();
+
+            if (settings.actions == null || settings.actions.Count == 0)
+            {
+                result.Success = false;
+                result.Message = "No animation actions configured to generate.";
+                result.Errors.Add(result.Message);
+                return result;
+            }
+
+            // Filter actions that have a texture assigned
+            var activeActions = settings.actions.Where(a => a != null && a.sourceTexture != null).ToList();
+            if (activeActions.Count == 0)
+            {
+                result.Success = false;
+                result.Message = "No sprite sheet textures assigned to any action slots.";
+                result.Errors.Add(result.Message);
+                return result;
+            }
+
+            string cleanOutputDir = settings.outputFolderPath.Replace("\\", "/").TrimEnd('/');
+            EnsureDirectory(cleanOutputDir);
+
+            string characterPrefix = string.IsNullOrWhiteSpace(settings.baseName) ? "Character" : settings.baseName.Trim();
+            var actionClipsMap = new Dictionary<string, AnimationClip>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                for (int i = 0; i < activeActions.Count; i++)
+                {
+                    var action = activeActions[i];
+                    var tex = action.sourceTexture;
+
+                    // Ensure multiple sprite importer mode
+                    if (!ValidateTextureImporter(tex, out _))
+                    {
+                        FixTextureImporterSettings(tex);
+                    }
+
+                    Sprite[] allSprites = ExtractSprites(tex, settings.sortMode);
+                    if (allSprites.Length == 0)
+                    {
+                        result.Warnings.Add($"Texture '{tex.name}' for action '{action.actionName}' has no sliced sprites. Skipping.");
+                        continue;
+                    }
+
+                    Sprite[] actionFrames;
+                    if (action.useAllFrames)
+                    {
+                        actionFrames = allSprites;
+                    }
+                    else
+                    {
+                        int start = Mathf.Clamp(action.startFrame, 0, allSprites.Length - 1);
+                        int count = Mathf.Min(action.frameCount, allSprites.Length - start);
+                        actionFrames = new Sprite[count];
+                        Array.Copy(allSprites, start, actionFrames, 0, count);
+                    }
+
+                    if (actionFrames.Length == 0)
+                    {
+                        result.Warnings.Add($"Action '{action.actionName}' produced 0 frames. Skipping.");
+                        continue;
+                    }
+
+                    // Build events
+                    var dummySingleConfig = new AnimationActionConfig
+                    {
+                        actionName = action.actionName,
+                        frameRate = action.frameRate,
+                        isLooping = action.isLooping,
+                        addEvents = action.addEvents,
+                        impactFrameOffset = action.impactFrameOffset,
+                        impactEventName = action.impactEventName,
+                        addCompleteEvent = action.addCompleteEvent,
+                        completeEventName = action.completeEventName
+                    };
+                    var events = BuildAnimationEventsForAction(dummySingleConfig, actionFrames.Length);
+
+                    string clipFileName = $"{characterPrefix}_{action.actionName}.anim";
+                    string clipPath = $"{cleanOutputDir}/{clipFileName}";
+
+                    var clip = CreateAnimationClip(clipPath, actionFrames, action.frameRate, action.isLooping, events);
+                    if (clip != null)
+                    {
+                        result.CreatedClips.Add(clip);
+                        actionClipsMap[action.actionName] = clip;
+                    }
+                }
+
+                if (result.CreatedClips.Count == 0)
+                {
+                    result.Success = false;
+                    result.Message = "Failed to generate any animation clips from the assigned sheets.";
+                    return result;
+                }
+
+                // Generate Animator Controller
+                if (settings.generateAnimatorController)
+                {
+                    string controllerFileName = $"{characterPrefix}.controller";
+                    string controllerPath = $"{cleanOutputDir}/{controllerFileName}";
+
+                    result.CreatedController = CreateAnimatorController(controllerPath, actionClipsMap, settings.includeStandardParameters);
+                }
+
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+
+                result.Success = true;
+                result.Message = $"Generated {result.CreatedClips.Count} AnimationClip(s)" +
+                                 (result.CreatedController != null ? $" and AnimatorController '{result.CreatedController.name}'" : "") +
+                                 $" in '{cleanOutputDir}'.";
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Message = $"Exception during multi-sheet generation: {ex.Message}";
                 result.Errors.Add(ex.ToString());
                 return result;
             }

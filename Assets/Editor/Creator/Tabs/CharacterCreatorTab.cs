@@ -44,7 +44,10 @@ namespace SBGames.Editor.Creator.Tabs
         // ----------------------------------------------------
         // Visuals & Animation
         // ----------------------------------------------------
+        [SerializeField] private bool useMultipleSpriteSheets = false;
         [SerializeField] private Texture2D spriteSheet;
+        [SerializeField] private DefaultAsset multiSheetFolderAsset;
+        [SerializeField] private string multiSheetFolderPath = "";
         [SerializeField] private Sprite sprite;
         [SerializeField] private RuntimeAnimatorController animatorController;
         [SerializeField] private Vector3 modelScale = new(5f, 5f, 1f);
@@ -399,28 +402,58 @@ namespace SBGames.Editor.Creator.Tabs
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                spriteSheet = (Texture2D)EditorGUILayout.ObjectField(new GUIContent("Source Sprite Sheet", "Optional source spritesheet for automated clip & controller generation"), spriteSheet, typeof(Texture2D), false);
+                useMultipleSpriteSheets = EditorGUILayout.Toggle(new GUIContent("Multiple Sprite Sheets", "Check if character uses separate sprite sheets for each action (e.g. Idle, Run, Attack)"), useMultipleSpriteSheets);
 
-                if (spriteSheet != null)
+                if (!useMultipleSpriteSheets)
                 {
-                    using (new EditorGUILayout.HorizontalScope())
+                    spriteSheet = (Texture2D)EditorGUILayout.ObjectField(new GUIContent("Source Sprite Sheet", "Optional source spritesheet for automated clip & controller generation"), spriteSheet, typeof(Texture2D), false);
+
+                    if (spriteSheet != null)
                     {
-                        if (GUILayout.Button("⚡ Quick Generate & Assign Controller", EditorStyles.miniButtonLeft))
+                        using (new EditorGUILayout.HorizontalScope())
                         {
-                            QuickGenerateAnimations();
+                            if (GUILayout.Button("⚡ Quick Generate & Assign Controller", EditorStyles.miniButtonLeft))
+                            {
+                                QuickGenerateAnimations();
+                            }
+                            if (GUILayout.Button("🎬 Open Generator Window...", EditorStyles.miniButtonRight))
+                            {
+                                OpenAnimationGeneratorWindow();
+                            }
                         }
-                        if (GUILayout.Button("🎬 Open Generator Window...", EditorStyles.miniButtonRight))
+                        EditorGUILayout.Space(2);
+                    }
+                    else
+                    {
+                        if (GUILayout.Button("🎬 Open Sprite Animation Generator Window...", EditorStyles.miniButton))
                         {
                             OpenAnimationGeneratorWindow();
                         }
+                        EditorGUILayout.Space(2);
                     }
-                    EditorGUILayout.Space(2);
                 }
                 else
                 {
-                    if (GUILayout.Button("🎬 Open Sprite Animation Generator Window...", EditorStyles.miniButton))
+                    var newFolder = (DefaultAsset)EditorGUILayout.ObjectField(new GUIContent("Character Sheet Folder", "Folder containing action sprite sheets for this character"), multiSheetFolderAsset, typeof(DefaultAsset), false);
+                    if (newFolder != multiSheetFolderAsset)
                     {
-                        OpenAnimationGeneratorWindow();
+                        multiSheetFolderAsset = newFolder;
+                        if (multiSheetFolderAsset != null)
+                        {
+                            multiSheetFolderPath = AssetDatabase.GetAssetPath(multiSheetFolderAsset);
+                        }
+                    }
+
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        if (GUILayout.Button("⚡ Quick Generate Multi-Sheet", EditorStyles.miniButtonLeft))
+                        {
+                            QuickGenerateMultiSheetAnimations();
+                        }
+                        if (GUILayout.Button("🎬 Open Multi-Sheet Generator...", EditorStyles.miniButtonRight))
+                        {
+                            OpenMultiSheetAnimationGeneratorWindow();
+                        }
                     }
                     EditorGUILayout.Space(2);
                 }
@@ -464,6 +497,74 @@ namespace SBGames.Editor.Creator.Tabs
                 if (controller != null) animatorController = controller;
                 if (defaultSpr != null && sprite == null) sprite = defaultSpr;
             });
+        }
+
+        private void OpenMultiSheetAnimationGeneratorWindow()
+        {
+            string folder = GetDefaultAnimatorFolder();
+            string cleanId = string.IsNullOrWhiteSpace(characterId) ? "Character" : characterId.Trim();
+            string srcFolder = !string.IsNullOrEmpty(multiSheetFolderPath)
+                ? multiSheetFolderPath
+                : (multiSheetFolderAsset != null ? AssetDatabase.GetAssetPath(multiSheetFolderAsset) : "");
+
+            SpriteAnimationGeneratorWindow.OpenWithMultiSheetContext(srcFolder, folder, cleanId, (controller, defaultSpr) =>
+            {
+                if (controller != null) animatorController = controller;
+                if (defaultSpr != null && sprite == null) sprite = defaultSpr;
+            });
+        }
+
+        private void QuickGenerateMultiSheetAnimations()
+        {
+            string srcFolder = !string.IsNullOrEmpty(multiSheetFolderPath)
+                ? multiSheetFolderPath
+                : (multiSheetFolderAsset != null ? AssetDatabase.GetAssetPath(multiSheetFolderAsset) : "");
+
+            if (string.IsNullOrWhiteSpace(srcFolder) || !Directory.Exists(srcFolder))
+            {
+                EditorUtility.DisplayDialog("Notice", "Please assign a valid Character Sheet Folder before generating.", "OK");
+                return;
+            }
+
+            var actions = SpriteAnimationBuilder.AutoMatchMultiSheetActionsFromFolder(srcFolder);
+            int active = actions.Count(a => a != null && a.sourceTexture != null);
+            if (active == 0)
+            {
+                EditorUtility.DisplayDialog("Notice", $"No sprite sheets found in '{srcFolder}'.", "OK");
+                return;
+            }
+
+            string targetFolder = GetDefaultAnimatorFolder();
+            string cleanId = string.IsNullOrWhiteSpace(characterId) ? Path.GetFileName(srcFolder.TrimEnd('/', '\\')) : characterId.Trim();
+
+            var settings = new MultiSheetGenerationSettings
+            {
+                baseName = cleanId,
+                outputFolderPath = targetFolder,
+                sortMode = SpriteSortMode.NaturalNumericName,
+                generateAnimatorController = true,
+                includeStandardParameters = true,
+                actions = actions
+            };
+
+            var res = SpriteAnimationBuilder.GenerateFromMultiSheetSettings(settings);
+            if (res.Success)
+            {
+                if (res.CreatedController != null) animatorController = res.CreatedController;
+                var idleAction = actions.FirstOrDefault(a => a != null && a.sourceTexture != null && a.actionName.Equals("Idle", StringComparison.OrdinalIgnoreCase))
+                                 ?? actions.FirstOrDefault(a => a != null && a.sourceTexture != null);
+                if (idleAction != null && idleAction.sourceTexture != null)
+                {
+                    var sprList = SpriteAnimationBuilder.ExtractSprites(idleAction.sourceTexture);
+                    if (sprList.Length > 0) sprite = sprList[0];
+                }
+
+                EditorUtility.DisplayDialog("Success", $"Multi-Sheet clips and controller for '{cleanId}' successfully generated!\n\nDestination: {targetFolder}", "Great!");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Failed", $"Multi-sheet animation generation failed:\n{res.Message}", "OK");
+            }
         }
 
         private void QuickGenerateAnimations()
@@ -796,13 +897,13 @@ namespace SBGames.Editor.Creator.Tabs
                 agent.stoppingDistance = 0f;
                 agent.areaMask = 9;
 
-                var brain = rootGo.AddComponent<CharacterBrain>();
-                var movement = rootGo.AddComponent<CharacterMovementController>();
-                var statsManager = rootGo.AddComponent<CharacterStatsManager>();
-                var combatController = rootGo.AddComponent<CharacterCombatController>();
-                var identifier = rootGo.AddComponent<CharacterIdentifier>();
-                var inventoryManager = rootGo.AddComponent<CharacterInventoryManager>();
-                var combatPower = rootGo.AddComponent<CharacterCombatPower>();
+                var brain = CreatorEditorUtils.GetOrAddComponent<CharacterBrain>(rootGo);
+                var movement = CreatorEditorUtils.GetOrAddComponent<CharacterMovementController>(rootGo);
+                var statsManager = CreatorEditorUtils.GetOrAddComponent<CharacterStatsManager>(rootGo);
+                var combatController = CreatorEditorUtils.GetOrAddComponent<CharacterCombatController>(rootGo);
+                var identifier = CreatorEditorUtils.GetOrAddComponent<CharacterIdentifier>(rootGo);
+                var inventoryManager = CreatorEditorUtils.GetOrAddComponent<CharacterInventoryManager>(rootGo);
+                var combatPower = CreatorEditorUtils.GetOrAddComponent<CharacterCombatPower>(rootGo);
 
                 var factionMember = rootGo.AddComponent<FactionMember>();
                 factionMember.Faction = (rootTag == "Adventurer") ? FactionId.Adventurer : FactionId.Monster;
@@ -829,20 +930,20 @@ namespace SBGames.Editor.Creator.Tabs
                 modelGo.transform.SetParent(rootGo.transform, false);
                 modelGo.transform.localScale = modelScale;
 
-                var spriteRenderer = modelGo.AddComponent<SpriteRenderer>();
+                var spriteRenderer = CreatorEditorUtils.GetOrAddComponent<SpriteRenderer>(modelGo);
                 spriteRenderer.sprite = sprite;
                 spriteRenderer.sortingLayerName = sortingLayerName;
                 spriteRenderer.sortingOrder = sortingOrder;
 
-                var animator = modelGo.AddComponent<Animator>();
+                var animator = CreatorEditorUtils.GetOrAddComponent<Animator>(modelGo);
                 animator.runtimeAnimatorController = animatorController;
 
-                var animController = modelGo.AddComponent<AnimationController>();
-                var flipRotator = modelGo.AddComponent<CharacterFlipRotator>();
+                var animController = CreatorEditorUtils.GetOrAddComponent<AnimationController>(modelGo);
+                var flipRotator = CreatorEditorUtils.GetOrAddComponent<CharacterFlipRotator>(modelGo);
                 flipRotator.flipAxis = CharacterFlipRotator.Axis.X;
                 CreatorEditorUtils.SetPrivateField(flipRotator, "rootTransform", rootGo.transform);
 
-                var animEventController = modelGo.AddComponent<AnimationEventController>();
+                var animEventController = CreatorEditorUtils.GetOrAddComponent<AnimationEventController>(modelGo);
 
                 GameObject modelHelperGo = new("Helper");
                 modelHelperGo.transform.SetParent(modelGo.transform, false);

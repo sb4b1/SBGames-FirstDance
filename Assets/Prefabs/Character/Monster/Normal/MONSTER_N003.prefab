@@ -167,7 +167,6 @@ GameObject:
   - component: {fileID: 8339491938592397688}
   - component: {fileID: 4024736357556360450}
   - component: {fileID: 555119115862058802}
-  - component: {fileID: 7937316535031434390}
   - component: {fileID: 1918469645756736684}
   m_Layer: 0
   m_Name: Model
@@ -286,7 +285,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b78f1274a2dd444b9f0d8d8d60ddde3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterFlipRotator
-  rootTransform: {fileID: 0}
+  rootTransform: {fileID: 7307020734529590702}
   flipAxis: 0
 --- !u!114 &555119115862058802
 MonoBehaviour:
@@ -308,21 +307,7 @@ MonoBehaviour:
   brain: {fileID: 294176980211858860}
   movement: {fileID: 4889065764222191240}
   agent: {fileID: 2059854448880059692}
-  flipRotator: {fileID: 7937316535031434390}
---- !u!114 &7937316535031434390
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2027442311526106885}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b78f1274a2dd444b9f0d8d8d60ddde3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterFlipRotator
-  rootTransform: {fileID: 7307020734529590702}
-  flipAxis: 0
+  flipRotator: {fileID: 0}
 --- !u!114 &1918469645756736684
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -937,7 +922,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.12579177, y: 0.12579177, z: 0.12579177}
+  m_LocalScale: {x: -0.12495, y: 0.12495, z: 0.12495}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 302751202925550473}

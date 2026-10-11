@@ -124,6 +124,13 @@ namespace SBGames.Editor.Creator
             }
         }
 
+        public static T GetOrAddComponent<T>(GameObject go) where T : Component
+        {
+            if (go == null) return null;
+            var comp = go.GetComponent<T>();
+            return comp != null ? comp : go.AddComponent<T>();
+        }
+
         public static void EnsureFolderExists(string folderPath)
         {
             if (string.IsNullOrWhiteSpace(folderPath)) return;

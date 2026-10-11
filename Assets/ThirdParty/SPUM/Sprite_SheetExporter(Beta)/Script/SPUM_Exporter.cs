@@ -315,12 +315,12 @@ public class SPUM_Exporter : MonoBehaviour
 				tName = _imageName+ "_"+stateName +"_Full";
 			}
 
-			if(!Directory.Exists("Assets/SPUM/ScreenShots/"))
+			if(!Directory.Exists("Assets/Resources/SPUM/"))
 			{
-				Directory.CreateDirectory("Assets/SPUM/ScreenShots/");
+				Directory.CreateDirectory("Assets/Resources/SPUM/");
 			}
 
-			string filename = string.Format("{0}/SPUM/ScreenShots/{1}_{2}.png", Application.dataPath,tName,i);
+			string filename = string.Format("{0}/Resources/SPUM/{1}_{2}.png", Application.dataPath,tName,i);
 			System.IO.File.WriteAllBytes(filename, bytes);
 			Debug.Log(@"<a href=\file:///"+filename+">"+filename+"</a>");
 			UnityEditor.AssetDatabase.Refresh();

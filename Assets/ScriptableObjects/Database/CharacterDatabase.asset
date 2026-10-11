@@ -104,3 +104,16 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: ADVENTURER_N001
+    characterName: ADVENTURER_N001
+    prefab: {fileID: 3783388728839249596, guid: 37bde6b01f420c8418bc8150418ef165, type: 3}
+    baseStats: {fileID: 11400000, guid: a330ce9e361b93c42b47443dae7fb623, type: 2}
+    defaultSkillIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

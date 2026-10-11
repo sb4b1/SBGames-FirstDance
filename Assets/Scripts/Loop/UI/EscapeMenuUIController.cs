@@ -53,6 +53,8 @@ namespace SBGames.Loop.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrapInScene()
         {
+            if (SBGames.Testing.CombatTestEnvironmentBootstrap.ShouldBypassMetaAutoBootstrap()) return;
+
             // Auto-bootstrap ensures that hitting Play in ANY scene immediately enables the loop & menu
             var existingMenu = FindAnyObjectByType<EscapeMenuUIController>();
             if (existingMenu != null) return;

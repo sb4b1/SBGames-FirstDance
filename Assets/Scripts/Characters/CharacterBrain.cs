@@ -71,7 +71,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         {
             bool activeAI = aiAugment.activeSelf;
             AIActivation(true);
-            DelayAction(0.1f, () => AIActivation(activeAI));
+            DelayAction(0.1f, () => AIActivation(controlMode == ControlMode.AI ? true : activeAI));
         }
     }
 
@@ -431,18 +431,28 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
 
 
+    /// <summary>
+    /// Sets the runtime control mode and activates or deactivates the AI augment accordingly.
+    /// </summary>
+    public void SetControlMode(ControlMode mode)
+    {
+        controlMode = mode;
+        if (aiAugment != null)
+        {
+            AIActivation(mode == ControlMode.AI);
+        }
+    }
+
 #if UNITY_EDITOR
 
     public void PlayerControl()
     {
-        controlMode = ControlMode.Player;
-        if (aiAugment != null) AIActivation(false);
+        SetControlMode(ControlMode.Player);
     }
 
     public void AgentControl()
     {
-        controlMode = ControlMode.AI;
-        if (aiAugment != null) AIActivation(true);
+        SetControlMode(ControlMode.AI);
     }
 
     public void ToggleAI()

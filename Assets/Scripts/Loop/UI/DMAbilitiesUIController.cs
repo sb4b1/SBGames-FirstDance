@@ -56,6 +56,8 @@ namespace SBGames.Loop.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoBootstrapInScene()
         {
+            if (SBGames.Testing.CombatTestEnvironmentBootstrap.ShouldBypassMetaAutoBootstrap()) return;
+
             var existing = FindAnyObjectByType<DMAbilitiesUIController>();
             if (existing != null) return;
 

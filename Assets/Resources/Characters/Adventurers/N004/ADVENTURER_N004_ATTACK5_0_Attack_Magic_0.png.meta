@@ -1,0 +1,275 @@
+fileFormatVersion: 2
+guid: 18bfef79a5ecaed4eaa1a0b8490cb6e1
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3748591889317479327
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_0
+  - first:
+      213: -870734970179925606
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_1
+  - first:
+      213: -6305279874107287737
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_2
+  - first:
+      213: -4691547894081224710
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_3
+  - first:
+      213: 2117569513408089643
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_4
+  - first:
+      213: -9057872387353765828
+    second: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_5
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationMethod: 0
+  spriteTessellationDetail: -1
+  spriteGeometrySubdivision: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_0
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 1864
+        width: 109
+        height: 112
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16c325d99835afbc0800000000000000
+      internalID: -3748591889317479327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_1
+      rect:
+        serializedVersion: 2
+        x: 330
+        y: 1864
+        width: 107
+        height: 118
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a994ae078278ae3f0800000000000000
+      internalID: -870734970179925606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_2
+      rect:
+        serializedVersion: 2
+        x: 604
+        y: 1864
+        width: 107
+        height: 118
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7475a6e7c552f78a0800000000000000
+      internalID: -6305279874107287737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_3
+      rect:
+        serializedVersion: 2
+        x: 858
+        y: 1864
+        width: 108
+        height: 119
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aff7e861c0644eeb0800000000000000
+      internalID: -4691547894081224710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_4
+      rect:
+        serializedVersion: 2
+        x: 1078
+        y: 1864
+        width: 119
+        height: 113
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2ec2e9c04e136d10800000000000000
+      internalID: 2117569513408089643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_5
+      rect:
+        serializedVersion: 2
+        x: 1336
+        y: 1864
+        width: 117
+        height: 114
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3895faed09fb4280800000000000000
+      internalID: -9057872387353765828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_0: -3748591889317479327
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_1: -870734970179925606
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_2: -6305279874107287737
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_3: -4691547894081224710
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_4: 2117569513408089643
+      ADVENTURER_N004_ATTACK5_0_Attack_Magic_0_5: -9057872387353765828
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
