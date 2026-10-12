@@ -1,9 +1,39 @@
 using System.Collections.Generic;
+using SB4b1.Logging;
+using SB4b1.Utils;
+using SBGames.Personality;
 using UnityEngine;
+
+public enum CheckpointDecision
+{
+    Advance = 0,
+    Recover = 1,
+    Regroup = 2,
+    Retreat = 3
+}
+
+public enum CheckpointReason
+{
+    None = 0,
+    FavorableMargin = 1,
+    NeedsRecoveryBeforeAdvance = 2,
+    PartyScattered = 3,
+    SafetyMarginNotMet = 4,
+    KeyRoleLost = 5,
+    RetreatBlockedFallback = 6
+}
 
 [DisallowMultipleComponent]
 public class PartyLeader : MonoBehaviour
 {
+    private static readonly SquadOrderType[] DecisionToOrderTable = new SquadOrderType[]
+    {
+        SquadOrderType.FollowLeader, // Advance (0) -> upgraded to ScoutAhead if CanScout
+        SquadOrderType.Recover,      // Recover (1) -> maps to SquadOrderType.Recover
+        SquadOrderType.Standby,      // Regroup (2) -> maps to Standby
+        SquadOrderType.FallBack      // Retreat (3) -> maps to FallBack
+    };
+
     [Header("Squad Configuration")]
     [SerializeField] private bool allowSuccession = true;
     [SerializeField] private float leashDistance = 8f;
@@ -14,6 +44,11 @@ public class PartyLeader : MonoBehaviour
     [SerializeField] private FunctionFormationSlot[] formationSlots = SquadFormationConfigSO.CreateDefaultSlotsArray();
     [SerializeField] private Vector3 marchingForward = Vector3.up;
 
+    [Header("Checkpoint & Succession (Phase 4)")]
+    [SerializeField] private LeaderCheckpointTuningSO checkpointTuning;
+    [SerializeField] private StandInPartyRewardProvider standInRewardProvider = new();
+    [SerializeField, Min(0)] private int recoveryItemsRemaining = 1;
+
     [Header("Runtime State")]
     [SerializeField] private SquadBlackboard blackboard = new();
     [SerializeField] private List<SquadMember> members = new(8);
@@ -23,6 +58,14 @@ public class PartyLeader : MonoBehaviour
     private SquadMember activeScout;
     private SquadMember scoutMember;
     private Coroutine scoutPanicCoroutine;
+    private Coroutine successionCoroutine;
+    private IPartyRewardProvider customRewardProvider;
+    private bool hadTankInParty;
+    private bool hadHealerInParty;
+    private bool hasActiveCheckpointOrder;
+    private bool isLeaderDeathSubscribed;
+    private bool isSuccessionPending;
+    private PartyLeader lastPromotedLeader;
 
     public SquadBlackboard Blackboard => blackboard;
     public List<SquadMember> Members => members;
@@ -31,6 +74,63 @@ public class PartyLeader : MonoBehaviour
     public bool IsAlive => statsManager == null || statsManager.Life > 0;
     public SquadMember ActiveScout => activeScout;
     public SquadFormationConfigSO FormationConfig { get => formationConfig; set => formationConfig = value; }
+    public LeaderCheckpointTuningSO CheckpointTuning { get => checkpointTuning; set => checkpointTuning = value; }
+    public IPartyRewardProvider RewardProvider
+    {
+        get => customRewardProvider ?? standInRewardProvider;
+        set => customRewardProvider = value;
+    }
+    public StandInPartyRewardProvider StandInRewardProvider => standInRewardProvider;
+    public int RecoveryItemsRemaining
+    {
+        get => recoveryItemsRemaining;
+        set => recoveryItemsRemaining = Mathf.Max(0, value);
+    }
+    public bool RetreatBlocked
+    {
+        get => blackboard != null && blackboard.RetreatBlocked;
+        set
+        {
+            if (blackboard != null)
+            {
+                blackboard.RetreatBlocked = value;
+            }
+        }
+    }
+    public bool HasActiveCheckpointOrder
+    {
+        get => hasActiveCheckpointOrder;
+        set => hasActiveCheckpointOrder = value;
+    }
+    public CheckpointDecision LastCheckpointDecision { get; private set; } = CheckpointDecision.Advance;
+    public CheckpointReason LastCheckpointReason { get; private set; } = CheckpointReason.None;
+    public bool IsSuccessionPending => isSuccessionPending || successionCoroutine != null;
+    public PartyLeader LastPromotedLeader => lastPromotedLeader;
+
+    public AdventurerAIProfile LeaderProfile
+    {
+        get
+        {
+            if (leaderBaseAI == null)
+            {
+                leaderBaseAI = GetComponentInChildren<BaseAI>();
+            }
+            return leaderBaseAI != null ? leaderBaseAI.AdventurerProfile : null;
+        }
+    }
+
+    public AdventurerFunction EffectiveLeaderFunction
+    {
+        get
+        {
+            if (statsManager == null)
+            {
+                statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+            }
+            return statsManager != null ? statsManager.EffectiveFunction : AdventurerFunction.DPS;
+        }
+    }
+
     public Vector3 MarchingForward
     {
         get => marchingForward.sqrMagnitude > 0.001f ? marchingForward.normalized : transform.up;
@@ -63,31 +163,30 @@ public class PartyLeader : MonoBehaviour
     public event System.Action<SquadMember> OnScoutDispatched;
     public event System.Action<SquadMember> OnScoutDebriefed;
     public event System.Action<SquadMember> OnScoutEliminated;
+    public event System.Action<PartyLeader> OnLeaderDied;
+    public event System.Action<PartyLeader, PartyLeader> OnLeaderChanged;
+    public event System.Action<CheckpointDecision, CheckpointReason> OnCheckpointDecision;
 
     private void Awake()
     {
-        blackboard.LeaderTransform = transform;
-        statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
-        leaderBaseAI = GetComponentInChildren<BaseAI>();
         if (formationSlots == null || formationSlots.Length == 0)
         {
             formationSlots = SquadFormationConfigSO.CreateDefaultSlotsArray();
         }
+        EnsureInitialized();
     }
 
     private void OnEnable()
     {
-        if (statsManager != null)
-        {
-            statsManager.OnCharacterDeath += HandleLeaderDeath;
-        }
+        EnsureInitialized();
     }
 
     private void OnDisable()
     {
-        if (statsManager != null)
+        if (statsManager != null && isLeaderDeathSubscribed)
         {
             statsManager.OnCharacterDeath -= HandleLeaderDeath;
+            isLeaderDeathSubscribed = false;
         }
     }
 
@@ -96,8 +195,38 @@ public class PartyLeader : MonoBehaviour
         DisbandSquad();
     }
 
+    private void EnsureInitialized()
+    {
+        if (blackboard.LeaderTransform == null)
+        {
+            blackboard.LeaderTransform = transform;
+        }
+        if (statsManager == null)
+        {
+            statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+        }
+        if (leaderBaseAI == null)
+        {
+            leaderBaseAI = GetComponentInChildren<BaseAI>();
+        }
+        if (statsManager != null && !isLeaderDeathSubscribed)
+        {
+            statsManager.OnCharacterDeath -= HandleLeaderDeath;
+            statsManager.OnCharacterDeath += HandleLeaderDeath;
+            isLeaderDeathSubscribed = true;
+        }
+        RecordRoleIfKey(EffectiveLeaderFunction);
+    }
+
+    public void RecordRoleIfKey(AdventurerFunction function)
+    {
+        if (function == AdventurerFunction.Tank) hadTankInParty = true;
+        if (function == AdventurerFunction.Healer) hadHealerInParty = true;
+    }
+
     public void RegisterMember(SquadMember member)
     {
+        EnsureInitialized();
         if (member == null || members.Contains(member)) return;
         if (member.Leader != null && member.Leader != this)
         {
@@ -111,6 +240,8 @@ public class PartyLeader : MonoBehaviour
             member.StatsManager.OnCharacterDeath += HandleMemberDeath;
         }
 
+        RecordRoleIfKey(member.EffectiveFunction);
+        RecordRoleIfKey(EffectiveLeaderFunction);
         RefreshScoutMember();
     }
 
@@ -309,6 +440,7 @@ public class PartyLeader : MonoBehaviour
         var member = memberStats.GetComponent<SquadMember>() ?? memberStats.GetComponentInChildren<SquadMember>();
         if (member == null) return;
 
+        RecordRoleIfKey(member.EffectiveFunction);
         RefreshScoutMember();
 
         // Check if the dying member is the active scout
@@ -377,6 +509,7 @@ public class PartyLeader : MonoBehaviour
             ClearOrder();
             return;
         }
+        hasActiveCheckpointOrder = false;
         blackboard.SetOrder(SquadOrderType.FocusFire, target);
     }
 
@@ -396,13 +529,201 @@ public class PartyLeader : MonoBehaviour
         blackboard.SetOrder(SquadOrderType.Standby, null, transform.position);
     }
 
+    public void OrderRecover()
+    {
+        blackboard.SetOrder(SquadOrderType.Recover, null, transform.position);
+    }
+
     public void ClearOrder()
     {
+        hasActiveCheckpointOrder = false;
         blackboard.ClearOrder();
+    }
+
+    /// <summary>
+    /// Sums the real remaining item counts across the leader's and living members' <see cref="AdventurerItemKitController"/>s.
+    /// Zero allocations.
+    /// </summary>
+    public int GetPartyRemainingItemCount()
+    {
+        return GetPartyRemainingItemCount(out _, out _);
+    }
+
+    /// <summary>
+    /// Sums the real remaining item counts across the party's <see cref="AdventurerItemKitController"/>s,
+    /// outputting whether any member has a kit controller attached and whether any member can still recover with their kit.
+    /// Zero allocations.
+    /// </summary>
+    public int GetPartyRemainingItemCount(out bool anyKitAttached, out bool anyMemberCanRecoverWithKit)
+    {
+        anyKitAttached = false;
+        anyMemberCanRecoverWithKit = false;
+        int totalRemaining = 0;
+
+        if (IsAlive)
+        {
+            var leaderKit = GetComponent<AdventurerItemKitController>() ?? GetComponentInChildren<AdventurerItemKitController>();
+            if (leaderKit != null)
+            {
+                anyKitAttached = true;
+                totalRemaining += leaderKit.TotalRemainingCount;
+                if (CanMemberStillRecoverWithKit(gameObject, statsManager, leaderBaseAI, leaderKit))
+                {
+                    anyMemberCanRecoverWithKit = true;
+                }
+            }
+        }
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m == null || !m.IsAlive) continue;
+
+            var mKit = m.GetComponent<AdventurerItemKitController>() ?? m.GetComponentInChildren<AdventurerItemKitController>();
+            if (mKit != null)
+            {
+                anyKitAttached = true;
+                totalRemaining += mKit.TotalRemainingCount;
+                if (CanMemberStillRecoverWithKit(m.gameObject, m.StatsManager, m.BaseAI, mKit))
+                {
+                    anyMemberCanRecoverWithKit = true;
+                }
+            }
+        }
+
+        return totalRemaining;
+    }
+
+    /// <summary>
+    /// Returns true when all living party members have either reached their squad recovery target HP/Mana
+    /// or have no remaining applicable recovery items/casts in progress.
+    /// Zero allocations.
+    /// </summary>
+    public bool IsPartyRecoveryComplete()
+    {
+        if (IsAlive)
+        {
+            var leaderKit = GetComponent<AdventurerItemKitController>() ?? GetComponentInChildren<AdventurerItemKitController>();
+            if (leaderKit != null)
+            {
+                if (leaderKit.IsCastingItem || CanMemberStillRecoverWithKit(gameObject, statsManager, leaderBaseAI, leaderKit))
+                {
+                    return false;
+                }
+            }
+        }
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m == null || !m.IsAlive) continue;
+
+            var mKit = m.GetComponent<AdventurerItemKitController>() ?? m.GetComponentInChildren<AdventurerItemKitController>();
+            if (mKit != null)
+            {
+                if (mKit.IsCastingItem || CanMemberStillRecoverWithKit(m.gameObject, m.StatsManager, m.BaseAI, mKit))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// If the current squad order is <see cref="SquadOrderType.Recover"/> and all living members have finished recovering
+    /// (reached target HP/Mana or exhausted usable items), re-runs <see cref="RequestCheckpoint()"/> and returns true.
+    /// </summary>
+    public bool CheckAndCompleteRecoverOrder()
+    {
+        if (blackboard == null || blackboard.CurrentOrder != SquadOrderType.Recover)
+        {
+            return false;
+        }
+
+        if (!IsPartyRecoveryComplete())
+        {
+            return false;
+        }
+
+        RequestCheckpoint();
+        return true;
+    }
+
+    private static bool CanMemberStillRecoverWithKit(
+        GameObject memberObj,
+        CharacterStatsManager memberStats,
+        BaseAI memberAI,
+        AdventurerItemKitController kit)
+    {
+        if (kit == null || kit.TotalRemainingCount <= 0) return false;
+        if (memberStats != null && memberStats.Life <= 0f) return false;
+
+        float targetHp = 0.85f;
+        float targetMana = 0.75f;
+        int quota = -1;
+
+        if (memberAI != null)
+        {
+            var tuning = memberAI.ItemUseQualityTuning != null ? memberAI.ItemUseQualityTuning : kit.QualityTuning;
+            ItemUseQualityTuningEntry entry = ItemUseQualityTuningSO.GetEntryOrDefault(tuning, memberAI.ItemUseQuality);
+            quota = entry.PerRoomItemQuota;
+            if (tuning != null)
+            {
+                targetHp = Mathf.Max(entry.HpTriggerFraction, tuning.SquadRecoverTargetHpFraction);
+                targetMana = Mathf.Max(entry.ManaTriggerFraction, tuning.SquadRecoverTargetManaFraction);
+            }
+            else
+            {
+                targetHp = Mathf.Max(entry.HpTriggerFraction, 0.85f);
+                targetMana = Mathf.Max(entry.ManaTriggerFraction, 0.75f);
+            }
+        }
+
+        if (quota >= 0 && kit.ItemsUsedInCurrentRoom >= quota)
+        {
+            return false;
+        }
+
+        if (memberStats != null && memberStats.MaxLife != null && memberStats.MaxLife.Value > 0f)
+        {
+            float hpFrac = memberStats.Life / memberStats.MaxLife.Value;
+            if (hpFrac < targetHp && kit.GetRemainingCount(ConsumableItemCategory.HealthPotion) > 0)
+            {
+                return true;
+            }
+        }
+
+        if (memberObj != null)
+        {
+            var statusMgr = memberObj.GetComponent<StatusEffectManager>() ?? memberObj.GetComponentInChildren<StatusEffectManager>();
+            if (statusMgr != null && statusMgr.HasHarmfulEffect() && kit.GetRemainingCount(ConsumableItemCategory.StatusCure) > 0)
+            {
+                return true;
+            }
+        }
+
+        if (memberStats != null && memberStats.MaxMana != null && memberStats.MaxMana.Value > 0f)
+        {
+            float manaFrac = memberStats.Mana / memberStats.MaxMana.Value;
+            if (manaFrac < targetMana && kit.GetRemainingCount(ConsumableItemCategory.ManaPotion) > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void DisbandSquad()
     {
+        if (successionCoroutine != null)
+        {
+            StopCoroutine(successionCoroutine);
+            successionCoroutine = null;
+        }
+
         for (int i = members.Count - 1; i >= 0; i--)
         {
             var m = members[i];
@@ -413,41 +734,503 @@ public class PartyLeader : MonoBehaviour
         }
         members.Clear();
         scoutMember = null;
+        hasActiveCheckpointOrder = false;
         blackboard.ClearOrder();
     }
 
-    private void HandleLeaderDeath(CharacterStatsManager stats)
+    /// <summary>
+    /// Evaluates party condition and reward/risk tradeoff at a checkpoint, emits <see cref="OnCheckpointDecision"/>,
+    /// maps the decision to <see cref="SquadOrderType"/>, and logs the decision and reason via <see cref="ELogger"/>.
+    /// Zero heap allocations in the decision path.
+    /// </summary>
+    public CheckpointDecision RequestCheckpoint()
     {
-        if (allowSuccession)
+        return RequestCheckpoint(out _);
+    }
+
+    /// <summary>
+    /// Evaluates party condition and reward/risk tradeoff at a checkpoint, returning the decision and reason code.
+    /// </summary>
+    public CheckpointDecision RequestCheckpoint(out CheckpointReason reason)
+    {
+        float hpWeight = checkpointTuning != null ? checkpointTuning.HpConditionWeight : 0.65f;
+        float manaWeight = checkpointTuning != null ? checkpointTuning.ManaConditionWeight : 0.15f;
+        float survivalWeight = checkpointTuning != null ? checkpointTuning.SurvivalRatioWeight : 0.20f;
+        float recoveryThreshold = checkpointTuning != null ? checkpointTuning.RecoveryHpThreshold : 0.65f;
+        float healerMinMana = checkpointTuning != null ? checkpointTuning.HealerMinManaFraction : 0.25f;
+
+        int livingCount = 0;
+        int totalTrackedCount = 0;
+        float sumHpFrac = 0f;
+        float sumManaFrac = 0f;
+        float minHpFrac = 1f;
+        bool anyMemberScattered = false;
+        bool hasLivingHealerWithMana = false;
+        bool hasLivingTank = false;
+        bool hasLivingHealer = false;
+        bool hasDeadTank = false;
+        bool hasDeadHealer = false;
+
+        float sqrLeash = leashDistance * leashDistance;
+        Vector3 leaderPos = transform.position;
+
+        if (statsManager == null)
         {
-            // Find first living successor
-            SquadMember successor = null;
-            for (int i = 0; i < members.Count; i++)
+            statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+        }
+
+        AdventurerFunction leaderFn = EffectiveLeaderFunction;
+        RecordRoleIfKey(leaderFn);
+
+        if (IsAlive)
+        {
+            totalTrackedCount++;
+            livingCount++;
+            float lHp = GetNormalizedLife(statsManager);
+            float lMana = GetNormalizedMana(statsManager);
+            sumHpFrac += lHp;
+            sumManaFrac += lMana;
+            if (lHp < minHpFrac) minHpFrac = lHp;
+
+            if (leaderFn == AdventurerFunction.Tank) hasLivingTank = true;
+            if (leaderFn == AdventurerFunction.Healer)
             {
-                var candidate = members[i];
-                if (candidate != null && candidate.IsAlive && candidate.gameObject != gameObject)
-                {
-                    successor = candidate;
-                    break;
-                }
+                hasLivingHealer = true;
+                if (lMana >= healerMinMana) hasLivingHealerWithMana = true;
+            }
+        }
+        else
+        {
+            totalTrackedCount++;
+            if (leaderFn == AdventurerFunction.Tank) hasDeadTank = true;
+            if (leaderFn == AdventurerFunction.Healer) hasDeadHealer = true;
+        }
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m == null) continue;
+
+            totalTrackedCount++;
+            AdventurerFunction mFn = m.EffectiveFunction;
+            RecordRoleIfKey(mFn);
+
+            if (!m.IsAlive)
+            {
+                if (mFn == AdventurerFunction.Tank) hasDeadTank = true;
+                if (mFn == AdventurerFunction.Healer) hasDeadHealer = true;
+                continue;
             }
 
-            if (successor != null)
+            livingCount++;
+            float mHp = GetNormalizedLife(m.StatsManager);
+            float mMana = GetNormalizedMana(m.StatsManager);
+            sumHpFrac += mHp;
+            sumManaFrac += mMana;
+            if (mHp < minHpFrac) minHpFrac = mHp;
+
+            if (mFn == AdventurerFunction.Tank) hasLivingTank = true;
+            if (mFn == AdventurerFunction.Healer)
             {
-                PromoteToLeader(successor);
+                hasLivingHealer = true;
+                if (mMana >= healerMinMana) hasLivingHealerWithMana = true;
+            }
+
+            if ((m.transform.position - leaderPos).sqrMagnitude > sqrLeash)
+            {
+                anyMemberScattered = true;
+            }
+        }
+
+        float avgHp = livingCount > 0 ? (sumHpFrac / livingCount) : 0f;
+        float avgMana = livingCount > 0 ? (sumManaFrac / livingCount) : 0f;
+        float survivalRatio = totalTrackedCount > 0 ? ((float)livingCount / totalTrackedCount) : 1f;
+        float weightSum = Mathf.Max(0.001f, hpWeight + manaWeight + survivalWeight);
+        float trueCondition = Mathf.Clamp01((avgHp * hpWeight + avgMana * manaWeight + survivalRatio * survivalWeight) / weightSum);
+
+        var profile = LeaderProfile;
+        LeaderAssessmentAccuracy accuracy = profile != null ? profile.LeaderAssessmentAccuracy : LeaderAssessmentAccuracy.NearTrue;
+        LeaderSafetyMargin safetyMarginEnum = profile != null ? profile.LeaderSafetyMargin : LeaderSafetyMargin.Medium;
+        float rewardWeight = profile != null ? profile.RewardWeight : 1.0f;
+
+        AccuracyTuningEntry accEntry = LeaderCheckpointTuningSO.GetAccuracyTuningOrDefault(checkpointTuning, accuracy);
+        float noise = accEntry.NoiseAmplitude > 0f ? RandomUtil.Range(-accEntry.NoiseAmplitude, accEntry.NoiseAmplitude) : 0f;
+        float perceivedSuccessChance = Mathf.Clamp01(trueCondition + accEntry.OptimismBias + noise);
+        float failureChance = 1f - perceivedSuccessChance;
+
+        var provider = RewardProvider;
+        float carriedValue = provider != null ? Mathf.Max(0f, provider.GetPartyCarriedValue(this)) : 0f;
+        float knownPotential = provider != null ? Mathf.Max(0f, provider.GetKnownPotentialAhead(this)) : 0f;
+        float unknownExpectation = provider != null ? Mathf.Max(0f, provider.GetUnknownExpectationPerRoom(this)) : 0f;
+        float totalPotentialAhead = knownPotential + unknownExpectation;
+
+        float advanceValue = perceivedSuccessChance * totalPotentialAhead * rewardWeight;
+        float expectedDeathLoss = carriedValue * failureChance;
+        float totalStake = Mathf.Max(1f, carriedValue + totalPotentialAhead);
+        float netNormalizedAdvantage = (advanceValue - expectedDeathLoss) / totalStake;
+
+        float requiredMargin = LeaderCheckpointTuningSO.GetRequiredSafetyMarginOrDefault(checkpointTuning, safetyMarginEnum);
+        bool marginMet = netNormalizedAdvantage >= requiredMargin;
+
+        bool tankLostNoReplacement = (hadTankInParty || hasDeadTank) && !hasLivingTank;
+        bool healerLostNoReplacement = (hadHealerInParty || hasDeadHealer) && !hasLivingHealer;
+        bool keyRoleLost = tankLostNoReplacement || healerLostNoReplacement;
+
+        int realKitItems = GetPartyRemainingItemCount(out bool anyKitAttached, out bool anyMemberCanRecoverWithKit);
+        bool hasKitRecoveryMeans = anyKitAttached ? (realKitItems > 0 && anyMemberCanRecoverWithKit) : (recoveryItemsRemaining > 0);
+
+        bool needsRecovery = avgHp < recoveryThreshold || minHpFrac < (recoveryThreshold * 0.85f) || (anyKitAttached && anyMemberCanRecoverWithKit && avgHp < 0.85f);
+        bool hasRecoveryMeans = hasKitRecoveryMeans || hasLivingHealerWithMana;
+
+        CheckpointDecision decision;
+        if (keyRoleLost || !marginMet)
+        {
+            if (!RetreatBlocked)
+            {
+                decision = CheckpointDecision.Retreat;
+                reason = keyRoleLost ? CheckpointReason.KeyRoleLost : CheckpointReason.SafetyMarginNotMet;
+            }
+            else
+            {
+                reason = CheckpointReason.RetreatBlockedFallback;
+                if (anyMemberScattered)
+                {
+                    decision = CheckpointDecision.Regroup;
+                }
+                else if (needsRecovery && hasRecoveryMeans)
+                {
+                    decision = CheckpointDecision.Recover;
+                }
+                else
+                {
+                    decision = CheckpointDecision.Advance;
+                }
+            }
+        }
+        else
+        {
+            if (anyMemberScattered)
+            {
+                decision = CheckpointDecision.Regroup;
+                reason = CheckpointReason.PartyScattered;
+            }
+            else if (needsRecovery && hasRecoveryMeans)
+            {
+                decision = CheckpointDecision.Recover;
+                reason = CheckpointReason.NeedsRecoveryBeforeAdvance;
+            }
+            else
+            {
+                decision = CheckpointDecision.Advance;
+                reason = CheckpointReason.FavorableMargin;
+            }
+        }
+
+        ApplyCheckpointOrder(decision);
+        LastCheckpointDecision = decision;
+        LastCheckpointReason = reason;
+        hasActiveCheckpointOrder = true;
+
+        ELogger.Log("Checkpoint", this, LastCheckpointReason);
+        OnCheckpointDecision?.Invoke(decision, reason);
+        return decision;
+    }
+
+    private void ApplyCheckpointOrder(CheckpointDecision decision)
+    {
+        int index = Mathf.Clamp((int)decision, 0, DecisionToOrderTable.Length - 1);
+        SquadOrderType mappedOrder = DecisionToOrderTable[index];
+
+        if (decision == CheckpointDecision.Advance && CanScout)
+        {
+            var scout = ScoutMember;
+            if (scout != null)
+            {
+                activeScout = scout;
+                scout.IsScouting = true;
+                blackboard.SetOrder(SquadOrderType.ScoutAhead, null, transform.position);
+                OnScoutDispatched?.Invoke(scout);
                 return;
             }
         }
 
-        DisbandSquad();
+        if (activeScout != null && decision != CheckpointDecision.Advance)
+        {
+            activeScout.IsScouting = false;
+            activeScout = null;
+        }
+
+        blackboard.SetOrder(mappedOrder, null, transform.position);
     }
 
-    private void PromoteToLeader(SquadMember successor)
+    private static float GetNormalizedLife(CharacterStatsManager stats)
+    {
+        if (stats == null || stats.MaxLife.Value <= 0f) return 1f;
+        return Mathf.Clamp01(stats.Life / stats.MaxLife.Value);
+    }
+
+    private static float GetNormalizedMana(CharacterStatsManager stats)
+    {
+        if (stats == null) return 1f;
+        if (stats.MaxMana.Value <= 0f) return 1f;
+        return Mathf.Clamp01(stats.Mana / stats.MaxMana.Value);
+    }
+
+    private void HandleLeaderDeath(CharacterStatsManager stats)
+    {
+        RecordRoleIfKey(EffectiveLeaderFunction);
+        OnLeaderDied?.Invoke(this);
+
+        if (!allowSuccession)
+        {
+            ApplyLeaderlessFallbackToSurvivors();
+            OnLeaderChanged?.Invoke(this, null);
+            return;
+        }
+
+        bool anyLivingCandidate = false;
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && m.gameObject != gameObject)
+            {
+                anyLivingCandidate = true;
+                break;
+            }
+        }
+
+        if (!anyLivingCandidate)
+        {
+            DisbandSquad();
+            OnLeaderChanged?.Invoke(this, null);
+            return;
+        }
+
+        float delay = GetSuccessionReactionDelay();
+        if (delay > 0f)
+        {
+            isSuccessionPending = true;
+            if (Application.isPlaying && isActiveAndEnabled && gameObject.activeInHierarchy)
+            {
+                if (successionCoroutine != null)
+                {
+                    StopCoroutine(successionCoroutine);
+                }
+                successionCoroutine = StartCoroutine(SuccessionReactionRoutine(delay));
+            }
+        }
+        else
+        {
+            isSuccessionPending = false;
+            ExecuteSuccessionEvaluation();
+        }
+    }
+
+    private float GetSuccessionReactionDelay()
+    {
+        var profile = LeaderProfile;
+        if (profile != null)
+        {
+            return profile.SuccessionReactionDelay;
+        }
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && m.BaseAI != null && m.BaseAI.AdventurerProfile != null)
+            {
+                return m.BaseAI.AdventurerProfile.SuccessionReactionDelay;
+            }
+        }
+
+        return 0f;
+    }
+
+    private System.Collections.IEnumerator SuccessionReactionRoutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        successionCoroutine = null;
+        isSuccessionPending = false;
+        ExecuteSuccessionEvaluation();
+    }
+
+    /// <summary>
+    /// Immediately completes any pending succession reaction window (or triggers evaluation if not yet run)
+    /// and returns the newly promoted <see cref="PartyLeader"/>, or null if no survivor stepped up.
+    /// </summary>
+    public PartyLeader CompleteSuccessionForTesting()
+    {
+        if (successionCoroutine != null)
+        {
+            StopCoroutine(successionCoroutine);
+            successionCoroutine = null;
+            isSuccessionPending = false;
+            return ExecuteSuccessionEvaluation();
+        }
+
+        if (isSuccessionPending)
+        {
+            isSuccessionPending = false;
+            return ExecuteSuccessionEvaluation();
+        }
+
+        if (lastPromotedLeader != null)
+        {
+            return lastPromotedLeader;
+        }
+
+        return ExecuteSuccessionEvaluation();
+    }
+
+    /// <summary>
+    /// Computes the "will I lead?" score [0, 1] for a surviving squad member from:
+    /// - <see cref="AdventurerFunction"/> weight from <see cref="LeaderCheckpointTuningSO"/> (Tank highest, DPS/None mid, Healer low, Scout lowest)
+    /// - Courage/fear from <see cref="CharacterPersonality.Snapshot"/> and runtime fear
+    /// - Current HP fraction
+    /// - Nearby enemy count hesitation penalty
+    /// Zero allocations.
+    /// </summary>
+    public float ComputeCandidateStepUpScore(SquadMember candidate)
+    {
+        if (candidate == null || !candidate.IsAlive) return 0f;
+
+        float fnWeight = LeaderCheckpointTuningSO.GetFunctionStepUpWeightOrDefault(checkpointTuning, candidate.EffectiveFunction);
+        float fnContrib = checkpointTuning != null ? checkpointTuning.FunctionWeightContribution : 0.60f;
+        float hpContrib = checkpointTuning != null ? checkpointTuning.HpFractionContribution : 0.40f;
+        float enemyPenaltyPerTarget = checkpointTuning != null ? checkpointTuning.EnemyHesitationPerTarget : 0.10f;
+
+        float hpFraction = GetNormalizedLife(candidate.StatsManager);
+
+        float courageMultiplier = 1.0f;
+        var personality = candidate.GetComponent<CharacterPersonality>() ?? candidate.GetComponentInChildren<CharacterPersonality>();
+        if (personality != null)
+        {
+            ref readonly var snap = ref personality.Snapshot;
+            courageMultiplier = Mathf.Clamp(2.0f - snap.FearMultiplier, 0.5f, 1.5f);
+            if (snap.IgnoreSurvivalGoal)
+            {
+                courageMultiplier += 0.15f;
+            }
+        }
+
+        float runtimeFearPenalty = 0f;
+        int nearbyEnemies = 0;
+        var cAI = candidate.BaseAI;
+        if (cAI != null)
+        {
+            runtimeFearPenalty = (cAI.FearLevel / 100f) * 0.25f;
+            if (cAI.EnemyTargets != null && cAI.EnemyTargets.Count > 0)
+            {
+                nearbyEnemies = cAI.EnemyTargets.Count;
+            }
+        }
+
+        if (nearbyEnemies == 0 && blackboard != null && blackboard.KnownEnemies != null)
+        {
+            nearbyEnemies = blackboard.KnownEnemies.Count;
+        }
+
+        float enemyHesitation = Mathf.Clamp01(nearbyEnemies * enemyPenaltyPerTarget);
+        float baseScore = (fnWeight * fnContrib) + (hpFraction * hpContrib);
+        float finalScore = (baseScore * courageMultiplier) - enemyHesitation - runtimeFearPenalty;
+        return Mathf.Clamp01(finalScore);
+    }
+
+    private PartyLeader ExecuteSuccessionEvaluation()
+    {
+        SquadMember bestCandidate = null;
+        float bestScore = -1f;
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var candidate = members[i];
+            if (candidate == null || !candidate.IsAlive || candidate.gameObject == gameObject)
+            {
+                continue;
+            }
+
+            float score = ComputeCandidateStepUpScore(candidate);
+            var candidateProfile = (candidate.BaseAI != null && candidate.BaseAI.AdventurerProfile != null)
+                ? candidate.BaseAI.AdventurerProfile
+                : LeaderProfile;
+
+            float threshold = candidateProfile != null ? candidateProfile.StepUpThreshold : 0f;
+            if (score >= threshold && score > bestScore)
+            {
+                bestScore = score;
+                bestCandidate = candidate;
+            }
+        }
+
+        if (bestCandidate != null)
+        {
+            lastPromotedLeader = PromoteToLeader(bestCandidate);
+            return lastPromotedLeader;
+        }
+
+        lastPromotedLeader = null;
+        ApplyLeaderlessFallbackToSurvivors();
+        OnLeaderChanged?.Invoke(this, null);
+        return null;
+    }
+
+    private void ApplyLeaderlessFallbackToSurvivors()
+    {
+        LeaderlessBehavior behavior = LeaderlessBehavior.Dissolve;
+        var profile = LeaderProfile;
+        if (profile != null)
+        {
+            behavior = profile.LeaderlessBehavior;
+        }
+        else
+        {
+            for (int i = 0; i < members.Count; i++)
+            {
+                var m = members[i];
+                if (m != null && m.IsAlive && m.BaseAI != null && m.BaseAI.AdventurerProfile != null)
+                {
+                    behavior = m.BaseAI.AdventurerProfile.LeaderlessBehavior;
+                    break;
+                }
+            }
+        }
+
+        bool stayLoose = LeaderCheckpointTuningSO.ShouldStayLooseWhenLeaderlessOrDefault(checkpointTuning, behavior);
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m == null) continue;
+
+            if (m.StatsManager != null)
+            {
+                m.StatsManager.OnCharacterDeath -= HandleMemberDeath;
+            }
+
+            if (m.IsAlive && stayLoose)
+            {
+                m.EnterStayLooseMode(members);
+            }
+            else
+            {
+                m.DissolveFromSquad();
+            }
+        }
+
+        members.Clear();
+        activeScout = null;
+        scoutMember = null;
+        hasActiveCheckpointOrder = false;
+        blackboard.ClearOrder();
+    }
+
+    private PartyLeader PromoteToLeader(SquadMember successor)
     {
         if (successor == null)
         {
-            DisbandSquad();
-            return;
+            ApplyLeaderlessFallbackToSurvivors();
+            OnLeaderChanged?.Invoke(this, null);
+            return null;
         }
 
         // Unregister successor from old squad and clear its member status
@@ -460,13 +1243,25 @@ public class PartyLeader : MonoBehaviour
             newLeader = successor.gameObject.AddComponent<PartyLeader>();
         }
 
-        // Inherit tactical parameters
+        // Inherit tactical & checkpoint parameters
         newLeader.leashDistance = this.leashDistance;
         newLeader.fallBackHealthThreshold = this.fallBackHealthThreshold;
         newLeader.allowSuccession = this.allowSuccession;
         newLeader.formationConfig = this.formationConfig;
         newLeader.formationSlots = this.formationSlots;
         newLeader.marchingForward = this.marchingForward;
+        newLeader.checkpointTuning = this.checkpointTuning;
+        newLeader.standInRewardProvider = this.standInRewardProvider;
+        newLeader.customRewardProvider = this.customRewardProvider;
+        newLeader.recoveryItemsRemaining = this.recoveryItemsRemaining;
+        newLeader.hadTankInParty = this.hadTankInParty;
+        newLeader.hadHealerInParty = this.hadHealerInParty;
+        newLeader.RecordRoleIfKey(this.EffectiveLeaderFunction);
+        newLeader.RecordRoleIfKey(newLeader.EffectiveLeaderFunction);
+
+        // Inherit shared SquadBlackboard state (known enemies, shared hazards, RetreatBlocked, etc.)
+        newLeader.Blackboard.CopyStateFrom(this.blackboard);
+        newLeader.Blackboard.LeaderTransform = newLeader.transform;
 
         // If current leader had SquadTacticalEvaluator, preserve autonomous AI on successor
         if (TryGetComponent<SquadTacticalEvaluator>(out var oldEvaluator))
@@ -478,16 +1273,49 @@ public class PartyLeader : MonoBehaviour
             newEvaluator.AutonomousAI = oldEvaluator.AutonomousAI;
         }
 
-        // Migrate remaining living members to new leader
+        // Remaining living members accept the new leader with probability squadOrderCompliance; refusers act alone
         for (int i = 0; i < members.Count; i++)
         {
             var m = members[i];
-            if (m != null && m.IsAlive && m != successor)
+            if (m == null) continue;
+
+            if (m.StatsManager != null)
+            {
+                m.StatsManager.OnCharacterDeath -= HandleMemberDeath;
+            }
+
+            if (!m.IsAlive || m == successor)
+            {
+                m.DissolveFromSquad();
+                continue;
+            }
+
+            var memberProfile = (m.BaseAI != null && m.BaseAI.AdventurerProfile != null)
+                ? m.BaseAI.AdventurerProfile
+                : LeaderProfile;
+
+            float compliance = memberProfile != null ? Mathf.Clamp01(memberProfile.SquadOrderCompliance) : 1.0f;
+            float roll = compliance >= 1.0f ? 0f : RandomUtil.Range(0f, 1f);
+
+            if (roll <= compliance)
             {
                 newLeader.RegisterMember(m);
+            }
+            else
+            {
+                // Refuser leaves the squad and only retains its own CharacterAIMemory
+                m.DissolveFromSquad();
             }
         }
 
         members.Clear();
+        activeScout = null;
+        scoutMember = null;
+
+        OnLeaderChanged?.Invoke(this, newLeader);
+
+        // New leader immediately evaluates a checkpoint decision
+        newLeader.RequestCheckpoint();
+        return newLeader;
     }
 }

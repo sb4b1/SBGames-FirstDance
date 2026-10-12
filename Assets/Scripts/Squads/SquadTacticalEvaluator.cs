@@ -7,16 +7,26 @@ public class SquadTacticalEvaluator : MonoBehaviour
     [Header("Evaluation Settings")]
     [SerializeField] private bool autonomousAI = true;
     [SerializeField] private float evaluationInterval = 0.5f;
+    [Tooltip("Quiet time in seconds with no known enemies after combat ends before triggering a leader checkpoint.")]
+    [SerializeField, Min(0f)] private float postCombatCheckpointDelay = 1.5f;
 
     private PartyLeader leader;
     private BaseAI baseAI;
     private CharacterStatsManager statsManager;
     private float timer;
+    private bool wasInCombat;
+    private float postCombatQuietTimer;
 
     public bool AutonomousAI
     {
         get => autonomousAI;
         set => autonomousAI = value;
+    }
+
+    public float PostCombatCheckpointDelay
+    {
+        get => postCombatCheckpointDelay;
+        set => postCombatCheckpointDelay = Mathf.Max(0f, value);
     }
 
     private void Awake()
@@ -34,13 +44,21 @@ public class SquadTacticalEvaluator : MonoBehaviour
         if (timer > 0f) return;
         timer = evaluationInterval;
 
-        EvaluateTactics();
+        EvaluateTactics(evaluationInterval);
     }
 
     /// <summary>
     /// Evaluates squad metrics and battlefield state, issuing zero-alloc tactical directives.
     /// </summary>
     public void EvaluateTactics()
+    {
+        EvaluateTactics(evaluationInterval);
+    }
+
+    /// <summary>
+    /// Evaluates squad metrics and battlefield state, advancing post-combat quiet timer by <paramref name="elapsedSeconds"/>.
+    /// </summary>
+    public void EvaluateTactics(float elapsedSeconds)
     {
         if (leader == null) leader = GetComponent<PartyLeader>();
         if (leader == null) return;
@@ -81,6 +99,24 @@ public class SquadTacticalEvaluator : MonoBehaviour
         bool hasDirectEnemies = baseAI != null && baseAI.EnemyTargets != null && baseAI.EnemyTargets.Count > 0;
         bool hasKnownEnemies = leader.Blackboard.HasKnownEnemies;
         bool hasEnemies = hasDirectEnemies || hasKnownEnemies;
+
+        if (hasEnemies)
+        {
+            wasInCombat = true;
+            postCombatQuietTimer = 0f;
+            leader.HasActiveCheckpointOrder = false;
+        }
+        else if (wasInCombat)
+        {
+            postCombatQuietTimer += Mathf.Max(0f, elapsedSeconds);
+            if (postCombatQuietTimer >= postCombatCheckpointDelay)
+            {
+                wasInCombat = false;
+                postCombatQuietTimer = 0f;
+                leader.RequestCheckpoint();
+                return;
+            }
+        }
 
         // 2. Fall Back if average health is critically low and enemies are threatening
         if (hasEnemies && avgHealth < leader.FallBackHealthThreshold)
@@ -146,6 +182,19 @@ public class SquadTacticalEvaluator : MonoBehaviour
                 }
                 return;
             }
+        }
+
+        // If SquadOrderType.Recover is active out of combat, re-run RequestCheckpoint once all members finish recovering
+        if (leader.Blackboard.CurrentOrder == SquadOrderType.Recover)
+        {
+            leader.CheckAndCompleteRecoverOrder();
+            return;
+        }
+
+        // Preserve active checkpoint order or active scout recon when out of combat
+        if (leader.HasActiveCheckpointOrder || leader.ActiveScout != null)
+        {
+            return;
         }
 
         // 4. Rally / Leash Check: check if any squad member is too far

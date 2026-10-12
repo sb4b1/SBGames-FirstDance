@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 666584b953dc08b48bcb04346d028fa3, type: 3}
+  m_Name: LeaderCheckpointTuning
+  m_EditorClassIdentifier: Assembly-CSharp::LeaderCheckpointTuningSO
+  accuracyTable:
+  - Accuracy: 0
+    OptimismBias: 0.25
+    NoiseAmplitude: 0.08
+  - Accuracy: 1
+    OptimismBias: 0
+    NoiseAmplitude: 0.05
+  - Accuracy: 2
+    OptimismBias: 0
+    NoiseAmplitude: 0
+  safetyMarginTable:
+  - 0.05
+  - 0.2
+  - 0.35
+  functionStepUpWeights:
+  - 0.55
+  - 0.85
+  - 0.55
+  - 0.3
+  - 0.15
+  leaderlessStayLooseTable: 0001y
+  hpConditionWeight: 0.65
+  manaConditionWeight: 0.15
+  survivalRatioWeight: 0.2
+  recoveryHpThreshold: 0.65
+  healerMinManaFraction: 0.25
+  functionWeightContribution: 0.6
+  hpFractionContribution: 0.4
+  enemyHesitationPerTarget: 0.1

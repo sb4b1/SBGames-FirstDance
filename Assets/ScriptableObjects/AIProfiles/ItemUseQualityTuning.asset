@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23017f438735bed4f8ab336d398e6fca, type: 3}
+  m_Name: ItemUseQualityTuning
+  m_EditorClassIdentifier: Assembly-CSharp::ItemUseQualityTuningSO
+  qualityEntries:
+  - quality: 0
+    hpTriggerFraction: 0.28
+    manaTriggerFraction: 0.15
+    panicDrinkUnderAttack: 1
+    backOutOfMeleeFirst: 0
+    seekPartyRearOrBehindTank: 0
+    safeEnemyDistance: 0
+    perRoomItemQuota: -1
+  - quality: 1
+    hpTriggerFraction: 0.45
+    manaTriggerFraction: 0.3
+    panicDrinkUnderAttack: 0
+    backOutOfMeleeFirst: 1
+    seekPartyRearOrBehindTank: 0
+    safeEnemyDistance: 3.5
+    perRoomItemQuota: -1
+  - quality: 2
+    hpTriggerFraction: 0.65
+    manaTriggerFraction: 0.45
+    panicDrinkUnderAttack: 0
+    backOutOfMeleeFirst: 1
+    seekPartyRearOrBehindTank: 1
+    safeEnemyDistance: 5
+    perRoomItemQuota: 2
+  squadRecoverTargetHpFraction: 0.85
+  squadRecoverTargetManaFraction: 0.75

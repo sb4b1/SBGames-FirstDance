@@ -13,6 +13,7 @@ public class CharacterIdentifier : ObjectIdentifier
 
     public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
     public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
+    public AdventurerWealth CharacterWealth => StatsManager != null ? StatsManager.CharacterWealth : AdventurerWealth.Average;
 
 #if UNITY_EDITOR
     [SerializeField] private string characterName;

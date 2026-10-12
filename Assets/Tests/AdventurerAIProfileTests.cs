@@ -1,8 +1,12 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using Micosmo.SensorToolkit;
 using NUnit.Framework;
 using SBGames.Characters.AI;
+using SBGames.Database.CSV;
+using SBGames.Inventory.Core.Effects;
+using SBGames.Inventory.Data;
 using SBGames.Personality;
 using SBGames.Personality.Data;
 using UnityEditor;
@@ -481,6 +485,661 @@ namespace SBGames.Tests
             UnityEngine.Object.DestroyImmediate(tankGo);
             UnityEngine.Object.DestroyImmediate(scoutGo);
             UnityEngine.Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void Phase4_Assets_HaveExpectedCheckpointAndSuccessionValues()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            var profileD = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset");
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var tuning = AssetDatabase.LoadAssetAtPath<LeaderCheckpointTuningSO>("Assets/ScriptableObjects/AIProfiles/LeaderCheckpointTuning.asset");
+
+            Assert.IsNotNull(profileE);
+            Assert.IsNotNull(profileD);
+            Assert.IsNotNull(profileC);
+            Assert.IsNotNull(tuning);
+
+            Assert.AreEqual(1.60f, profileE.RewardWeight, 0.001f);
+            Assert.AreEqual(1.80f, profileE.SuccessionReactionDelay, 0.001f);
+            Assert.AreEqual(0.70f, profileE.StepUpThreshold, 0.001f);
+            Assert.AreEqual(LeaderlessBehavior.Dissolve, profileE.LeaderlessBehavior);
+
+            Assert.AreEqual(1.15f, profileD.RewardWeight, 0.001f);
+            Assert.AreEqual(0.90f, profileD.SuccessionReactionDelay, 0.001f);
+            Assert.AreEqual(0.50f, profileD.StepUpThreshold, 0.001f);
+            Assert.AreEqual(LeaderlessBehavior.StayLoose, profileD.LeaderlessBehavior);
+
+            Assert.AreEqual(0.90f, profileC.RewardWeight, 0.001f);
+            Assert.AreEqual(0.15f, profileC.SuccessionReactionDelay, 0.001f);
+            Assert.AreEqual(0.25f, profileC.StepUpThreshold, 0.001f);
+            Assert.AreEqual(LeaderlessBehavior.StayLoose, profileC.LeaderlessBehavior);
+
+            Assert.Greater(
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.Tank),
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.DPS));
+            Assert.AreEqual(
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.DPS),
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.None),
+                0.001f);
+            Assert.Greater(
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.DPS),
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.Healer));
+            Assert.Greater(
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.Healer),
+                tuning.GetFunctionStepUpWeight(AdventurerFunction.Scout));
+        }
+
+        [Test]
+        public void RequestCheckpoint_ERankAdvances_WhereCRankRetreats_OnSamePartyAndRewardState()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var tuning = AssetDatabase.LoadAssetAtPath<LeaderCheckpointTuningSO>("Assets/ScriptableObjects/AIProfiles/LeaderCheckpointTuning.asset");
+
+            var leaderGo = new GameObject("CheckpointLeader");
+            var leaderStats = leaderGo.AddComponent<CharacterStatsManager>();
+            var leaderBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            leaderBs.MaxLife = 100f;
+            leaderBs.MaxMana = 100f;
+            leaderBs.characterFunction = AdventurerFunction.DPS;
+            leaderStats.SetBaseStats(leaderBs);
+            leaderStats.TakeDamage(new DamageData(30f, DamageType.True)); // 70% HP (>= 0.65 recovery threshold), moderate risk
+
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            leader.CheckpointTuning = tuning;
+            leader.RecoveryItemsRemaining = 0;
+
+            // Substantial carried loot at stake (120) vs moderate potential ahead (80)
+            leader.RewardProvider = new StandInPartyRewardProvider(
+                carriedPerMember: 120f,
+                knownAhead: 40f,
+                unknownPerRoom: 40f,
+                explicitPartyCarried: 120f);
+
+            UnityEngine.Random.InitState(42);
+            leaderAI.ApplyAdventurerProfile(profileE);
+            CheckpointDecision eDecision = leader.RequestCheckpoint(out CheckpointReason eReason);
+            Assert.AreEqual(CheckpointDecision.Advance, eDecision, "E-rank leader (optimistic + high greed + thin margin) should Advance.");
+            Assert.AreEqual(CheckpointReason.FavorableMargin, eReason);
+            Assert.AreEqual(SquadOrderType.FollowLeader, leader.Blackboard.CurrentOrder);
+
+            UnityEngine.Random.InitState(42);
+            leaderAI.ApplyAdventurerProfile(profileC);
+            CheckpointDecision cDecision = leader.RequestCheckpoint(out CheckpointReason cReason);
+            Assert.AreEqual(CheckpointDecision.Retreat, cDecision, "C-rank leader (accurate + balanced greed + thick margin) should Retreat on the same state.");
+            Assert.AreEqual(CheckpointReason.SafetyMarginNotMet, cReason);
+            Assert.AreEqual(SquadOrderType.FallBack, leader.Blackboard.CurrentOrder);
+
+            UnityEngine.Object.DestroyImmediate(leaderBs);
+            UnityEngine.Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void RequestCheckpoint_KeyRoleLost_TriggersRetreat_AndRetreatBlocked_ForcesFallback()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+
+            var leaderGo = new GameObject("Leader");
+            var leaderStats = leaderGo.AddComponent<CharacterStatsManager>();
+            var leaderBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            leaderBs.MaxLife = 100f;
+            leaderBs.MaxMana = 100f;
+            leaderBs.characterFunction = AdventurerFunction.DPS;
+            leaderStats.SetBaseStats(leaderBs);
+            leaderStats.TakeDamage(new DamageData(50f, DamageType.True)); // 50% HP -> needs recovery if retreat is blocked
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+            leaderAI.ApplyAdventurerProfile(profileE);
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            leader.RecoveryItemsRemaining = 2;
+
+            var healerGo = new GameObject("Healer");
+            var healerStats = healerGo.AddComponent<CharacterStatsManager>();
+            var healerBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            healerBs.MaxLife = 100f;
+            healerBs.characterFunction = AdventurerFunction.Healer;
+            healerStats.SetBaseStats(healerBs);
+            var healerMember = healerGo.AddComponent<SquadMember>();
+            leader.RegisterMember(healerMember);
+
+            // Kill the only Healer
+            healerStats.ForceDeath();
+
+            CheckpointDecision decision = leader.RequestCheckpoint(out CheckpointReason reason);
+            Assert.AreEqual(CheckpointDecision.Retreat, decision, "Losing the only Healer should cause Retreat when retreat is not blocked.");
+            Assert.AreEqual(CheckpointReason.KeyRoleLost, reason);
+            Assert.AreEqual(SquadOrderType.FallBack, leader.Blackboard.CurrentOrder);
+
+            // Block retreat -> must pick next best decision (Recover because leader HP is 50% and recovery items exist)
+            leader.RetreatBlocked = true;
+            CheckpointDecision blockedDecision = leader.RequestCheckpoint(out CheckpointReason blockedReason);
+            Assert.AreNotEqual(CheckpointDecision.Retreat, blockedDecision, "Retreat must not be chosen when RetreatBlocked is true.");
+            Assert.AreEqual(CheckpointDecision.Recover, blockedDecision);
+            Assert.AreEqual(CheckpointReason.RetreatBlockedFallback, blockedReason);
+            Assert.AreEqual(SquadOrderType.Recover, leader.Blackboard.CurrentOrder);
+
+            UnityEngine.Object.DestroyImmediate(leaderBs);
+            UnityEngine.Object.DestroyImmediate(healerBs);
+            UnityEngine.Object.DestroyImmediate(healerGo);
+            UnityEngine.Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void RequestCheckpoint_Advance_UsesScoutAheadWhenCanScout_AndPostCombatHookTriggersCheckpoint()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+
+            var leaderGo = new GameObject("Leader");
+            var leaderStats = leaderGo.AddComponent<CharacterStatsManager>();
+            var leaderBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            leaderBs.MaxLife = 100f;
+            leaderBs.MaxMana = 100f;
+            leaderBs.characterFunction = AdventurerFunction.Tank;
+            leaderStats.SetBaseStats(leaderBs);
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+            leaderAI.ApplyAdventurerProfile(profileE);
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            var evaluator = leaderGo.AddComponent<SquadTacticalEvaluator>();
+            evaluator.PostCombatCheckpointDelay = 1.0f;
+
+            var scoutGo = new GameObject("Scout");
+            var scoutStats = scoutGo.AddComponent<CharacterStatsManager>();
+            var scoutBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            scoutBs.MaxLife = 100f;
+            scoutBs.characterFunction = AdventurerFunction.Scout;
+            scoutStats.SetBaseStats(scoutBs);
+            var scoutMember = scoutGo.AddComponent<SquadMember>();
+            leader.RegisterMember(scoutMember);
+
+            int checkpointCount = 0;
+            leader.OnCheckpointDecision += (dec, rsn) => checkpointCount++;
+
+            // Simulate active enemy then enemy cleared
+            var dummyEnemy = new GameObject("DummyEnemy");
+            leader.Blackboard.ReportEnemy(dummyEnemy.transform, Vector3.zero, Time.time, 10f);
+            evaluator.EvaluateTactics(0.5f);
+            Assert.AreEqual(0, checkpointCount);
+
+            leader.Blackboard.KnownEnemies.Clear();
+            evaluator.EvaluateTactics(0.5f);
+            Assert.AreEqual(0, checkpointCount, "Should wait until PostCombatCheckpointDelay elapses.");
+
+            evaluator.EvaluateTactics(0.6f);
+            Assert.AreEqual(1, checkpointCount, "Post-combat quiet timer should trigger RequestCheckpoint.");
+            Assert.AreEqual(CheckpointDecision.Advance, leader.LastCheckpointDecision);
+            Assert.AreEqual(SquadOrderType.ScoutAhead, leader.Blackboard.CurrentOrder);
+            Assert.AreEqual(SquadOrderType.ScoutAhead, scoutMember.CurrentOrder);
+
+            UnityEngine.Object.DestroyImmediate(dummyEnemy);
+            UnityEngine.Object.DestroyImmediate(leaderBs);
+            UnityEngine.Object.DestroyImmediate(scoutBs);
+            UnityEngine.Object.DestroyImmediate(scoutGo);
+            UnityEngine.Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void EmergentSuccession_TankBeatsScout_InheritsBlackboard_AndRunsCheckpoint()
+        {
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var tuning = AssetDatabase.LoadAssetAtPath<LeaderCheckpointTuningSO>("Assets/ScriptableObjects/AIProfiles/LeaderCheckpointTuning.asset");
+
+            var leaderGo = new GameObject("OldLeader");
+            var leaderStats = leaderGo.AddComponent<CharacterStatsManager>();
+            var leaderBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            leaderBs.MaxLife = 100f;
+            leaderBs.characterFunction = AdventurerFunction.DPS;
+            leaderStats.SetBaseStats(leaderBs);
+            var leaderAI = leaderGo.AddComponent<BaseAI>();
+            leaderAI.ApplyAdventurerProfile(profileC);
+            var oldLeader = leaderGo.AddComponent<PartyLeader>();
+            oldLeader.CheckpointTuning = tuning;
+            oldLeader.RetreatBlocked = true;
+            oldLeader.Blackboard.ReportHazard(new Vector2Int(3, 4), new Vector3(3f, 4f, 0f), 40f, 30f);
+
+            var scoutGo = new GameObject("ScoutCandidate");
+            var scoutStats = scoutGo.AddComponent<CharacterStatsManager>();
+            var scoutBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            scoutBs.MaxLife = 100f;
+            scoutBs.characterFunction = AdventurerFunction.Scout;
+            scoutStats.SetBaseStats(scoutBs);
+            var scoutAI = scoutGo.AddComponent<BaseAI>();
+            scoutAI.ApplyAdventurerProfile(profileC);
+            var scoutMember = scoutGo.AddComponent<SquadMember>();
+
+            var tankGo = new GameObject("TankCandidate");
+            var tankStats = tankGo.AddComponent<CharacterStatsManager>();
+            var tankBs = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            tankBs.MaxLife = 100f;
+            tankBs.characterFunction = AdventurerFunction.Tank;
+            tankStats.SetBaseStats(tankBs);
+            var tankAI = tankGo.AddComponent<BaseAI>();
+            tankAI.ApplyAdventurerProfile(profileC);
+            var tankMember = tankGo.AddComponent<SquadMember>();
+
+            // Register Scout first and Tank second to prove succession is score-based, not list-order-based
+            oldLeader.RegisterMember(scoutMember);
+            oldLeader.RegisterMember(tankMember);
+
+            Assert.Greater(
+                oldLeader.ComputeCandidateStepUpScore(tankMember),
+                oldLeader.ComputeCandidateStepUpScore(scoutMember),
+                "Tank candidate must score higher than Scout candidate.");
+
+            bool diedFired = false;
+            PartyLeader changedNewLeader = null;
+            oldLeader.OnLeaderDied += _ => diedFired = true;
+            oldLeader.OnLeaderChanged += (_, newL) => changedNewLeader = newL;
+
+            UnityEngine.Random.InitState(123);
+            leaderStats.ForceDeath();
+            PartyLeader promoted = oldLeader.CompleteSuccessionForTesting();
+
+            Assert.IsTrue(diedFired);
+            Assert.IsNotNull(promoted);
+            Assert.AreEqual(tankGo, promoted.gameObject, "Tank should step up as the new leader over Scout.");
+            Assert.AreEqual(promoted, changedNewLeader);
+            Assert.IsTrue(promoted.RetreatBlocked, "New leader must inherit RetreatBlocked from SquadBlackboard.");
+            Assert.AreEqual(1, promoted.Blackboard.SharedHazards.Count, "New leader must inherit shared hazards from SquadBlackboard.");
+            Assert.AreNotEqual(CheckpointReason.None, promoted.LastCheckpointReason, "New leader must immediately run RequestCheckpoint.");
+
+            UnityEngine.Object.DestroyImmediate(leaderBs);
+            UnityEngine.Object.DestroyImmediate(scoutBs);
+            UnityEngine.Object.DestroyImmediate(tankBs);
+            UnityEngine.Object.DestroyImmediate(scoutGo);
+            UnityEngine.Object.DestroyImmediate(tankGo);
+            UnityEngine.Object.DestroyImmediate(leaderGo);
+        }
+
+        [Test]
+        public void EmergentSuccession_WhenNobodyStepsUp_AppliesStayLooseOrDissolve()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            var profileD = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset");
+
+            // 1. E-Rank (Dissolve): low-HP Scouts below stepUpThreshold (0.70)
+            var leaderEGo = new GameObject("LeaderE");
+            var leaderEStats = leaderEGo.AddComponent<CharacterStatsManager>();
+            var bsE = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            bsE.MaxLife = 100f;
+            bsE.characterFunction = AdventurerFunction.Scout;
+            leaderEStats.SetBaseStats(bsE);
+            var leaderEAI = leaderEGo.AddComponent<BaseAI>();
+            leaderEAI.ApplyAdventurerProfile(profileE);
+            var leaderE = leaderEGo.AddComponent<PartyLeader>();
+
+            var survE1Go = new GameObject("SurvE1");
+            var survE1Stats = survE1Go.AddComponent<CharacterStatsManager>();
+            survE1Stats.SetBaseStats(bsE);
+            survE1Stats.TakeDamage(new DamageData(80f, DamageType.True));
+            var survE1AI = survE1Go.AddComponent<BaseAI>();
+            survE1AI.ApplyAdventurerProfile(profileE);
+            var survE1 = survE1Go.AddComponent<SquadMember>();
+            leaderE.RegisterMember(survE1);
+
+            leaderEStats.ForceDeath();
+            PartyLeader promotedE = leaderE.CompleteSuccessionForTesting();
+            Assert.IsNull(promotedE, "Low-HP E-rank scout should not meet stepUpThreshold.");
+            Assert.IsFalse(survE1.HasLeader);
+            Assert.IsFalse(survE1.IsStayingLoose, "E-rank leaderless behavior is Dissolve.");
+
+            // 2. D-Rank (StayLoose): low-HP Scouts with fear below stepUpThreshold (0.50)
+            var leaderDGo = new GameObject("LeaderD");
+            var leaderDStats = leaderDGo.AddComponent<CharacterStatsManager>();
+            leaderDStats.SetBaseStats(bsE);
+            var leaderDAI = leaderDGo.AddComponent<BaseAI>();
+            leaderDAI.ApplyAdventurerProfile(profileD);
+            var leaderD = leaderDGo.AddComponent<PartyLeader>();
+
+            var survD1Go = new GameObject("SurvD1");
+            var survD1Stats = survD1Go.AddComponent<CharacterStatsManager>();
+            survD1Stats.SetBaseStats(bsE);
+            survD1Stats.TakeDamage(new DamageData(85f, DamageType.True));
+            var survD1AI = survD1Go.AddComponent<BaseAI>();
+            survD1AI.ApplyAdventurerProfile(profileD);
+            survD1AI.SetFearLevel(80);
+            var survD1 = survD1Go.AddComponent<SquadMember>();
+
+            var survD2Go = new GameObject("SurvD2");
+            survD2Go.transform.position = new Vector3(4f, 0f, 0f);
+            var survD2Stats = survD2Go.AddComponent<CharacterStatsManager>();
+            survD2Stats.SetBaseStats(bsE);
+            survD2Stats.TakeDamage(new DamageData(85f, DamageType.True));
+            var survD2AI = survD2Go.AddComponent<BaseAI>();
+            survD2AI.ApplyAdventurerProfile(profileD);
+            survD2AI.SetFearLevel(80);
+            var survD2 = survD2Go.AddComponent<SquadMember>();
+
+            leaderD.RegisterMember(survD1);
+            leaderD.RegisterMember(survD2);
+
+            leaderDStats.ForceDeath();
+            PartyLeader promotedD = leaderD.CompleteSuccessionForTesting();
+            Assert.IsNull(promotedD, "Panicked low-HP D-rank scouts should not meet stepUpThreshold.");
+            Assert.IsFalse(survD1.HasLeader);
+            Assert.IsTrue(survD1.IsStayingLoose, "D-rank leaderless behavior is StayLoose.");
+            Assert.AreEqual(survD2.transform, survD1.LeaderTransform, "StayLoose survivor should loosely anchor to nearest living peer.");
+
+            UnityEngine.Object.DestroyImmediate(bsE);
+            UnityEngine.Object.DestroyImmediate(survE1Go);
+            UnityEngine.Object.DestroyImmediate(leaderEGo);
+            UnityEngine.Object.DestroyImmediate(survD1Go);
+            UnityEngine.Object.DestroyImmediate(survD2Go);
+            UnityEngine.Object.DestroyImmediate(leaderDGo);
+        }
+
+        [Test]
+        public void Phase5_AdventurerWealth_And_CsvImport_DefaultToAverageWhenMissing()
+        {
+            Assert.AreEqual(0, (int)AdventurerWealth.Average);
+            Assert.AreEqual(1, (int)AdventurerWealth.Poor);
+            Assert.AreEqual(2, (int)AdventurerWealth.Rich);
+
+            var stats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            Assert.AreEqual(AdventurerWealth.Average, stats.CharacterWealth);
+
+            // Missing Wealth column -> Average
+            var rowMissing = new Dictionary<string, string>
+            {
+                ["Id"] = "ADV_01",
+                ["MaxLife"] = "120",
+                ["Function"] = "Tank"
+            };
+            CsvParser.ApplyCharacterCsvRowToStats(rowMissing, stats);
+            Assert.AreEqual(AdventurerFunction.Tank, stats.CharacterFunction);
+            Assert.AreEqual(AdventurerWealth.Average, stats.CharacterWealth);
+
+            // Empty Wealth cell -> Average
+            var rowEmpty = new Dictionary<string, string>
+            {
+                ["Id"] = "ADV_01",
+                ["Wealth"] = "   "
+            };
+            stats.characterWealth = AdventurerWealth.Rich;
+            CsvParser.ApplyCharacterCsvRowToStats(rowEmpty, stats);
+            Assert.AreEqual(AdventurerWealth.Average, stats.CharacterWealth);
+
+            // Explicit Wealth cells -> Poor / Rich
+            var rowRich = new Dictionary<string, string> { ["Wealth"] = "Rich" };
+            CsvParser.ApplyCharacterCsvRowToStats(rowRich, stats);
+            Assert.AreEqual(AdventurerWealth.Rich, stats.CharacterWealth);
+
+            var rowPoor = new Dictionary<string, string> { ["Wealth"] = "Poor" };
+            CsvParser.ApplyCharacterCsvRowToStats(rowPoor, stats);
+            Assert.AreEqual(AdventurerWealth.Poor, stats.CharacterWealth);
+
+            UnityEngine.Object.DestroyImmediate(stats);
+        }
+
+        [Test]
+        public void Phase5_ItemKitResolution_CombinesRankFunctionAndWealth_AndGatesManaByMaxMana()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            var profileD = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset");
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var modifiers = AssetDatabase.LoadAssetAtPath<ItemKitModifiers>("Assets/ScriptableObjects/AIProfiles/DefaultItemKitModifiers.asset");
+
+            Assert.IsNotNull(profileE.StartingItemKit, "Profile_Rank_E must reference ItemKit_Rank_E.");
+            Assert.IsNotNull(profileD.StartingItemKit, "Profile_Rank_D must reference ItemKit_Rank_D.");
+            Assert.IsNotNull(profileC.StartingItemKit, "Profile_Rank_C must reference ItemKit_Rank_C.");
+            Assert.IsNotNull(modifiers, "DefaultItemKitModifiers asset must exist.");
+
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.KitModifiers = modifiers;
+
+            // 1. Rank E (1 HP) + DPS (0) + Poor (-1 HP) -> floored at 0 HP potions
+            kitCtrl.ResolveRuntimeKit(profileE.StartingItemKit, modifiers, AdventurerFunction.DPS, AdventurerWealth.Poor, hasManaPool: true);
+            Assert.AreEqual(0, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion));
+            Assert.AreEqual(0, kitCtrl.TotalRemainingCount);
+
+            // 2. Rank D (2 HP + 1 Cure) + Tank (+1 HP) + Rich (+1 HP) -> 4 HP + 1 Cure = 5 total
+            kitCtrl.ResolveRuntimeKit(profileD.StartingItemKit, modifiers, AdventurerFunction.Tank, AdventurerWealth.Rich, hasManaPool: false);
+            Assert.AreEqual(4, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion));
+            Assert.AreEqual(1, kitCtrl.GetRemainingCount(ConsumableItemCategory.StatusCure));
+            Assert.AreEqual(0, kitCtrl.GetRemainingCount(ConsumableItemCategory.ManaPotion));
+            Assert.AreEqual(5, kitCtrl.TotalRemainingCount);
+
+            // 3. Rank C (3 HP + 2 Cure) + Healer (+1 Mana) + Average (0) with MaxMana > 0 -> 3 HP + 2 Cure + 1 Mana = 6 total
+            kitCtrl.ResolveRuntimeKit(profileC.StartingItemKit, modifiers, AdventurerFunction.Healer, AdventurerWealth.Average, hasManaPool: true);
+            Assert.AreEqual(3, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion));
+            Assert.AreEqual(2, kitCtrl.GetRemainingCount(ConsumableItemCategory.StatusCure));
+            Assert.AreEqual(1, kitCtrl.GetRemainingCount(ConsumableItemCategory.ManaPotion));
+            Assert.AreEqual(6, kitCtrl.TotalRemainingCount);
+
+            // 4. Same Healer with MaxMana == 0 -> Mana Potion is NOT granted
+            kitCtrl.ResolveRuntimeKit(profileC.StartingItemKit, modifiers, AdventurerFunction.Healer, AdventurerWealth.Average, hasManaPool: false);
+            Assert.AreEqual(0, kitCtrl.GetRemainingCount(ConsumableItemCategory.ManaPotion), "Mana potions must only be granted to members with MaxMana > 0.");
+        }
+
+        [Test]
+        public void Phase5_ItemKitController_InterruptibleCast_ConsumesOnlyOnCompletion_AndCancelsOnStunOrDeath()
+        {
+            var profileD = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset");
+            var modifiers = AssetDatabase.LoadAssetAtPath<ItemKitModifiers>("Assets/ScriptableObjects/AIProfiles/DefaultItemKitModifiers.asset");
+
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 100f;
+            baseStats.MaxMana = 50f;
+
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+            var brain = _rootGo.GetComponent<CharacterBrain>();
+            var statusMgr = _rootGo.AddComponent<StatusEffectManager>();
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.KitModifiers = modifiers;
+            kitCtrl.CastDuration = 0.8f;
+            kitCtrl.ItemCooldown = 6.0f;
+
+            kitCtrl.ResolveRuntimeKit(profileD.StartingItemKit, modifiers, AdventurerFunction.DPS, AdventurerWealth.Average, hasManaPool: true);
+            Assert.AreEqual(2, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion));
+
+            // Deal 60 damage so HP is 40/100
+            stats.TakeDamage(new DamageData(60f, DamageType.True));
+            Assert.AreEqual(40f, stats.Life, 0.01f);
+
+            int consumedEvents = 0;
+            ItemDataSO lastConsumedItem = null;
+            kitCtrl.OnPotionConsumed += (_, item) =>
+            {
+                consumedEvents++;
+                lastConsumedItem = item;
+            };
+
+            // Start cast, advance halfway (0.4s), then interrupt via CharacterBrain.InterruptAllActions()
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.IsCastingItem);
+            Assert.IsFalse(kitCtrl.AdvanceCast(0.4f));
+            Assert.AreEqual(2, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion), "Item must not be consumed before cast completes.");
+
+            brain.InterruptAllActions();
+            Assert.IsFalse(kitCtrl.IsCastingItem, "InterruptAllActions must cancel active item cast.");
+            Assert.AreEqual(2, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion), "Interrupted cast must not consume the item.");
+            Assert.AreEqual(0, consumedEvents);
+            Assert.AreEqual(40f, stats.Life, 0.01f);
+
+            // Start cast again and let it complete (0.85s)
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.AdvanceCast(0.85f));
+            Assert.IsFalse(kitCtrl.IsCastingItem);
+            Assert.AreEqual(1, kitCtrl.GetRemainingCount(ConsumableItemCategory.HealthPotion));
+            Assert.AreEqual(1, consumedEvents);
+            Assert.IsNotNull(lastConsumedItem);
+            Assert.Greater(stats.Life, 40f, "RestoreHealthEffect must heal the character on cast completion.");
+
+            // Cooldown prevents immediate second HP potion cast until 6.0s elapses
+            Assert.IsFalse(kitCtrl.CanUse(ConsumableItemCategory.HealthPotion), "Per-item cooldown must block immediate reuse.");
+            kitCtrl.AdvanceCast(6.1f);
+            Assert.IsTrue(kitCtrl.CanUse(ConsumableItemCategory.HealthPotion), "Slot should be usable again after cooldown expires.");
+
+            // Test Status Cure removing harmful status effect
+            var poisonData = ScriptableObject.CreateInstance<StatusEffectData>();
+            poisonData.ID = "STATUS_POISON_TEST";
+            poisonData.displayName = "Poison";
+            poisonData.isHarmful = true;
+            poisonData.hasDuration = true;
+            poisonData.duration = 10f;
+            statusMgr.ApplyEffect(poisonData);
+            Assert.IsTrue(statusMgr.HasHarmfulEffect());
+
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.StatusCure));
+            Assert.IsTrue(kitCtrl.AdvanceCast(0.85f));
+            Assert.IsFalse(statusMgr.HasHarmfulEffect(), "CureStatusEffect must remove active harmful status effects.");
+            Assert.AreEqual(0, kitCtrl.GetRemainingCount(ConsumableItemCategory.StatusCure));
+
+            UnityEngine.Object.DestroyImmediate(poisonData);
+            UnityEngine.Object.DestroyImmediate(baseStats);
+        }
+
+        [Test]
+        public void Phase5_RecoverAndSurviveCompetition_Hysteresis_And_RankQualityPositioning()
+        {
+            var profileE = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            var profileD = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset");
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var modifiers = AssetDatabase.LoadAssetAtPath<ItemKitModifiers>("Assets/ScriptableObjects/AIProfiles/DefaultItemKitModifiers.asset");
+            var qualityTuning = AssetDatabase.LoadAssetAtPath<ItemUseQualityTuningSO>("Assets/ScriptableObjects/AIProfiles/ItemUseQualityTuning.asset");
+
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 100f;
+            baseStats.MaxMana = 50f;
+
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.KitModifiers = modifiers;
+            kitCtrl.QualityTuning = qualityTuning;
+            var ai = _rootGo.AddComponent<BaseAI>();
+            ai.ItemUseQualityTuning = qualityTuning;
+
+            var surviveGoal = ScriptableObject.CreateInstance<UtilitySurviveGoal>();
+            var recoverGoal = ScriptableObject.CreateInstance<UtilityRecoverGoal>();
+            ai.Goals = new List<UtilityGoal> { surviveGoal, recoverGoal };
+
+            var enemyGo = new GameObject("MeleeEnemy");
+            enemyGo.transform.position = new Vector3(1.0f, 0f, 0f); // 1 unit away (in melee)
+            ai.EnemyTargets = new List<Transform> { enemyGo.transform };
+            ai.SetTarget(enemyGo.transform, 1.0f);
+
+            // 1. Rank E (LateWasteful): at 25% HP (below flee threshold 0.40 and below E trigger 0.28),
+            // Recover wins while 1 HP potion is available, and drinks in place (desiredPos == transform.position)!
+            ai.ApplyAdventurerProfile(profileE);
+            stats.TakeDamage(new DamageData(75f, DamageType.True)); // 25/100 HP
+            ai.UpdateResources();
+
+            Assert.AreEqual(EnumUtilGoal.Recover, ai.EvaluateBestGoalForTesting(), "Adventurer must choose Recover over Survive when usable HP potion exists.");
+            Assert.AreEqual(_rootGo.transform.position, ai.GetDesiredRecoveryPosition(), "LateWasteful (Rank E) must drink in place even under melee attack.");
+            Assert.IsTrue(ai.IsReadyToDrinkAtCurrentPosition());
+
+            // Consume Rank E's only potion -> kit is now empty -> Survive (flee) immediately wins!
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.AdvanceCast(1.0f));
+            stats.TakeDamage(new DamageData(50f, DamageType.True)); // drop back to low HP with 0 potions left
+            ai.UpdateResources();
+            Assert.AreEqual(EnumUtilGoal.Survive, ai.EvaluateBestGoalForTesting(), "Adventurer must flee (Survive) when no usable recovery items remain.");
+
+            // 2. Rank D (Adequate): steps back out of melee range before drinking
+            stats.RestoreLife(100f);
+            ai.ApplyAdventurerProfile(profileD);
+            stats.TakeDamage(new DamageData(65f, DamageType.True)); // 35% HP
+            ai.UpdateResources();
+            Vector3 dPos = ai.GetDesiredRecoveryPosition();
+            float distFromEnemyD = Vector3.Distance(dPos, enemyGo.transform.position);
+            Assert.GreaterOrEqual(distFromEnemyD, 3.4f, "Adequate (Rank D) must step back out of melee range before drinking.");
+            Assert.IsFalse(ai.IsReadyToDrinkAtCurrentPosition(), "Rank D at 1.0m from enemy must step back first.");
+
+            // 3. Rank C (WellTimed): seeks position behind Tank and respects per-room quota (2 items)
+            var leaderTankGo = new GameObject("LeaderTank");
+            leaderTankGo.transform.position = new Vector3(3.0f, 0f, 0f);
+            var tankBaseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            tankBaseStats.characterFunction = AdventurerFunction.Tank;
+            var tankStats = leaderTankGo.AddComponent<CharacterStatsManager>();
+            tankStats.SetBaseStats(tankBaseStats);
+            var leader = leaderTankGo.AddComponent<PartyLeader>();
+
+            var member = _rootGo.AddComponent<SquadMember>();
+            leader.RegisterMember(member);
+
+            stats.RestoreLife(100f);
+            ai.ApplyAdventurerProfile(profileC);
+            stats.TakeDamage(new DamageData(50f, DamageType.True)); // 50% HP (below C trigger 0.65)
+            ai.UpdateResources();
+
+            Vector3 cPos = ai.GetDesiredRecoveryPosition();
+            Assert.Greater(cPos.x, leaderTankGo.transform.position.x, "WellTimed (Rank C) must position behind the Tank away from the enemy.");
+
+            // Simulate using 2 items in the current room -> hits C's per-room quota (2) even with items still remaining
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.AdvanceCast(1.0f));
+            kitCtrl.AdvanceCast(6.5f); // clear cooldown
+            stats.TakeDamage(new DamageData(50f, DamageType.True));
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.AdvanceCast(1.0f));
+            kitCtrl.AdvanceCast(6.5f); // clear cooldown
+
+            Assert.Greater(kitCtrl.TotalRemainingCount, 0, "Rank C still has items in kit.");
+            Assert.AreEqual(2, kitCtrl.ItemsUsedInCurrentRoom);
+            Assert.IsFalse(ai.CanRecoverWithItemNow(), "WellTimed (Rank C) must respect per-room item quota (2).");
+
+            UnityEngine.Object.DestroyImmediate(surviveGoal);
+            UnityEngine.Object.DestroyImmediate(recoverGoal);
+            UnityEngine.Object.DestroyImmediate(baseStats);
+            UnityEngine.Object.DestroyImmediate(tankBaseStats);
+            UnityEngine.Object.DestroyImmediate(enemyGo);
+            UnityEngine.Object.DestroyImmediate(leaderTankGo);
+        }
+
+        [Test]
+        public void Phase5_PartyLeader_RecoverOrder_UsesRealKitCounts_AndReRunsCheckpointWhenComplete()
+        {
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            var modifiers = AssetDatabase.LoadAssetAtPath<ItemKitModifiers>("Assets/ScriptableObjects/AIProfiles/DefaultItemKitModifiers.asset");
+            var qualityTuning = AssetDatabase.LoadAssetAtPath<ItemUseQualityTuningSO>("Assets/ScriptableObjects/AIProfiles/ItemUseQualityTuning.asset");
+            var checkpointTuning = AssetDatabase.LoadAssetAtPath<LeaderCheckpointTuningSO>("Assets/ScriptableObjects/AIProfiles/LeaderCheckpointTuning.asset");
+
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 100f;
+            baseStats.MaxMana = 50f;
+            baseStats.characterFunction = AdventurerFunction.Tank;
+
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.KitModifiers = modifiers;
+            kitCtrl.QualityTuning = qualityTuning;
+            var ai = _rootGo.AddComponent<BaseAI>();
+            ai.ItemUseQualityTuning = qualityTuning;
+            ai.ApplyAdventurerProfile(profileC);
+
+            var leader = _rootGo.AddComponent<PartyLeader>();
+            leader.CheckpointTuning = checkpointTuning;
+            leader.StandInRewardProvider.ExplicitPartyCarriedValue = 40f;
+            leader.StandInRewardProvider.KnownPotentialAhead = 150f;
+            leader.StandInRewardProvider.UnknownExpectationPerRoom = 100f;
+            // Set stand-in recoveryItemsRemaining to 0 to prove PartyLeader uses the real AdventurerItemKitController count!
+            leader.RecoveryItemsRemaining = 0;
+
+            var evaluator = _rootGo.AddComponent<SquadTacticalEvaluator>();
+            evaluator.AutonomousAI = false;
+
+            // Damage leader to 50% HP -> needs recovery, and real kit has HP potions -> CheckpointDecision.Recover -> SquadOrderType.Recover
+            stats.TakeDamage(new DamageData(50f, DamageType.True));
+            CheckpointDecision decision1 = leader.RequestCheckpoint(out CheckpointReason reason1);
+            Assert.AreEqual(CheckpointDecision.Recover, decision1);
+            Assert.AreEqual(CheckpointReason.NeedsRecoveryBeforeAdvance, reason1);
+            Assert.AreEqual(SquadOrderType.Recover, leader.Blackboard.CurrentOrder, "CheckpointDecision.Recover must map to SquadOrderType.Recover.");
+            Assert.IsFalse(leader.IsPartyRecoveryComplete());
+
+            // Drink HP potion to heal above 85% HP -> recovery is now complete -> evaluator re-runs RequestCheckpoint -> Advance!
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
+            Assert.IsTrue(kitCtrl.AdvanceCast(1.0f));
+            stats.RestoreLife(100f); // ensure >= 85% target
+
+            Assert.IsTrue(leader.IsPartyRecoveryComplete());
+            evaluator.EvaluateTactics(0.5f);
+            Assert.AreEqual(CheckpointDecision.Advance, leader.LastCheckpointDecision, "PartyLeader must re-run RequestCheckpoint and advance once SquadOrderType.Recover completes.");
+            Assert.AreEqual(SquadOrderType.FollowLeader, leader.Blackboard.CurrentOrder);
+
+            UnityEngine.Object.DestroyImmediate(baseStats);
         }
     }
 }

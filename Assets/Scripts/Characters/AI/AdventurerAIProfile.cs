@@ -28,6 +28,12 @@ public enum TargetPriorityMode
     SupportFirstThenLowestHp = 2
 }
 
+public enum LeaderlessBehavior
+{
+    Dissolve = 0,
+    StayLoose = 1
+}
+
 /// <summary>
 /// Data-driven baseline decision parameters per adventurer rank.
 /// Higher ranks (B, A, S) can be added as additional assets without code changes.
@@ -59,13 +65,30 @@ public class AdventurerAIProfile : ScriptableObject
     [Tooltip("Target selection priority mode (Nearest, LowestHp, SupportFirstThenLowestHp).")]
     [SerializeField] private TargetPriorityMode targetPriorityMode = TargetPriorityMode.Nearest;
 
-    [Header("Squad & Item Heuristics (Stored for Phases 4/5)")]
+    [Header("Squad & Item Heuristics")]
     [Tooltip("Probability/weight [0.1, 1.0] of complying with squad leader tactical orders.")]
     [SerializeField, Range(0.1f, 1.0f)] private float squadOrderCompliance = 0.50f;
 
     [SerializeField] private LeaderAssessmentAccuracy leaderAssessmentAccuracy = LeaderAssessmentAccuracy.Optimistic;
     [SerializeField] private LeaderSafetyMargin leaderSafetyMargin = LeaderSafetyMargin.Thin;
     [SerializeField] private ItemUseQuality itemUseQuality = ItemUseQuality.LateWasteful;
+
+    [Header("Leader Checkpoint & Succession (Phase 4)")]
+    [Tooltip("Greed/reward weight multiplying expected potential reward when evaluating whether to advance.")]
+    [SerializeField, Range(0.1f, 3.0f)] private float rewardWeight = 1.60f;
+
+    [Tooltip("Reaction delay in seconds after the party leader dies before survivors evaluate succession.")]
+    [SerializeField, Range(0.0f, 5.0f)] private float successionReactionDelay = 1.80f;
+
+    [Tooltip("Minimum candidate score [0.0, 1.0] required for a survivor to step up as the new party leader.")]
+    [SerializeField, Range(0.0f, 1.0f)] private float stepUpThreshold = 0.70f;
+
+    [Tooltip("Fallback squad behavior when no survivor meets the stepUpThreshold after leader death.")]
+    [SerializeField] private LeaderlessBehavior leaderlessBehavior = LeaderlessBehavior.Dissolve;
+
+    [Header("Item Kit (Phase 5)")]
+    [Tooltip("Baseline consumable item kit granted to adventurers of this rank at spawn.")]
+    [SerializeField] private AdventurerItemKit startingItemKit;
 
     public CharacterRank Rank => rank;
     public float DecisionInterval => decisionInterval;
@@ -78,6 +101,11 @@ public class AdventurerAIProfile : ScriptableObject
     public LeaderAssessmentAccuracy LeaderAssessmentAccuracy => leaderAssessmentAccuracy;
     public LeaderSafetyMargin LeaderSafetyMargin => leaderSafetyMargin;
     public ItemUseQuality ItemUseQuality => itemUseQuality;
+    public float RewardWeight => rewardWeight;
+    public float SuccessionReactionDelay => successionReactionDelay;
+    public float StepUpThreshold => stepUpThreshold;
+    public LeaderlessBehavior LeaderlessBehavior => leaderlessBehavior;
+    public AdventurerItemKit StartingItemKit => startingItemKit;
 
     /// <summary>
     /// Computes the individual flee HP threshold adjusted by a personality multiplier.

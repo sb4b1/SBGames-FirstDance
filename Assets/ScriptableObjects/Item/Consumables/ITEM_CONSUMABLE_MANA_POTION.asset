@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 437b9cba77243de488681b3e7f844111, type: 3}
+  m_Name: ITEM_CONSUMABLE_MANA_POTION
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Data.ItemDataSO
+  itemID: ITEM_CONSUMABLE_MANA_POTION
+  displayName: Mana Potion
+  icon: {fileID: 0}
+  description: Restores mana to spellcasters and healers when consumed.
+  itemType: 0
+  equippableSlotType: 0
+  baseValue: 25
+  isStackable: 1
+  maxStack: 99
+  maxSockets: 0
+  statModifiers: []
+  consumableEffect: {fileID: 11400000, guid: 15d43cb2e8586a043a85a913cb628b4f, type: 2}

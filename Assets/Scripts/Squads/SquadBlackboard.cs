@@ -11,6 +11,7 @@ public class SquadBlackboard
     [SerializeField] private float averageSquadHealth = 1f;
     [SerializeField] private int livingMemberCount = 1;
     [SerializeField] private int orderVersion = 0;
+    [SerializeField] private bool retreatBlocked = false;
     [SerializeField] private System.Collections.Generic.List<KnownEnemyRecord> knownEnemies = new(8);
     [SerializeField] private System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> sharedHazards = new(16);
 
@@ -26,6 +27,11 @@ public class SquadBlackboard
     public float AverageSquadHealth => averageSquadHealth;
     public int LivingMemberCount => livingMemberCount;
     public int OrderVersion => orderVersion;
+    public bool RetreatBlocked
+    {
+        get => retreatBlocked;
+        set => retreatBlocked = value;
+    }
     public System.Collections.Generic.List<KnownEnemyRecord> KnownEnemies => knownEnemies;
     public bool HasKnownEnemies => knownEnemies.Count > 0;
     public System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> SharedHazards => sharedHazards;
@@ -158,5 +164,30 @@ public class SquadBlackboard
     public void ClearHazards()
     {
         sharedHazards.Clear();
+    }
+
+    public void CopyStateFrom(SquadBlackboard source)
+    {
+        if (source == null || ReferenceEquals(this, source)) return;
+
+        currentOrder = source.currentOrder;
+        focusFireTarget = source.focusFireTarget;
+        rallyPoint = source.rallyPoint;
+        averageSquadHealth = source.averageSquadHealth;
+        livingMemberCount = source.livingMemberCount;
+        orderVersion = source.orderVersion + 1;
+        retreatBlocked = source.retreatBlocked;
+
+        knownEnemies.Clear();
+        for (int i = 0; i < source.knownEnemies.Count; i++)
+        {
+            knownEnemies.Add(source.knownEnemies[i]);
+        }
+
+        sharedHazards.Clear();
+        for (int i = 0; i < source.sharedHazards.Count; i++)
+        {
+            sharedHazards.Add(source.sharedHazards[i]);
+        }
     }
 }

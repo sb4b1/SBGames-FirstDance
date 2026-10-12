@@ -29,12 +29,20 @@ public class BaseAI : MonoBehaviour, IPoolable
     [SerializeField] private CharacterAIMemory aiMemory;
     [SerializeField] private AdventurerAIProfile adventurerProfile;
     [SerializeField] private CharacterClassStyleTableSO classStyleTable;
+    [SerializeField] private ItemUseQualityTuningSO itemUseQualityTuning;
+    [SerializeField] private AdventurerItemKitController itemKitController;
+    [SerializeField] private StatusEffectManager statusEffectManager;
     [SerializeField] private AIDecisionThrottler decisionThrottler;
     [SerializeField] private DoorwayStagingController doorwayStaging;
+
+    [Header("Goal Hysteresis (Phase 5)")]
+    [Tooltip("Score commitment bonus applied to the currently active goal (if its raw score > 0) so competing goals like Recover and Survive do not flip-flop on boundary ticks.")]
+    [SerializeField, Range(0f, 0.25f)] private float goalHysteresisBonus = 0.08f;
 
     private bool hasProfileSurvivalThreshold;
     private float profileSurvivalHpThreshold;
     private TargetPriorityMode profileTargetPriorityMode = TargetPriorityMode.Nearest;
+    private ItemUseQuality profileItemUseQuality = ItemUseQuality.LateWasteful;
 
     public CharacterBrain Brain => brain ??= GetComponentInParent<CharacterBrain>();
     public CharacterStatsManager StatsManager => stats ??= (GetComponent<CharacterStatsManager>() ?? GetComponentInParent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
@@ -45,19 +53,28 @@ public class BaseAI : MonoBehaviour, IPoolable
     public CharacterAIMemory AIMemory => aiMemory ??= (GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>());
     public AIDecisionThrottler DecisionThrottler => decisionThrottler ??= (GetComponent<AIDecisionThrottler>() ?? GetComponentInChildren<AIDecisionThrottler>() ?? GetComponentInParent<AIDecisionThrottler>());
     public DoorwayStagingController DoorwayStaging => doorwayStaging ??= (GetComponent<DoorwayStagingController>() ?? GetComponentInChildren<DoorwayStagingController>() ?? GetComponentInParent<DoorwayStagingController>() ?? (transform.root != null ? transform.root.GetComponentInChildren<DoorwayStagingController>() : null));
+    public AdventurerItemKitController ItemKitController => itemKitController ??= (GetComponent<AdventurerItemKitController>() ?? GetComponentInParent<AdventurerItemKitController>() ?? GetComponentInChildren<AdventurerItemKitController>());
+    public StatusEffectManager StatusEffectManager => statusEffectManager ??= (GetComponent<StatusEffectManager>() ?? GetComponentInParent<StatusEffectManager>() ?? GetComponentInChildren<StatusEffectManager>());
     public AdventurerAIProfile AdventurerProfile => adventurerProfile;
     public CharacterClassStyleTableSO ClassStyleTable => classStyleTable;
+    public ItemUseQualityTuningSO ItemUseQualityTuning { get => itemUseQualityTuning; set => itemUseQualityTuning = value; }
     public CharacterClass CharacterClass => StatsManager != null ? StatsManager.CharacterClass : CharacterClass.None;
     public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
     public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
+    public AdventurerWealth CharacterWealth => StatsManager != null ? StatsManager.CharacterWealth : AdventurerWealth.Average;
     public TargetPriorityMode TargetPriorityMode => adventurerProfile != null ? adventurerProfile.TargetPriorityMode : profileTargetPriorityMode;
+    public ItemUseQuality ItemUseQuality => adventurerProfile != null ? adventurerProfile.ItemUseQuality : profileItemUseQuality;
     public float PreferredRangeBand => classStyleTable != null ? classStyleTable.GetPreferredRangeBand(CharacterClass) : 1.0f;
     public float SkillReliance => classStyleTable != null ? classStyleTable.GetSkillReliance(CharacterClass) : 0.5f;
     public float SkillRelianceMultiplier => classStyleTable != null ? Mathf.Lerp(0.5f, 1.5f, SkillReliance) : 1.0f;
+    public float GoalHysteresisBonus { get => goalHysteresisBonus; set => goalHysteresisBonus = Mathf.Clamp(value, 0f, 0.5f); }
+    public EnumUtilGoal ActiveGoal => activeGoal;
+    public List<UtilityGoal> Goals { get => goals; set => goals = value; }
     public List<UtilitySkill> Skills => skills;
 
     public void SetClassStyleTable(CharacterClassStyleTableSO table) => classStyleTable = table;
     public void SetTargetPriorityMode(TargetPriorityMode mode) => profileTargetPriorityMode = mode;
+    public void SetItemUseQuality(ItemUseQuality quality) => profileItemUseQuality = quality;
     public float GetPreferredStandingDistance(float attackRange) => Mathf.Max(0.1f, attackRange * PreferredRangeBand);
     public Vector3 GetFormationTargetPosition() => SquadMember != null && SquadMember.HasLeader ? SquadMember.GetFormationTargetPosition() : (LeaderTransform != null ? LeaderTransform.position : transform.position);
 
@@ -158,6 +175,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     }
 
     public bool HasSquadLeader => SquadMember != null && SquadMember.HasLeader;
+    public bool IsStayingLoose => SquadMember != null && SquadMember.IsStayingLoose;
     public SquadOrderType SquadOrder => SquadMember != null ? SquadMember.CurrentOrder : SquadOrderType.None;
     public Transform FocusFireTarget => SquadMember != null ? SquadMember.FocusFireTarget : null;
     public Transform LeaderTransform => SquadMember != null ? SquadMember.LeaderTransform : null;
@@ -320,6 +338,7 @@ public class BaseAI : MonoBehaviour, IPoolable
 
         adventurerProfile = profile;
         profileTargetPriorityMode = profile.TargetPriorityMode;
+        profileItemUseQuality = profile.ItemUseQuality;
 
         if (DecisionThrottler != null)
         {
@@ -342,6 +361,11 @@ public class BaseAI : MonoBehaviour, IPoolable
         if (DoorwayStaging != null)
         {
             DoorwayStaging.SetHesitationDuration(profile.DoorwayHesitation);
+        }
+
+        if (ItemKitController != null)
+        {
+            ItemKitController.ResolveRuntimeKit();
         }
     }
 
@@ -666,10 +690,11 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     public void UpdateResources()
     {
-        if (stats != null)
+        var s = StatsManager;
+        if (s != null)
         {
-            agentLife = stats.Life;
-            agentMana = stats.Mana;
+            agentLife = s.Life;
+            agentMana = s.Mana;
         }
     }
 
@@ -725,8 +750,25 @@ public class BaseAI : MonoBehaviour, IPoolable
         return false;
     }
 
+    public EnumUtilGoal EvaluateBestGoalForTesting()
+    {
+        EnumUtilGoal chosen = SelectBestGoal();
+        activeGoal = chosen;
+        return chosen;
+    }
+
+    public void SetActiveGoalForTesting(EnumUtilGoal goal)
+    {
+        activeGoal = goal;
+    }
+
     private EnumUtilGoal SelectBestGoal()
     {
+        if (goals == null || goals.Count == 0)
+        {
+            return EnumUtilGoal.None;
+        }
+
         UtilityGoal bestGoal = null;
         float highestScore = 0f;
 
@@ -739,7 +781,15 @@ public class BaseAI : MonoBehaviour, IPoolable
             var goal = goals[i];
             if (goal == null) continue;
 
+            EnumUtilGoal goalKey = goal.GetGOAPGoalKey();
             float score = goal.Evaluate(this);
+
+            // Hysteresis: grant a commitment bonus to the currently active goal if it is still valid (score > 0)
+            // so competing goals like Recover and Survive do not flip-flop on boundary ticks.
+            if (score > 0f && activeGoal != EnumUtilGoal.None && goalKey == activeGoal)
+            {
+                score += goalHysteresisBonus;
+            }
 
             if (score > highestScore)
             {
@@ -750,7 +800,7 @@ public class BaseAI : MonoBehaviour, IPoolable
 #if UNITY_EDITOR
             goalScores.GetPairs().Add(new SerializableDictionary<EnumUtilGoal, float>.Pair
             {
-                Key = goal.GetGOAPGoalKey(),
+                Key = goalKey,
                 Value = score
             });
 #endif
@@ -874,12 +924,234 @@ public class BaseAI : MonoBehaviour, IPoolable
             case EnumUtilGoal.DebriefLeader:
                 provider.RequestGoal<DebriefLeaderGoal>();
                 break;
+            case EnumUtilGoal.Recover:
+                provider.RequestGoal<RecoverGoal>();
+                break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);
                 break;
         }
     }
 #endregion
+
+    #region Item Recovery & Quality Heuristics (Phase 5)
+
+    /// <summary>
+    /// Returns the <see cref="ItemUseQualityTuningEntry"/> for this agent's <see cref="ItemUseQuality"/>
+    /// using an O(1) enum-indexed lookup with no switch statements.
+    /// </summary>
+    public ItemUseQualityTuningEntry GetItemUseQualityTuningEntry()
+    {
+        var tuning = itemUseQualityTuning != null
+            ? itemUseQualityTuning
+            : (ItemKitController != null ? ItemKitController.QualityTuning : null);
+        return ItemUseQualityTuningSO.GetEntryOrDefault(tuning, ItemUseQuality);
+    }
+
+    /// <summary>
+    /// Computes the active HP/Mana recovery trigger fractions and per-room item quota for this agent.
+    /// When <see cref="SquadOrder"/> is <see cref="SquadOrderType.Recover"/>, uses the higher squad recover target fractions.
+    /// Zero allocations.
+    /// </summary>
+    public void GetRecoveryThresholdsAndQuota(out float hpTriggerFrac, out float manaTriggerFrac, out int perRoomQuota)
+    {
+        var tuning = itemUseQualityTuning != null
+            ? itemUseQualityTuning
+            : (ItemKitController != null ? ItemKitController.QualityTuning : null);
+
+        ItemUseQualityTuningEntry entry = ItemUseQualityTuningSO.GetEntryOrDefault(tuning, ItemUseQuality);
+        perRoomQuota = entry.PerRoomItemQuota;
+
+        if (SquadOrder == SquadOrderType.Recover)
+        {
+            float squadHpTarget = tuning != null ? tuning.SquadRecoverTargetHpFraction : 0.85f;
+            float squadManaTarget = tuning != null ? tuning.SquadRecoverTargetManaFraction : 0.75f;
+            hpTriggerFrac = Mathf.Max(entry.HpTriggerFraction, squadHpTarget);
+            manaTriggerFrac = Mathf.Max(entry.ManaTriggerFraction, squadManaTarget);
+        }
+        else
+        {
+            hpTriggerFrac = entry.HpTriggerFraction;
+            manaTriggerFrac = entry.ManaTriggerFraction;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the agent currently has a usable recovery item (or is mid-cast on one)
+    /// that satisfies its current HP, Mana, or harmful status effect triggers and per-room quota.
+    /// Zero allocations.
+    /// </summary>
+    public bool CanRecoverWithItemNow()
+    {
+        var kit = ItemKitController;
+        if (kit == null) return false;
+
+        GetRecoveryThresholdsAndQuota(out float hpTrigger, out float manaTrigger, out int quota);
+        return kit.HasAnyApplicableItemNow(hpTrigger, manaTrigger, quota);
+    }
+
+    /// <summary>
+    /// Computes the desired world position where this agent should stand to drink a recovery item,
+    /// driven by <see cref="ItemUseQualityTuningEntry"/> (panic drink in place vs. step back out of melee vs. behind Tank/party rear).
+    /// Zero allocations.
+    /// </summary>
+    public Vector3 GetDesiredRecoveryPosition()
+    {
+        Vector3 myPos = transform.position;
+        ItemUseQualityTuningEntry entry = GetItemUseQualityTuningEntry();
+
+        // LateWasteful (Rank E): drinks immediately where it stands even while under attack
+        if (entry.PanicDrinkUnderAttack)
+        {
+            return myPos;
+        }
+
+        Transform nearestEnemy = GetNearestThreatTransform(out float nearestDist);
+
+        // WellTimed (Rank C): seek position behind Tank or at party rear
+        if (entry.SeekPartyRearOrBehindTank && HasSquadLeader && SquadMember.Leader != null)
+        {
+            var leader = SquadMember.Leader;
+            Transform anchorTank = FindLivingPartyTankTransform(leader);
+
+            if (anchorTank != null && nearestEnemy != null)
+            {
+                Vector3 enemyToTank = anchorTank.position - nearestEnemy.position;
+                enemyToTank.z = 0f;
+                Vector3 behindDir = enemyToTank.sqrMagnitude > 0.001f ? enemyToTank.normalized : -leader.MarchingForward;
+                float safeOffset = Mathf.Max(2.0f, entry.SafeEnemyDistance * 0.5f);
+                Vector3 candidate = anchorTank.position + behindDir * safeOffset;
+
+                if ((candidate - nearestEnemy.position).sqrMagnitude < entry.SafeEnemyDistance * entry.SafeEnemyDistance)
+                {
+                    candidate = nearestEnemy.position + behindDir * entry.SafeEnemyDistance;
+                }
+                return SampleNavMeshOrFallback(candidate, myPos);
+            }
+
+            // If no enemy or no separate Tank, position at the party rear behind the leader
+            Vector3 rearPos = leader.transform.position - (leader.MarchingForward * 2.5f);
+            if (nearestEnemy != null && (rearPos - nearestEnemy.position).sqrMagnitude < entry.SafeEnemyDistance * entry.SafeEnemyDistance)
+            {
+                Vector3 awayFromEnemy = myPos - nearestEnemy.position;
+                awayFromEnemy.z = 0f;
+                Vector3 awayDir = awayFromEnemy.sqrMagnitude > 0.001f ? awayFromEnemy.normalized : -leader.MarchingForward;
+                rearPos = nearestEnemy.position + awayDir * entry.SafeEnemyDistance;
+            }
+            return SampleNavMeshOrFallback(rearPos, myPos);
+        }
+
+        // Adequate (Rank D) or WellTimed solo: step back out of melee range before drinking
+        if (entry.BackOutOfMeleeFirst && nearestEnemy != null && nearestDist < entry.SafeEnemyDistance)
+        {
+            Vector3 away = myPos - nearestEnemy.position;
+            away.z = 0f;
+            Vector3 awayDir = away.sqrMagnitude > 0.001f ? away.normalized : Vector3.down;
+            Vector3 stepBackPos = nearestEnemy.position + awayDir * entry.SafeEnemyDistance;
+            return SampleNavMeshOrFallback(stepBackPos, myPos);
+        }
+
+        return myPos;
+    }
+
+    /// <summary>
+    /// Returns true when the agent is in a valid position to begin or continue its recovery item cast
+    /// according to its <see cref="ItemUseQualityTuningEntry"/>.
+    /// Zero allocations.
+    /// </summary>
+    public bool IsReadyToDrinkAtCurrentPosition(float positionTolerance = 0.65f)
+    {
+        ItemUseQualityTuningEntry entry = GetItemUseQualityTuningEntry();
+        if (entry.PanicDrinkUnderAttack)
+        {
+            return true;
+        }
+
+        Transform nearestEnemy = GetNearestThreatTransform(out float nearestDist);
+        if (nearestEnemy == null || nearestDist >= entry.SafeEnemyDistance)
+        {
+            if (!entry.SeekPartyRearOrBehindTank || !HasSquadLeader)
+            {
+                return true;
+            }
+        }
+
+        Vector3 desiredPos = GetDesiredRecoveryPosition();
+        Vector3 diff = desiredPos - transform.position;
+        diff.z = 0f;
+        return diff.sqrMagnitude <= (positionTolerance * positionTolerance);
+    }
+
+    private Transform GetNearestThreatTransform(out float nearestDistance)
+    {
+        Transform best = null;
+        float bestSqr = float.MaxValue;
+        Vector3 myPos = transform.position;
+
+        if (currentTarget != null)
+        {
+            Vector3 d = currentTarget.position - myPos;
+            d.z = 0f;
+            bestSqr = d.sqrMagnitude;
+            best = currentTarget;
+        }
+
+        if (enemyTargets != null)
+        {
+            for (int i = 0; i < enemyTargets.Count; i++)
+            {
+                var t = enemyTargets[i];
+                if (t == null) continue;
+                Vector3 d = t.position - myPos;
+                d.z = 0f;
+                float sqr = d.sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = t;
+                }
+            }
+        }
+
+        nearestDistance = best != null ? Mathf.Sqrt(bestSqr) : float.MaxValue;
+        return best;
+    }
+
+    private Transform FindLivingPartyTankTransform(PartyLeader leader)
+    {
+        if (leader == null) return null;
+
+        if (leader.IsAlive && leader.gameObject != gameObject && leader.EffectiveLeaderFunction == AdventurerFunction.Tank)
+        {
+            return leader.transform;
+        }
+
+        var members = leader.Members;
+        if (members != null)
+        {
+            for (int i = 0; i < members.Count; i++)
+            {
+                var m = members[i];
+                if (m != null && m.IsAlive && m.gameObject != gameObject && m.EffectiveFunction == AdventurerFunction.Tank)
+                {
+                    return m.transform;
+                }
+            }
+        }
+
+        return leader.IsAlive && leader.gameObject != gameObject ? leader.transform : null;
+    }
+
+    private static Vector3 SampleNavMeshOrFallback(Vector3 candidate, Vector3 fallback)
+    {
+        if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, 2.5f, NavMesh.AllAreas))
+        {
+            return hit.position;
+        }
+        return candidate;
+    }
+
+    #endregion
 
     /// <summary>
     /// Computes a trait-weighted and profile-priority-weighted target utility score for a given target transform

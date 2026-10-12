@@ -11,5 +11,6 @@ public enum EnumUtilGoal
     Standby,
     AlertAllies,
     ScoutRecon,
-    DebriefLeader
+    DebriefLeader,
+    Recover
 }

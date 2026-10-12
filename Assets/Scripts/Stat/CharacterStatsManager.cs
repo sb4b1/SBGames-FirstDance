@@ -19,6 +19,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public CharacterClass CharacterClass => baseStats != null ? baseStats.characterClass : CharacterClass.None;
     public AdventurerFunction CharacterFunction => baseStats != null ? baseStats.characterFunction : AdventurerFunction.None;
     public AdventurerFunction EffectiveFunction => (baseStats != null && baseStats.characterFunction != AdventurerFunction.None) ? baseStats.characterFunction : AdventurerFunction.DPS;
+    public AdventurerWealth CharacterWealth => baseStats != null ? baseStats.characterWealth : AdventurerWealth.Average;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;
@@ -237,7 +238,10 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         brain?.OnDespawn();
 
         ELogger.Log(this, nameof(OnDeath), $"{name} died");
-        Destroy(gameObject); // Temporary death handling - destroy the GameObject. Later: add death animation, ragdoll, etc.
+        if (Application.isPlaying)
+        {
+            Destroy(gameObject); // Temporary death handling - destroy the GameObject. Later: add death animation, ragdoll, etc.
+        }
         // Hook death logic here
     }
 

@@ -10,10 +10,10 @@ public class UtilityFollowLeaderGoal : UtilityGoal
 
     public override float Evaluate(BaseAI context)
     {
-        if (context == null || !context.HasSquadLeader) return 0f;
+        if (context == null || (!context.HasSquadLeader && !context.IsStayingLoose)) return 0f;
 
         // Explicit command from leader
-        if (context.SquadOrder == SquadOrderType.FollowLeader)
+        if (context.HasSquadLeader && context.SquadOrder == SquadOrderType.FollowLeader)
         {
             return explicitOrderWeight;
         }

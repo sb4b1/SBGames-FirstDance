@@ -23,3 +23,8 @@ MonoBehaviour:
   leaderAssessmentAccuracy: 2
   leaderSafetyMargin: 2
   itemUseQuality: 2
+  rewardWeight: 0.9
+  successionReactionDelay: 0.15
+  stepUpThreshold: 0.25
+  leaderlessBehavior: 1
+  startingItemKit: {fileID: 11400000, guid: 4f53b2907fada074c93103a3fa324c99, type: 2}

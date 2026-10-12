@@ -43,6 +43,10 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public CharacterSkillController SkillController => skillController != null ? skillController : (skillController = GetComponent<CharacterSkillController>() ?? GetComponentInChildren<CharacterSkillController>());
     public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
     public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
+    public AdventurerWealth CharacterWealth => StatsManager != null ? StatsManager.CharacterWealth : AdventurerWealth.Average;
+    public AdventurerItemKitController ItemKitController => cachedItemKitController != null
+        ? cachedItemKitController
+        : (cachedItemKitController = GetComponent<AdventurerItemKitController>() ?? GetComponentInChildren<AdventurerItemKitController>());
 
     private void Awake()
     {
@@ -107,6 +111,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // =========================
 
     private BaseAI cachedBaseAI;
+    private AdventurerItemKitController cachedItemKitController;
 
     public void OnSpawn()
     {
@@ -125,11 +130,21 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         {
             cachedBaseAI.OnSpawn();
         }
+
+        if (ItemKitController != null)
+        {
+            ItemKitController.OnSpawn();
+        }
     }
 
     public void OnDespawn()
     {
         InterruptAllActions();
+
+        if (ItemKitController != null)
+        {
+            ItemKitController.OnDespawn();
+        }
 
         if (cachedBaseAI != null)
         {
@@ -420,6 +435,11 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         if (skillController != null)
         {
             skillController.CancelPendingCast();
+        }
+
+        if (ItemKitController != null)
+        {
+            ItemKitController.CancelCast("Interrupted");
         }
 
         if (animController != null)

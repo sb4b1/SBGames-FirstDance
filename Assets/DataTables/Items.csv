@@ -1,5 +1,8 @@
 Id,ItemName,Description,ItemType,EquippableSlotType,MaxStack
 ITEM_ARTIFACT_001,Brown boots,,Artifact,Artifact,1
 ITEM_ARTIFACT_002,Lucky Clover,,Artifact,Artifact,1
+ITEM_CONSUMABLE_HP_POTION,HP Potion,Restores a moderate amount of life when consumed.,Consumable,None,99
+ITEM_CONSUMABLE_MANA_POTION,Mana Potion,Restores mana to spellcasters and healers when consumed.,Consumable,None,99
+ITEM_CONSUMABLE_STATUS_CURE,Status Cure,Cures active harmful status effects when consumed.,Consumable,None,99
 ITEM_RUNE_L001,Lesser Power Rune,,Rune,Rune,10
 ITEN_RUNE_TEST,ITEN_RUNE_TEST,,Rune,Rune,10
