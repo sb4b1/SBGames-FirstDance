@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[UnityEngine.Scripting.APIUpdating.MovedFrom(true, null, null, "ObjectIdenifier")]
 public abstract class ObjectIdentifier : MonoBehaviour, IIdentifier
 {
     [SerializeField] protected string uniqueId;

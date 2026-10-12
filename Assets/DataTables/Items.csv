@@ -1,3 +1,5 @@
 Id,ItemName,Description,ItemType,EquippableSlotType,MaxStack
-Brown_boots,Brown_boots,,Artifact,Artifact,1
-Rune_FireStrike,Rune_FireStrike,,Rune,Rune,1
+ITEM_ARTIFACT_001,Brown boots,,Artifact,Artifact,1
+ITEM_ARTIFACT_002,Lucky Clover,,Artifact,Artifact,1
+ITEM_RUNE_L001,Lesser Power Rune,,Rune,Rune,10
+ITEN_RUNE_TEST,ITEN_RUNE_TEST,,Rune,Rune,10

@@ -2,6 +2,7 @@ using CrashKonijn.Goap.Core;
 using CrashKonijn.Goap.Runtime;
 
 // Basic capability factory
+[UnityEngine.Scripting.APIUpdating.MovedFrom(true, null, null, "BasicCapabiliityFactory")]
 public class BasicCapabilityFactory : CapabilityFactoryBase
 {
     public override ICapabilityConfig Create()
