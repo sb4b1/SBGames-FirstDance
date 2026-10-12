@@ -9,12 +9,19 @@ public class PartyLeader : MonoBehaviour
     [SerializeField] private float leashDistance = 8f;
     [SerializeField] private float fallBackHealthThreshold = 0.3f;
 
+    [Header("Formation Configuration")]
+    [SerializeField] private SquadFormationConfigSO formationConfig;
+    [SerializeField] private FunctionFormationSlot[] formationSlots = SquadFormationConfigSO.CreateDefaultSlotsArray();
+    [SerializeField] private Vector3 marchingForward = Vector3.up;
+
     [Header("Runtime State")]
     [SerializeField] private SquadBlackboard blackboard = new();
     [SerializeField] private List<SquadMember> members = new(8);
 
     private CharacterStatsManager statsManager;
+    private BaseAI leaderBaseAI;
     private SquadMember activeScout;
+    private SquadMember scoutMember;
     private Coroutine scoutPanicCoroutine;
 
     public SquadBlackboard Blackboard => blackboard;
@@ -23,6 +30,35 @@ public class PartyLeader : MonoBehaviour
     public float FallBackHealthThreshold => fallBackHealthThreshold;
     public bool IsAlive => statsManager == null || statsManager.Life > 0;
     public SquadMember ActiveScout => activeScout;
+    public SquadFormationConfigSO FormationConfig { get => formationConfig; set => formationConfig = value; }
+    public Vector3 MarchingForward
+    {
+        get => marchingForward.sqrMagnitude > 0.001f ? marchingForward.normalized : transform.up;
+        set => marchingForward = value.sqrMagnitude > 0.001f ? value.normalized : Vector3.up;
+    }
+
+    /// <summary>
+    /// The living squad member whose <see cref="AdventurerFunction"/> is <see cref="AdventurerFunction.Scout"/>, or null.
+    /// Automatically updated when members join, leave, or die.
+    /// </summary>
+    public SquadMember ScoutMember
+    {
+        get
+        {
+            if (scoutMember != null && scoutMember.IsAlive && scoutMember.CharacterFunction == AdventurerFunction.Scout && members.Contains(scoutMember))
+            {
+                return scoutMember;
+            }
+
+            RefreshScoutMember();
+            return scoutMember;
+        }
+    }
+
+    /// <summary>
+    /// True when the party has a living member whose function is <see cref="AdventurerFunction.Scout"/>.
+    /// </summary>
+    public bool CanScout => ScoutMember != null;
 
     public event System.Action<SquadMember> OnScoutDispatched;
     public event System.Action<SquadMember> OnScoutDebriefed;
@@ -32,6 +68,11 @@ public class PartyLeader : MonoBehaviour
     {
         blackboard.LeaderTransform = transform;
         statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+        leaderBaseAI = GetComponentInChildren<BaseAI>();
+        if (formationSlots == null || formationSlots.Length == 0)
+        {
+            formationSlots = SquadFormationConfigSO.CreateDefaultSlotsArray();
+        }
     }
 
     private void OnEnable()
@@ -69,6 +110,8 @@ public class PartyLeader : MonoBehaviour
         {
             member.StatsManager.OnCharacterDeath += HandleMemberDeath;
         }
+
+        RefreshScoutMember();
     }
 
     public void UnregisterMember(SquadMember member)
@@ -83,10 +126,31 @@ public class PartyLeader : MonoBehaviour
             activeScout = null;
         }
         members.Remove(member);
+        RefreshScoutMember();
+    }
+
+    public void RefreshScoutMember()
+    {
+        scoutMember = null;
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && m.CharacterFunction == AdventurerFunction.Scout)
+            {
+                scoutMember = m;
+                return;
+            }
+        }
     }
 
     public SquadMember FindScout()
     {
+        var functionScout = ScoutMember;
+        if (functionScout != null)
+        {
+            return functionScout;
+        }
+
         for (int i = 0; i < members.Count; i++)
         {
             var m = members[i];
@@ -96,6 +160,81 @@ public class PartyLeader : MonoBehaviour
             }
         }
         return null;
+    }
+
+    public bool IsInCombat()
+    {
+        if (blackboard != null && (blackboard.HasKnownEnemies || blackboard.CurrentOrder == SquadOrderType.FocusFire))
+        {
+            return true;
+        }
+
+        if (leaderBaseAI == null)
+        {
+            leaderBaseAI = GetComponentInChildren<BaseAI>();
+        }
+
+        if (leaderBaseAI != null && (leaderBaseAI.ThreatLevel > 0 || (leaderBaseAI.EnemyTargets != null && leaderBaseAI.EnemyTargets.Count > 0)))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && m.BaseAI != null && m.BaseAI.ThreatLevel > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public Vector2 GetFormationSlotOffset(AdventurerFunction function, bool inCombat)
+    {
+        if (formationConfig != null)
+        {
+            return formationConfig.GetSlotOffset(function, inCombat);
+        }
+
+        AdventurerFunction effective = function != AdventurerFunction.None ? function : AdventurerFunction.DPS;
+        if (formationSlots != null)
+        {
+            for (int i = 0; i < formationSlots.Length; i++)
+            {
+                if (formationSlots[i].Function == effective)
+                {
+                    return inCombat ? formationSlots[i].CombatOffset : formationSlots[i].TravelOffset;
+                }
+            }
+        }
+
+        return new Vector2(0f, -1.0f);
+    }
+
+    public Vector3 GetFormationWorldPosition(SquadMember member)
+    {
+        if (member == null) return transform.position;
+        if (member.IsScouting) return transform.position;
+
+        bool inCombat = IsInCombat();
+        Vector2 slotOffset = GetFormationSlotOffset(member.EffectiveFunction, inCombat);
+
+        Vector3 forward = MarchingForward;
+        forward.z = 0f;
+        if (forward.sqrMagnitude < 0.001f)
+        {
+            forward = Vector3.up;
+        }
+        else
+        {
+            forward.Normalize();
+        }
+
+        // 2D right vector perpendicular to forward (clockwise 90 degrees: (y, -x))
+        Vector3 right = new Vector3(forward.y, -forward.x, 0f);
+        return transform.position + (right * slotOffset.x) + (forward * slotOffset.y);
     }
 
     public bool DispatchScout(SquadMember targetScout = null)
@@ -169,6 +308,8 @@ public class PartyLeader : MonoBehaviour
         if (memberStats == null) return;
         var member = memberStats.GetComponent<SquadMember>() ?? memberStats.GetComponentInChildren<SquadMember>();
         if (member == null) return;
+
+        RefreshScoutMember();
 
         // Check if the dying member is the active scout
         if (activeScout == member)
@@ -271,6 +412,7 @@ public class PartyLeader : MonoBehaviour
             }
         }
         members.Clear();
+        scoutMember = null;
         blackboard.ClearOrder();
     }
 
@@ -322,6 +464,9 @@ public class PartyLeader : MonoBehaviour
         newLeader.leashDistance = this.leashDistance;
         newLeader.fallBackHealthThreshold = this.fallBackHealthThreshold;
         newLeader.allowSuccession = this.allowSuccession;
+        newLeader.formationConfig = this.formationConfig;
+        newLeader.formationSlots = this.formationSlots;
+        newLeader.marchingForward = this.marchingForward;
 
         // If current leader had SquadTacticalEvaluator, preserve autonomous AI on successor
         if (TryGetComponent<SquadTacticalEvaluator>(out var oldEvaluator))

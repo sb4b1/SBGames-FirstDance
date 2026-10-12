@@ -33,8 +33,20 @@ namespace SBGames.Characters.AI
         private static readonly RaycastHit2D[] raycastBuffer = new RaycastHit2D[4];
 
         public bool IsStaging => isStaging;
+        public float MinHesitationDuration => minHesitationDuration;
+        public float MaxHesitationDuration => maxHesitationDuration;
         public Action OnStagingStarted;
         public Action OnStagingCompleted;
+
+        /// <summary>
+        /// Sets the doorway hesitation duration in seconds (e.g. from <see cref="AdventurerAIProfile"/>).
+        /// </summary>
+        public void SetHesitationDuration(float duration)
+        {
+            float clamped = Mathf.Max(0f, duration);
+            minHesitationDuration = clamped;
+            maxHesitationDuration = clamped;
+        }
 
         private void Awake()
         {

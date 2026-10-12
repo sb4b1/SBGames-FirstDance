@@ -154,6 +154,9 @@ public class UtilitySkill : ScriptableObject
             }
         }
 
+        // 8. Class Style Skill Reliance Bias (tuning only, never restricts skills)
+        score *= context.SkillRelianceMultiplier;
+
         return Mathf.Clamp01(Mathf.Max(0f, score));
     }
 }

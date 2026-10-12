@@ -41,6 +41,8 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
     public AnimationObjectController AnimController => animController != null ? animController : (animController = GetComponent<AnimationObjectController>() ?? GetComponentInChildren<AnimationObjectController>());
     public CharacterSkillController SkillController => skillController != null ? skillController : (skillController = GetComponent<CharacterSkillController>() ?? GetComponentInChildren<CharacterSkillController>());
+    public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
+    public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
 
     private void Awake()
     {
@@ -104,6 +106,8 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // Pooling
     // =========================
 
+    private BaseAI cachedBaseAI;
+
     public void OnSpawn()
     {
         // Register this character when spawned
@@ -111,11 +115,26 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         {
             CharacterManager.Instance.RegisterCharacter(this);
         }
+
+        if (cachedBaseAI == null)
+        {
+            cachedBaseAI = (aiAugment != null ? aiAugment.GetComponent<BaseAI>() : null) ?? GetComponentInChildren<BaseAI>(true);
+        }
+
+        if (cachedBaseAI != null)
+        {
+            cachedBaseAI.OnSpawn();
+        }
     }
 
     public void OnDespawn()
     {
         InterruptAllActions();
+
+        if (cachedBaseAI != null)
+        {
+            cachedBaseAI.OnDespawn();
+        }
 
         // Unregister this character when despawned
         if (CharacterManager.Instance != null)

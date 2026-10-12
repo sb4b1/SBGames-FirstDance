@@ -35,7 +35,7 @@ public class UtilitySurviveGoal : UtilityGoal
         if (ignoreSurvivalGoal && !hasCowardlyPersonality) return 0f;
 
         // 2. Health Threshold Gate
-        float threshold = (survivalHpThreshold >= 0f && !hasCowardlyPersonality)
+        float threshold = (context.AdventurerProfile == null && survivalHpThreshold >= 0f && !hasCowardlyPersonality)
             ? survivalHpThreshold
             : context.SurvivalHpThreshold;
 

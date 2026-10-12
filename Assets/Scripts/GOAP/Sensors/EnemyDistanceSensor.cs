@@ -30,10 +30,19 @@ public class EnemyDistanceSensor : MultiSensorBase
             Vector3 awayDir = toTarget.sqrMagnitude > 0.001f ? -toTarget.normalized : Vector3.up;
             Vector3 perpDir = new Vector3(-awayDir.y, awayDir.x, 0f);
 
+            float minRetreat = 2.5f;
+            float maxRetreat = 4.5f;
+            if (data.ClassStyleTable != null && data.StatsManager != null && data.StatsManager.AttackRange != null)
+            {
+                float preferredDist = data.GetPreferredStandingDistance(data.StatsManager.AttackRange.Value);
+                minRetreat = Mathf.Max(1.0f, preferredDist * 0.85f);
+                maxRetreat = Mathf.Max(minRetreat + 0.5f, preferredDist * 1.15f);
+            }
+
             for (int i = 0; i < 5; i++)
             {
                 float perpFactor = RandomUtil.Range(-1.5f, 1.5f);
-                float retreatDist = RandomUtil.Range(2.5f, 4.5f);
+                float retreatDist = RandomUtil.Range(minRetreat, maxRetreat);
                 Vector3 candidatePos = agentPos + (awayDir * retreatDist) + (perpDir * perpFactor);
 
                 if (NavMesh.SamplePosition(candidatePos, out NavMeshHit hit, 2f, NavMesh.AllAreas))

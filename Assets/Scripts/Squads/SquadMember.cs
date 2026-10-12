@@ -15,12 +15,18 @@ public class SquadMember : MonoBehaviour, ISquadMember
     public bool HasLeader => currentLeader != null && currentLeader.IsAlive;
     public bool IsAlive => statsManager == null || statsManager.Life > 0;
 
+    public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
+    public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
+
     public bool IsScout
     {
         get
         {
             if (overrideIsScout) return true;
-            return StatsManager != null && (StatsManager.CharacterClass == CharacterClass.Scout || StatsManager.CharacterClass == CharacterClass.Rogue);
+            if (StatsManager == null) return false;
+            return StatsManager.CharacterFunction == AdventurerFunction.Scout
+                || StatsManager.CharacterClass == CharacterClass.Scout
+                || StatsManager.CharacterClass == CharacterClass.Rogue;
         }
         set => overrideIsScout = value;
     }
@@ -42,6 +48,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
     public Transform FocusFireTarget => HasLeader ? currentLeader.Blackboard.FocusFireTarget : null;
     public Transform LeaderTransform => HasLeader ? currentLeader.transform : null;
     public Vector3 RallyPoint => HasLeader ? currentLeader.Blackboard.RallyPoint : transform.position;
+    public Vector3 GetFormationTargetPosition() => HasLeader ? currentLeader.GetFormationWorldPosition(this) : transform.position;
 
     public BaseAI BaseAI => baseAI ??= GetComponentInChildren<BaseAI>();
     public CharacterStatsManager StatsManager => statsManager ??= (GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());

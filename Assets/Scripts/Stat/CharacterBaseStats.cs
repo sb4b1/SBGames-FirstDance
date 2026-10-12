@@ -16,6 +16,11 @@ public class CharacterBaseStatSO : ScriptableObject
     [Min(1)] public int characterLevel = 1;
     public CharacterRank characterRank = CharacterRank.D;
     public CharacterClass characterClass = CharacterClass.None;
+    public AdventurerFunction characterFunction = AdventurerFunction.None;
+
+    public AdventurerFunction CharacterFunction => characterFunction;
+    public AdventurerFunction EffectiveFunction => characterFunction != AdventurerFunction.None ? characterFunction : AdventurerFunction.DPS;
+
     [Min(1)] public float MaxLife = 100f;
     [Min(0)] public float MaxMana = 50f;
     [Min(0)] public float Movespeed = 5f;

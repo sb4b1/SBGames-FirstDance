@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class FollowLeaderAction : GoapActionBase<FollowLeaderAction.Data>
 {
-    private const float DEFAULT_FOLLOW_RADIUS = 3.0f;
+    private const float DEFAULT_FOLLOW_RADIUS = 0.75f;
 
     public override void Start(IMonoAgent agent, Data data)
     {

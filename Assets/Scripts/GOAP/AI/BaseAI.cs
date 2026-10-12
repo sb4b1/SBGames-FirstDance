@@ -2,12 +2,13 @@ using System.Collections.Generic;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
 using SB4b1.Helpers;
+using SBGames.Characters.AI;
 using SBGames.Personality;
 using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(GoapActionProvider))]
-public class BaseAI : MonoBehaviour
+public class BaseAI : MonoBehaviour, IPoolable
 {
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private AgentBehaviour agentBehaviour;
@@ -26,20 +27,60 @@ public class BaseAI : MonoBehaviour
 
     [SerializeField] private CharacterPersonality personality;
     [SerializeField] private CharacterAIMemory aiMemory;
+    [SerializeField] private AdventurerAIProfile adventurerProfile;
+    [SerializeField] private CharacterClassStyleTableSO classStyleTable;
+    [SerializeField] private AIDecisionThrottler decisionThrottler;
+    [SerializeField] private DoorwayStagingController doorwayStaging;
+
+    private bool hasProfileSurvivalThreshold;
+    private float profileSurvivalHpThreshold;
+    private TargetPriorityMode profileTargetPriorityMode = TargetPriorityMode.Nearest;
 
     public CharacterBrain Brain => brain ??= GetComponentInParent<CharacterBrain>();
-    public CharacterStatsManager StatsManager => stats ??= GetComponentInParent<CharacterStatsManager>();
+    public CharacterStatsManager StatsManager => stats ??= (GetComponent<CharacterStatsManager>() ?? GetComponentInParent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
     public CharacterSkillController SkillController => skillController;
+    public VisionController Vision => vision ??= (GetComponent<VisionController>() ?? GetComponentInChildren<VisionController>() ?? GetComponentInParent<VisionController>() ?? (transform.root != null ? transform.root.GetComponentInChildren<VisionController>() : null));
     public SquadMember SquadMember => squadMember ??= (GetComponent<SquadMember>() ?? GetComponentInParent<SquadMember>() ?? GetComponentInChildren<SquadMember>());
     public CharacterPersonality Personality => personality ??= (GetComponent<CharacterPersonality>() ?? GetComponentInParent<CharacterPersonality>() ?? GetComponentInChildren<CharacterPersonality>());
     public CharacterAIMemory AIMemory => aiMemory ??= (GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>());
+    public AIDecisionThrottler DecisionThrottler => decisionThrottler ??= (GetComponent<AIDecisionThrottler>() ?? GetComponentInChildren<AIDecisionThrottler>() ?? GetComponentInParent<AIDecisionThrottler>());
+    public DoorwayStagingController DoorwayStaging => doorwayStaging ??= (GetComponent<DoorwayStagingController>() ?? GetComponentInChildren<DoorwayStagingController>() ?? GetComponentInParent<DoorwayStagingController>() ?? (transform.root != null ? transform.root.GetComponentInChildren<DoorwayStagingController>() : null));
+    public AdventurerAIProfile AdventurerProfile => adventurerProfile;
+    public CharacterClassStyleTableSO ClassStyleTable => classStyleTable;
+    public CharacterClass CharacterClass => StatsManager != null ? StatsManager.CharacterClass : CharacterClass.None;
+    public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
+    public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;
+    public TargetPriorityMode TargetPriorityMode => adventurerProfile != null ? adventurerProfile.TargetPriorityMode : profileTargetPriorityMode;
+    public float PreferredRangeBand => classStyleTable != null ? classStyleTable.GetPreferredRangeBand(CharacterClass) : 1.0f;
+    public float SkillReliance => classStyleTable != null ? classStyleTable.GetSkillReliance(CharacterClass) : 0.5f;
+    public float SkillRelianceMultiplier => classStyleTable != null ? Mathf.Lerp(0.5f, 1.5f, SkillReliance) : 1.0f;
     public List<UtilitySkill> Skills => skills;
+
+    public void SetClassStyleTable(CharacterClassStyleTableSO table) => classStyleTable = table;
+    public void SetTargetPriorityMode(TargetPriorityMode mode) => profileTargetPriorityMode = mode;
+    public float GetPreferredStandingDistance(float attackRange) => Mathf.Max(0.1f, attackRange * PreferredRangeBand);
+    public Vector3 GetFormationTargetPosition() => SquadMember != null && SquadMember.HasLeader ? SquadMember.GetFormationTargetPosition() : (LeaderTransform != null ? LeaderTransform.position : transform.position);
 
     // --- Precomputed Zero-Alloc Personality Biases ---
     public float EffectiveThreatMultiplier => Personality != null ? Personality.Snapshot.ThreatMultiplier : 1.0f;
     public float EffectiveFearMultiplier => Personality != null ? Personality.Snapshot.FearMultiplier : 1.0f;
     public bool IsFearLocked => Personality != null && Personality.Snapshot.IsFearLocked;
-    public float SurvivalHpThreshold => Personality != null ? Personality.Snapshot.SurvivalHpThreshold : 0.25f;
+    public float SurvivalHpThreshold
+    {
+        get
+        {
+            if (adventurerProfile != null)
+            {
+                float personalityMultiplier = Personality != null ? Personality.GetFleeThresholdMultiplier() : 1.0f;
+                return adventurerProfile.GetAdjustedFleeThreshold(personalityMultiplier);
+            }
+            if (hasProfileSurvivalThreshold)
+            {
+                return profileSurvivalHpThreshold;
+            }
+            return Personality != null ? Personality.Snapshot.SurvivalHpThreshold : 0.25f;
+        }
+    }
     public bool IgnoreSurvivalGoal => Personality != null && Personality.Snapshot.IgnoreSurvivalGoal;
     public int ClusterCountOffset => Personality != null ? Personality.Snapshot.ClusterCountOffset : 0;
     public float RangePreferenceMultiplier => Personality != null ? Personality.Snapshot.RangePreferenceMultiplier : 1.0f;
@@ -173,6 +214,25 @@ public class BaseAI : MonoBehaviour
         {
             gameObject.AddComponent<CharacterAIMemory>();
         }
+
+        decisionThrottler = GetComponent<AIDecisionThrottler>();
+        if (aiMemory == null)
+        {
+            aiMemory = GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>();
+        }
+
+        if (adventurerProfile != null)
+        {
+            ApplyAdventurerProfile(adventurerProfile);
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (adventurerProfile != null)
+        {
+            ApplyAdventurerProfile(adventurerProfile);
+        }
     }
 
     private void Start()
@@ -210,13 +270,79 @@ public class BaseAI : MonoBehaviour
             if (aiMemory == null && transform.root != null) aiMemory = transform.root.GetComponentInChildren<CharacterAIMemory>();
         }
 
+        if (doorwayStaging == null)
+        {
+            doorwayStaging = GetComponent<DoorwayStagingController>();
+            if (doorwayStaging == null) doorwayStaging = GetComponentInChildren<DoorwayStagingController>();
+            if (doorwayStaging == null) doorwayStaging = GetComponentInParent<DoorwayStagingController>();
+            if (doorwayStaging == null && transform.root != null) doorwayStaging = transform.root.GetComponentInChildren<DoorwayStagingController>();
+        }
+
         if (spawnPosition == Vector3.zero)
         {
             spawnPosition = transform.position;
         }
 
+        if (adventurerProfile != null)
+        {
+            ApplyAdventurerProfile(adventurerProfile);
+        }
+
         InitializeAgent();
         InitializeSkills();
+    }
+
+    public void OnSpawn()
+    {
+        if (adventurerProfile != null)
+        {
+            ApplyAdventurerProfile(adventurerProfile);
+        }
+    }
+
+    public void OnDespawn()
+    {
+    }
+
+    public void SetSurvivalHpThreshold(float threshold)
+    {
+        profileSurvivalHpThreshold = Mathf.Clamp01(threshold);
+        hasProfileSurvivalThreshold = true;
+    }
+
+    /// <summary>
+    /// Applies data-driven adventurer rank profile parameters to AI subsystems.
+    /// If <paramref name="profile"/> is null, existing defaults remain untouched.
+    /// </summary>
+    public void ApplyAdventurerProfile(AdventurerAIProfile profile)
+    {
+        if (profile == null) return;
+
+        adventurerProfile = profile;
+        profileTargetPriorityMode = profile.TargetPriorityMode;
+
+        if (DecisionThrottler != null)
+        {
+            DecisionThrottler.SetDecisionInterval(profile.DecisionInterval);
+        }
+
+        if (Vision != null)
+        {
+            Vision.SetVisionRadius(profile.VisionRadius);
+        }
+
+        float personalityMultiplier = Personality != null ? Personality.GetFleeThresholdMultiplier() : 1.0f;
+        SetSurvivalHpThreshold(profile.GetAdjustedFleeThreshold(personalityMultiplier));
+
+        if (AIMemory != null)
+        {
+            AIMemory.SetDefaultHazardDuration(profile.HazardMemoryDuration);
+        }
+
+        if (DoorwayStaging != null)
+        {
+            DoorwayStaging.SetHesitationDuration(profile.DoorwayHesitation);
+        }
     }
 
     private void Update()
@@ -756,18 +882,65 @@ public class BaseAI : MonoBehaviour
 #endregion
 
     /// <summary>
-    /// Computes a trait-weighted target utility score for a given target transform without managed allocations.
-    /// Incorporates low-health priority (Bloodthirsty/Beast) and distance weighting.
+    /// Computes a trait-weighted and profile-priority-weighted target utility score for a given target transform
+    /// without managed allocations. Respects <see cref="TargetPriorityMode"/> (Nearest, LowestHp, SupportFirstThenLowestHp),
+    /// low-health execution traits, and memory grudge.
     /// </summary>
     public float GetTraitWeightedTargetScore(Transform target, float distance)
     {
         if (target == null) return 0f;
 
-        // Base proximity score (closer = higher)
-        float score = 100f / (1f + distance);
+        if (!target.TryGetComponent<CharacterStatsManager>(out var targetStats))
+        {
+            targetStats = target.GetComponentInParent<CharacterStatsManager>();
+        }
+
+        TargetPriorityMode priorityMode = TargetPriorityMode;
+        float score;
+
+        if (priorityMode == TargetPriorityMode.LowestHp)
+        {
+            if (targetStats != null)
+            {
+                float currentHp = Mathf.Max(0f, targetStats.Life);
+                score = (10000f / (1f + currentHp)) + (1f / (1f + distance));
+            }
+            else
+            {
+                score = 100f / (1f + distance);
+            }
+        }
+        else if (priorityMode == TargetPriorityMode.SupportFirstThenLowestHp)
+        {
+            AdventurerFunction targetFunc = AdventurerFunction.None;
+            if (targetStats != null)
+            {
+                targetFunc = targetStats.CharacterFunction;
+            }
+            else if (target.TryGetComponent<CharacterBrain>(out var targetBrain))
+            {
+                targetFunc = targetBrain.CharacterFunction;
+            }
+            else if (target.TryGetComponent<CharacterIdentifier>(out var targetId))
+            {
+                targetFunc = targetId.CharacterFunction;
+            }
+
+            float hpScore = targetStats != null
+                ? (10000f / (1f + Mathf.Max(0f, targetStats.Life)))
+                : (100f / (1f + distance));
+            float distTieBreaker = 1f / (1f + distance);
+            float supportBonus = targetFunc == AdventurerFunction.Healer ? 100000f : 0f;
+            score = supportBonus + hpScore + distTieBreaker;
+        }
+        else
+        {
+            // TargetPriorityMode.Nearest (default)
+            score = 100f / (1f + distance);
+        }
 
         // Low health execution bias
-        if (LowHealthTargetPriority > 1f && target.TryGetComponent<CharacterStatsManager>(out var targetStats))
+        if (LowHealthTargetPriority > 1f && targetStats != null)
         {
             if (targetStats.MaxLife != null && targetStats.MaxLife.Value > 0f)
             {

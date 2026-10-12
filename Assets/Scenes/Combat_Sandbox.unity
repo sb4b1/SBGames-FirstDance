@@ -627,6 +627,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1760552854}
     m_Modifications:
+    - target: {fileID: 4874665318065577021, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
+      propertyPath: characterName
+      value: MONSTER_N003 (1)
+      objectReference: {fileID: 0}
     - target: {fileID: 6664999883879676430, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
       propertyPath: m_Name
       value: MONSTER_N003 (1)
@@ -689,6 +693,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1760552854}
     m_Modifications:
+    - target: {fileID: 4874665318065577021, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
+      propertyPath: characterName
+      value: MONSTER_N003 (2)
+      objectReference: {fileID: 0}
     - target: {fileID: 6664999883879676430, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
       propertyPath: m_Name
       value: MONSTER_N003 (2)

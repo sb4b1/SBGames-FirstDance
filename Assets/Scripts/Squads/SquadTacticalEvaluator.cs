@@ -98,14 +98,19 @@ public class SquadTacticalEvaluator : MonoBehaviour
             Transform bestTarget = baseAI != null ? baseAI.CurrentTarget : null;
             if (bestTarget == null && hasDirectEnemies)
             {
-                // Select first valid enemy in list
+                float bestDirectScore = float.MinValue;
+                Vector3 myPos = transform.position;
                 for (int i = 0; i < baseAI.EnemyTargets.Count; i++)
                 {
                     var t = baseAI.EnemyTargets[i];
-                    if (t != null)
+                    if (t == null) continue;
+
+                    float dist = Vector3.Distance(myPos, t.position);
+                    float score = baseAI.GetTraitWeightedTargetScore(t, dist);
+                    if (score > bestDirectScore)
                     {
+                        bestDirectScore = score;
                         bestTarget = t;
-                        break;
                     }
                 }
             }

@@ -16,8 +16,11 @@ public class VisionController : MonoBehaviour
 
     public List<Transform> EnemyTargets => enemyTargets;
     public List<Transform> AllyTargets => allyTargets;
+    public Sensor Sensor => sensor;
+    public float VisionRadius => GetVisionRadius();
 
     private float searchTimer;
+    private float configuredVisionRadius = -1f;
     private const float SEARCH_INTERVAL = 0.2f;
 
     [SerializeField] private FactionMember factionMember;
@@ -28,6 +31,101 @@ public class VisionController : MonoBehaviour
         if (brain == null) brain = GetComponentInParent<BaseAI>();
         if (sensor == null) sensor = GetComponentInChildren<Sensor>();
         if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
+
+        if (configuredVisionRadius > 0f && sensor != null)
+        {
+            ApplyRadiusToSensor(sensor, configuredVisionRadius);
+        }
+    }
+
+    /// <summary>
+    /// Sets the perception sensor detection radius (e.g. from <see cref="AdventurerAIProfile"/>).
+    /// Supports <see cref="RangeSensor2D"/>, <see cref="LOSSensor2D"/> (including its <see cref="LOSSensor2D.InputSensor"/>),
+    /// and <see cref="RaySensor2D"/>.
+    /// </summary>
+    public void SetVisionRadius(float radius)
+    {
+        float clamped = Mathf.Max(0.1f, radius);
+        configuredVisionRadius = clamped;
+
+        if (sensor == null)
+        {
+            sensor = GetComponentInChildren<Sensor>();
+        }
+
+        if (sensor != null)
+        {
+            ApplyRadiusToSensor(sensor, clamped);
+        }
+    }
+
+    public float GetVisionRadius()
+    {
+        if (sensor == null)
+        {
+            sensor = GetComponentInChildren<Sensor>();
+        }
+
+        if (sensor is RangeSensor2D range2D)
+        {
+            return range2D.Circle.Radius;
+        }
+        if (sensor is LOSSensor2D los2D)
+        {
+            if (los2D.LimitDistance || los2D.InputSensor == null)
+            {
+                return los2D.MaxDistance;
+            }
+            if (los2D.InputSensor is RangeSensor2D inputRange2D)
+            {
+                return inputRange2D.Circle.Radius;
+            }
+            return los2D.MaxDistance;
+        }
+        if (sensor is RaySensor2D ray2D)
+        {
+            return ray2D.Length;
+        }
+
+        return configuredVisionRadius > 0f ? configuredVisionRadius : 0f;
+    }
+
+    private static void ApplyRadiusToSensor(Sensor targetSensor, float radius)
+    {
+        if (targetSensor == null) return;
+
+        if (targetSensor is RangeSensor2D range2D)
+        {
+            range2D.Circle.Radius = radius;
+        }
+        else if (targetSensor is LOSSensor2D los2D)
+        {
+            los2D.MaxDistance = radius;
+            if (los2D.InputSensor != null && los2D.InputSensor != targetSensor)
+            {
+                ApplyRadiusToSensor(los2D.InputSensor, radius);
+            }
+        }
+        else if (targetSensor is RaySensor2D ray2D)
+        {
+            ray2D.Length = radius;
+        }
+        else if (targetSensor is RangeSensor range3D)
+        {
+            range3D.Sphere.Radius = radius;
+        }
+        else if (targetSensor is LOSSensor los3D)
+        {
+            los3D.MaxDistance = radius;
+            if (los3D.InputSensor != null && los3D.InputSensor != targetSensor)
+            {
+                ApplyRadiusToSensor(los3D.InputSensor, radius);
+            }
+        }
+        else if (targetSensor is RaySensor ray3D)
+        {
+            ray3D.Length = radius;
+        }
     }
 
     private void Update()

@@ -70,7 +70,9 @@ public class AttackAction : GoapActionBase<AttackAction.Data>
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)
     {
-        return distance <= data.Stats.AttackRange.Value;
+        float attackRange = data.Stats != null && data.Stats.AttackRange != null ? data.Stats.AttackRange.Value : 1f;
+        float standingDistance = data.AI != null ? data.AI.GetPreferredStandingDistance(attackRange) : attackRange;
+        return distance <= standingDistance;
     }
 
     public class Data : IActionData
@@ -79,6 +81,9 @@ public class AttackAction : GoapActionBase<AttackAction.Data>
         public float Distance { get; set; }
         public bool AttackInitiated { get; set; }
         public float Timer { get; set; }
+
+        [GetComponentInParent]
+        public BaseAI AI { get; set; }
 
         [GetComponentInParent]
         public CharacterBrain Brain { get; set; }

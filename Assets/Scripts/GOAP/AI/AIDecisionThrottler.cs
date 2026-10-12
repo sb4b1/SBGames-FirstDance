@@ -22,11 +22,27 @@ public class AIDecisionThrottler : MonoBehaviour
     [SerializeField] private float nextDecisionTime;
     [SerializeField] private bool isDecisionLocked;
     private float lastMemoryTickTime;
+    private bool hasProfileDecisionInterval;
+    private float profileDecisionInterval;
 
-    public float DecisionInterval => GetStatValue(statsManager?.DecisionInterval, defaultDecisionInterval);
+    public float DecisionInterval => hasProfileDecisionInterval
+        ? profileDecisionInterval
+        : GetStatValue(statsManager?.DecisionInterval, defaultDecisionInterval);
     public float IntervalJitter => GetStatValue(statsManager?.IntervalJitter, defaultIntervalJitter);
 
     public bool IsActionLocked => isDecisionLocked || (characterBrain != null && characterBrain.IsBusy);
+
+    /// <summary>
+    /// Sets the strategic decision evaluation interval (e.g. from <see cref="AdventurerAIProfile"/>),
+    /// preserving per-agent tick offsets and jitter.
+    /// </summary>
+    public void SetDecisionInterval(float interval)
+    {
+        float clamped = Mathf.Max(0.05f, interval);
+        defaultDecisionInterval = clamped;
+        profileDecisionInterval = clamped;
+        hasProfileDecisionInterval = true;
+    }
 
     private void Awake()
     {

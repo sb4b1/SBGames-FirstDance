@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98de6533552b884999455fb341f7234, type: 3}
+  m_Name: Profile_Rank_C
+  m_EditorClassIdentifier: Assembly-CSharp::AdventurerAIProfile
+  rank: 2
+  decisionInterval: 0.3
+  visionRadius: 7
+  individualFleeHpThreshold: 0.3
+  doorwayHesitation: 0.3
+  hazardMemoryDuration: 45
+  targetPriorityMode: 2
+  squadOrderCompliance: 0.9
+  leaderAssessmentAccuracy: 2
+  leaderSafetyMargin: 2
+  itemUseQuality: 2

@@ -17,6 +17,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField] private CharacterBaseStatSO baseStats;
     public CharacterBaseStatSO BaseStats => baseStats;
     public CharacterClass CharacterClass => baseStats != null ? baseStats.characterClass : CharacterClass.None;
+    public AdventurerFunction CharacterFunction => baseStats != null ? baseStats.characterFunction : AdventurerFunction.None;
+    public AdventurerFunction EffectiveFunction => (baseStats != null && baseStats.characterFunction != AdventurerFunction.None) ? baseStats.characterFunction : AdventurerFunction.DPS;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;

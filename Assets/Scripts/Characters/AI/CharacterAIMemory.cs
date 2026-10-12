@@ -154,6 +154,15 @@ public class CharacterAIMemory : MonoBehaviour
     public int GrudgeCount => grudgeCount;
     public int HazardCount => hazardCount;
     public int DamageRecordCount => damageHistoryCount;
+    public float DefaultHazardDuration => defaultHazardDuration;
+
+    /// <summary>
+    /// Sets the default hazard retention duration in seconds (e.g. from <see cref="AdventurerAIProfile"/>).
+    /// </summary>
+    public void SetDefaultHazardDuration(float duration)
+    {
+        defaultHazardDuration = Mathf.Max(0f, duration);
+    }
 
     // =========================================================
     // Lifecycle & Subscriptions
@@ -430,13 +439,14 @@ public class CharacterAIMemory : MonoBehaviour
     /// Caches grid coordinates and world position of a triggered or witnessed trap hazard.
     /// Immediately synchronizes with SquadBlackboard if this character belongs to a squad.
     /// </summary>
-    public void RecordHazard(Vector2Int gridCoord, Vector3 worldPos, float dangerLevel, float duration = 30f)
+    public void RecordHazard(Vector2Int gridCoord, Vector3 worldPos, float dangerLevel, float duration = -1f)
     {
+        float baseDuration = duration > 0f ? duration : defaultHazardDuration;
         float durationMultiplier = (BaseAI != null && BaseAI.Personality != null)
             ? BaseAI.Personality.Snapshot.HazardMemoryDurationMultiplier
             : 1.0f;
 
-        float effectiveDuration = duration * durationMultiplier;
+        float effectiveDuration = baseDuration * durationMultiplier;
         float expirationTime = Time.time + effectiveDuration;
 
         // Check if hazard coordinate is already cached locally

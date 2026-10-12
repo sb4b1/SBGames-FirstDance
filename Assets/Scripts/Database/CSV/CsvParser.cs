@@ -163,5 +163,54 @@ namespace SBGames.Database.CSV
 
             return field;
         }
+
+        public static readonly string[] CharacterHeaders =
+        {
+            "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function"
+        };
+
+        public static AdventurerFunction ParseAdventurerFunction(IReadOnlyDictionary<string, string> row)
+        {
+            if (row != null &&
+                row.TryGetValue("Function", out var funcStr) &&
+                !string.IsNullOrWhiteSpace(funcStr) &&
+                Enum.TryParse<AdventurerFunction>(funcStr.Trim(), true, out var parsedFunc) &&
+                Enum.IsDefined(typeof(AdventurerFunction), parsedFunc))
+            {
+                return parsedFunc;
+            }
+
+            return AdventurerFunction.None;
+        }
+
+        public static Dictionary<string, string> BuildCharacterCsvRow(CharacterEntry c)
+        {
+            return new Dictionary<string, string>
+            {
+                ["Id"] = c?.id ?? string.Empty,
+                ["CharacterName"] = c?.characterName ?? string.Empty,
+                ["MaxLife"] = c?.baseStats != null ? c.baseStats.MaxLife.ToString("F1") : "100",
+                ["MaxMana"] = c?.baseStats != null ? c.baseStats.MaxMana.ToString("F1") : "50",
+                ["Movespeed"] = c?.baseStats != null ? c.baseStats.Movespeed.ToString("F1") : "5",
+                ["Damage"] = c?.baseStats != null ? c.baseStats.Damage.ToString("F1") : "10",
+                ["AttackRange"] = c?.baseStats != null ? c.baseStats.AttackRange.ToString("F1") : "1",
+                ["AttackTimeInterval"] = c?.baseStats != null ? c.baseStats.AttackTimeInterval.ToString("F1") : "1",
+                ["DefaultSkillIds"] = c?.defaultSkillIds != null ? string.Join(";", c.defaultSkillIds) : string.Empty,
+                ["Function"] = c?.baseStats != null ? c.baseStats.characterFunction.ToString() : AdventurerFunction.None.ToString()
+            };
+        }
+
+        public static void ApplyCharacterCsvRowToStats(IReadOnlyDictionary<string, string> row, CharacterBaseStatSO baseStats)
+        {
+            if (row == null || baseStats == null) return;
+
+            if (row.TryGetValue("MaxLife", out var hpStr) && float.TryParse(hpStr, out var hp)) baseStats.MaxLife = hp;
+            if (row.TryGetValue("MaxMana", out var manaStr) && float.TryParse(manaStr, out var mana)) baseStats.MaxMana = mana;
+            if (row.TryGetValue("Movespeed", out var spdStr) && float.TryParse(spdStr, out var spd)) baseStats.Movespeed = spd;
+            if (row.TryGetValue("Damage", out var dmgStr) && float.TryParse(dmgStr, out var dmg)) baseStats.Damage = dmg;
+            if (row.TryGetValue("AttackRange", out var rangeStr) && float.TryParse(rangeStr, out var range)) baseStats.AttackRange = range;
+            if (row.TryGetValue("AttackTimeInterval", out var atiStr) && float.TryParse(atiStr, out var ati)) baseStats.AttackTimeInterval = ati;
+            baseStats.characterFunction = ParseAdventurerFunction(row);
+        }
     }
 }

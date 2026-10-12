@@ -98,5 +98,24 @@ namespace SBGames.Personality
                 modifierSnapshot = PersonalityModifierSnapshot.Default;
             }
         }
+
+        /// <summary>
+        /// Computes the relative survival/flee threshold multiplier from the cached <see cref="PersonalityModifierSnapshot"/>
+        /// against the default baseline (0.25), falling back to <see cref="PersonalityModifierSnapshot.FearMultiplier"/>.
+        /// Zero allocations.
+        /// </summary>
+        public float GetFleeThresholdMultiplier()
+        {
+            float defaultBaseline = PersonalityModifierSnapshot.Default.SurvivalHpThreshold;
+            if (defaultBaseline > 0f && !Mathf.Approximately(modifierSnapshot.SurvivalHpThreshold, defaultBaseline))
+            {
+                return modifierSnapshot.SurvivalHpThreshold / defaultBaseline;
+            }
+            if (!Mathf.Approximately(modifierSnapshot.FearMultiplier, 1.0f))
+            {
+                return modifierSnapshot.FearMultiplier;
+            }
+            return 1.0f;
+        }
     }
 }
