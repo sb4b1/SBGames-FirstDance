@@ -113,7 +113,15 @@ public class SquadTacticalEvaluator : MonoBehaviour
             {
                 wasInCombat = false;
                 postCombatQuietTimer = 0f;
-                leader.RequestCheckpoint();
+                // If room loop is active, notify it of room/combat clear; otherwise fallback to checkpoint
+                if (leader.CurrentRoomLoopState == SBGames.Characters.AI.RoomLoopState.Fight)
+                {
+                    leader.NotifyCombatCleared();
+                }
+                else
+                {
+                    leader.RequestCheckpoint();
+                }
                 return;
             }
         }

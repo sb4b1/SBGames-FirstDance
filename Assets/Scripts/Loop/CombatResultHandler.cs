@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using ArtificeToolkit.Attributes;
+using SBGames.Characters.AI;
 using SBGames.Loop.UI;
+using SBGames.Squads;
 using UnityEngine;
 
 namespace SBGames.Loop
@@ -10,7 +12,8 @@ namespace SBGames.Loop
     {
         Alive = 0,
         Dead = 1,
-        Retreated = 2
+        Retreated = 2,
+        Escaped = 3
     }
 
     public enum CombatState
@@ -41,6 +44,7 @@ namespace SBGames.Loop
         public bool IsAlive => state == AdventurerCombatState.Alive;
         public bool IsDead => state == AdventurerCombatState.Dead;
         public bool HasRetreated => state == AdventurerCombatState.Retreated;
+        public bool HasEscaped => state == AdventurerCombatState.Escaped;
 
         public AdventurerCombatRecord(string id, string name, float initialHealth)
         {
@@ -87,12 +91,14 @@ namespace SBGames.Loop
         public readonly int TotalAdventurers;
         public readonly int DefeatedAdventurers;
         public readonly int RetreatedAdventurers;
+        public readonly int EscapedAdventurers;
         public readonly int SurvivingAdventurers;
         public readonly IReadOnlyList<AdventurerCombatRecord> AdventurerRecords;
         public readonly BossCombatRecord BossRecord;
         public readonly int? EnergyReward;
         public readonly int? EssenceDamage;
         public readonly string SummaryMessage;
+        public readonly PostBattleReport Report;
 
         public CombatResultData(
             BattleOutcome outcome,
@@ -107,6 +113,25 @@ namespace SBGames.Loop
             int? energyReward,
             int? essenceDamage,
             string summaryMessage)
+            : this(outcome, roundNumber, durationSeconds, totalAdventurers, defeatedAdventurers, retreatedAdventurers, 0, survivingAdventurers, adventurerRecords, bossRecord, energyReward, essenceDamage, summaryMessage, null)
+        {
+        }
+
+        public CombatResultData(
+            BattleOutcome outcome,
+            int roundNumber,
+            float durationSeconds,
+            int totalAdventurers,
+            int defeatedAdventurers,
+            int retreatedAdventurers,
+            int escapedAdventurers,
+            int survivingAdventurers,
+            IReadOnlyList<AdventurerCombatRecord> adventurerRecords,
+            BossCombatRecord bossRecord,
+            int? energyReward,
+            int? essenceDamage,
+            string summaryMessage,
+            PostBattleReport report = null)
         {
             Outcome = outcome;
             RoundNumber = roundNumber;
@@ -114,12 +139,14 @@ namespace SBGames.Loop
             TotalAdventurers = totalAdventurers;
             DefeatedAdventurers = defeatedAdventurers;
             RetreatedAdventurers = retreatedAdventurers;
+            EscapedAdventurers = escapedAdventurers;
             SurvivingAdventurers = survivingAdventurers;
             AdventurerRecords = adventurerRecords ?? Array.Empty<AdventurerCombatRecord>();
             BossRecord = bossRecord;
             EnergyReward = energyReward;
             EssenceDamage = essenceDamage;
             SummaryMessage = summaryMessage ?? string.Empty;
+            Report = report;
         }
     }
 
@@ -144,8 +171,21 @@ namespace SBGames.Loop
         [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int totalAdventurersCount;
         [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int defeatedAdventurersCount;
         [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int retreatedAdventurersCount;
+        [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int escapedAdventurersCount;
         [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private int activeAdventurersCount;
         [SerializeField, ArtificeToolkit.Attributes.ReadOnly] private bool isBossAlive = true;
+
+        [Header("Post-Battle Telemetry (Phase 7)")]
+        [SerializeField] private PostBattleReport currentReport = new();
+
+        public bool IsRetreatBlocked
+        {
+            get
+            {
+                var leader = FindAnyObjectByType<PartyLeader>();
+                return leader != null && leader.RetreatBlocked;
+            }
+        }
 
         [Header("Debug Controls")]
         [SerializeField] private int debugKills = 3;
@@ -164,7 +204,9 @@ namespace SBGames.Loop
         public int TotalAdventurersCount => totalAdventurersCount;
         public int DefeatedAdventurersCount => defeatedAdventurersCount;
         public int RetreatedAdventurersCount => retreatedAdventurersCount;
+        public int EscapedAdventurersCount => escapedAdventurersCount;
         public int ActiveAdventurersCount => activeAdventurersCount;
+        public PostBattleReport CurrentReport => currentReport;
         public bool IsBossAlive => trackedBoss == null || trackedBoss.IsAlive;
         public BossCombatRecord BossRecord => trackedBoss;
         public IReadOnlyDictionary<string, AdventurerCombatRecord> TrackedAdventurers => trackedAdventurers;
@@ -196,6 +238,8 @@ namespace SBGames.Loop
             {
                 coreGameLoop.OnPhaseChanged += HandlePhaseChanged;
             }
+
+            SubscribeEventHub();
         }
 
         private void OnDisable()
@@ -205,6 +249,7 @@ namespace SBGames.Loop
                 coreGameLoop.OnPhaseChanged -= HandlePhaseChanged;
             }
 
+            UnsubscribeEventHub();
             UnbindAllEventHooks();
         }
 
@@ -460,6 +505,35 @@ namespace SBGames.Loop
             return true;
         }
 
+        public bool ReportAdventurerEscape(string id, Vector3 exitPosition = default)
+        {
+            if (string.IsNullOrEmpty(id) || !trackedAdventurers.TryGetValue(id, out var record))
+            {
+                Debug.LogWarning($"[CombatResultHandler] ReportAdventurerEscape ignored: Adventurer '{id}' is not registered.");
+                return false;
+            }
+
+            if (record.State == AdventurerCombatState.Escaped || record.State == AdventurerCombatState.Dead)
+            {
+                return true;
+            }
+
+            record.State = AdventurerCombatState.Escaped;
+            RecalculateAdventurerCounts();
+
+            currentReport?.RecordEscape(id, record.Name, Time.time - combatStartTime);
+
+            Debug.Log($"[CombatResultHandler] Adventurer '{record.Name}' ({id}) escaped through entrance. Remaining active: {activeAdventurersCount}/{totalAdventurersCount}");
+            OnAdventurerStateChanged?.Invoke(id, AdventurerCombatState.Escaped);
+
+            if (currentCombatState == CombatState.CombatActive)
+            {
+                EvaluateCombatOutcome(out _);
+            }
+
+            return true;
+        }
+
         public bool ReportBossDamage(float damageTaken, float remainingHealth)
         {
             if (trackedBoss == null)
@@ -527,7 +601,7 @@ namespace SBGames.Loop
                 outcome = BattleOutcome.Victory;
                 string victoryDetails = (defeatedAdventurersCount == totalAdventurersCount)
                     ? "All adventurers were slain!"
-                    : $"All adventurers neutralized ({defeatedAdventurersCount} slain, {retreatedAdventurersCount} retreated).";
+                    : $"All adventurers neutralized ({defeatedAdventurersCount} slain, {retreatedAdventurersCount} retreated, {escapedAdventurersCount} escaped).";
 
                 ConcludeCombat(BattleOutcome.Victory, $"Dungeon successfully defended! {victoryDetails}");
                 return true;
@@ -560,12 +634,14 @@ namespace SBGames.Loop
                 totalAdventurersCount,
                 defeatedAdventurersCount,
                 retreatedAdventurersCount,
+                escapedAdventurersCount,
                 activeAdventurersCount,
                 adventurerList,
                 trackedBoss,
                 energyReward,
                 essencePenalty,
-                summaryMessage);
+                summaryMessage,
+                currentReport);
 
             lastResultData = result;
             SetState(CombatState.AwaitingAcknowledgment);
@@ -626,7 +702,10 @@ namespace SBGames.Loop
             totalAdventurersCount = 0;
             defeatedAdventurersCount = 0;
             retreatedAdventurersCount = 0;
+            escapedAdventurersCount = 0;
             activeAdventurersCount = 0;
+
+            currentReport?.Clear();
 
             if (trackedBoss != null)
             {
@@ -658,6 +737,7 @@ namespace SBGames.Loop
             totalAdventurersCount = trackedAdventurers.Count;
             int dead = 0;
             int retreated = 0;
+            int escaped = 0;
             int alive = 0;
 
             foreach (var kvp in trackedAdventurers)
@@ -670,6 +750,9 @@ namespace SBGames.Loop
                     case AdventurerCombatState.Retreated:
                         retreated++;
                         break;
+                    case AdventurerCombatState.Escaped:
+                        escaped++;
+                        break;
                     case AdventurerCombatState.Alive:
                     default:
                         alive++;
@@ -679,6 +762,7 @@ namespace SBGames.Loop
 
             defeatedAdventurersCount = dead;
             retreatedAdventurersCount = retreated;
+            escapedAdventurersCount = escaped;
             activeAdventurersCount = alive;
         }
 
@@ -723,6 +807,108 @@ namespace SBGames.Loop
                 bossStatsBinding = null;
             }
         }
+
+        #region Event Hub Subscriptions & Telemetry
+
+        private void SubscribeEventHub()
+        {
+            AdventurerEventHub.OnLeaderRetreatBlocked += HandleLeaderRetreatBlocked;
+            AdventurerEventHub.OnPotionConsumed += HandlePotionConsumed;
+            AdventurerEventHub.OnRoomEntered += HandleRoomEntered;
+            AdventurerEventHub.OnRoomCleared += HandleRoomCleared;
+            AdventurerEventHub.OnCheckpointDecision += HandleCheckpointDecision;
+            AdventurerEventHub.OnLeaderDied += HandleLeaderDied;
+            AdventurerEventHub.OnLeaderChanged += HandleLeaderChanged;
+            AdventurerEventHub.OnUnitEscaped += HandleUnitEscaped;
+            AdventurerEventHub.OnWarpStarted += HandleWarpStarted;
+            AdventurerEventHub.OnWarpCompleted += HandleWarpCompleted;
+            AdventurerEventHub.OnWarpInterrupted += HandleWarpInterrupted;
+            AdventurerEventHub.OnWarpItemForfeited += HandleWarpItemForfeited;
+        }
+
+        private void UnsubscribeEventHub()
+        {
+            AdventurerEventHub.OnLeaderRetreatBlocked -= HandleLeaderRetreatBlocked;
+            AdventurerEventHub.OnPotionConsumed -= HandlePotionConsumed;
+            AdventurerEventHub.OnRoomEntered -= HandleRoomEntered;
+            AdventurerEventHub.OnRoomCleared -= HandleRoomCleared;
+            AdventurerEventHub.OnCheckpointDecision -= HandleCheckpointDecision;
+            AdventurerEventHub.OnLeaderDied -= HandleLeaderDied;
+            AdventurerEventHub.OnLeaderChanged -= HandleLeaderChanged;
+            AdventurerEventHub.OnUnitEscaped -= HandleUnitEscaped;
+            AdventurerEventHub.OnWarpStarted -= HandleWarpStarted;
+            AdventurerEventHub.OnWarpCompleted -= HandleWarpCompleted;
+            AdventurerEventHub.OnWarpInterrupted -= HandleWarpInterrupted;
+            AdventurerEventHub.OnWarpItemForfeited -= HandleWarpItemForfeited;
+        }
+
+        private void HandleLeaderRetreatBlocked(LeaderRetreatBlockedEvent e)
+        {
+            string leaderName = e.Leader != null ? e.Leader.name : "Leader";
+            currentReport?.RecordBlockedRetreat(leaderName, e.RefusalReason, e.Timestamp - combatStartTime);
+        }
+
+        private void HandlePotionConsumed(PotionConsumedEvent e)
+        {
+            currentReport?.RecordPotionUsed(e.UserName, e.Category, e.ItemId, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleRoomEntered(RoomEnteredEvent e)
+        {
+            currentReport?.RecordRoomEntered(e.RoomId, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleRoomCleared(RoomClearedEvent e)
+        {
+            currentReport?.RecordRoomCleared(e.RoomId, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleCheckpointDecision(CheckpointDecisionEvent e)
+        {
+            string leaderName = e.Leader != null ? e.Leader.name : "Leader";
+            currentReport?.RecordCheckpoint(leaderName, e.Decision, e.Reason, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleLeaderDied(LeaderDiedEvent e)
+        {
+            string leaderName = e.Leader != null ? e.Leader.name : "Leader";
+            currentReport?.RecordDeath(leaderName, e.Position, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleLeaderChanged(LeaderChangedEvent e)
+        {
+            string oldLeader = e.OldLeader != null ? e.OldLeader.name : "None";
+            string newLeader = e.NewLeader != null ? e.NewLeader.name : "None";
+            currentReport?.RecordLeaderChange(oldLeader, newLeader, e.Timestamp - combatStartTime);
+        }
+
+        private void HandleUnitEscaped(UnitEscapedEvent e)
+        {
+            currentReport?.RecordEscape(e.UnitId, e.UnitName, e.Timestamp - combatStartTime);
+            ReportAdventurerEscape(e.UnitId, e.EscapePosition);
+        }
+
+        private void HandleWarpStarted(AdventurerWarpEventData e)
+        {
+            currentReport?.RecordWarpUsage(e.UserName, e.ItemId, "Started", e.Timestamp - combatStartTime);
+        }
+
+        private void HandleWarpCompleted(AdventurerWarpEventData e)
+        {
+            currentReport?.RecordWarpUsage(e.UserName, e.ItemId, "Completed", e.Timestamp - combatStartTime);
+        }
+
+        private void HandleWarpInterrupted(AdventurerWarpEventData e)
+        {
+            currentReport?.RecordWarpUsage(e.UserName, e.ItemId, "Interrupted", e.Timestamp - combatStartTime);
+        }
+
+        private void HandleWarpItemForfeited(AdventurerWarpForfeitEventData e)
+        {
+            currentReport?.RecordWarpForfeit(e.UserName, e.ItemId, e.EnergyAwarded, e.Timestamp - combatStartTime);
+        }
+
+        #endregion
 
         private void DiscoverActiveUnitsFromCharacterManager()
         {

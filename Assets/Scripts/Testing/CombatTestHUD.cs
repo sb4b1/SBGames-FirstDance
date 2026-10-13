@@ -1,8 +1,10 @@
 using UnityEngine;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace SBGames.Testing
 {
-    using Input = UnityEngine.Input;
     using KeyCode = UnityEngine.KeyCode;
 
     /// <summary>
@@ -57,7 +59,7 @@ namespace SBGames.Testing
 
         private void Update()
         {
-            if (UnityEngine.Input.GetKeyDown(toggleKey))
+            if (WasToggleKeyPressed())
             {
                 isVisible = !isVisible;
             }
@@ -65,20 +67,43 @@ namespace SBGames.Testing
             if (runner == null) return;
 
             // Hotkey shortcuts
-            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.R))
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb != null)
             {
-                runner.RestartSimulation();
+                if (kb.rKey.wasPressedThisFrame) runner.RestartSimulation();
+                if (kb.spaceKey.wasPressedThisFrame) runner.TogglePause();
+                if (kb.digit1Key.wasPressedThisFrame) runner.SetTimeScale(1f);
+                if (kb.digit2Key.wasPressedThisFrame) runner.SetTimeScale(2f);
+                if (kb.digit5Key.wasPressedThisFrame) runner.SetTimeScale(5f);
+                if (kb.digit0Key.wasPressedThisFrame) runner.SetTimeScale(10f);
             }
-
-            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Space))
-            {
-                runner.TogglePause();
-            }
-
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.R)) runner.RestartSimulation();
+            if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Space)) runner.TogglePause();
             if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Alpha1)) runner.SetTimeScale(1f);
             if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Alpha2)) runner.SetTimeScale(2f);
             if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Alpha5)) runner.SetTimeScale(5f);
             if (UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.Alpha0)) runner.SetTimeScale(10f);
+#endif
+        }
+
+        private bool WasToggleKeyPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (toggleKey == KeyCode.H && kb.hKey.wasPressedThisFrame) return true;
+                if (toggleKey == KeyCode.F1 && kb.f1Key.wasPressedThisFrame) return true;
+                if (toggleKey == KeyCode.BackQuote && kb.backquoteKey.wasPressedThisFrame) return true;
+            }
+#endif
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return UnityEngine.Input.GetKeyDown(toggleKey);
+#else
+            return false;
+#endif
         }
 
         private void OnGUI()

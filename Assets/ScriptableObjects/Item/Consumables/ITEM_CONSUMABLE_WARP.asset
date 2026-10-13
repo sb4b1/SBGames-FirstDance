@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 437b9cba77243de488681b3e7f844111, type: 3}
+  m_Name: ITEM_CONSUMABLE_WARP
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Inventory.Data.ItemDataSO
+  itemID: ITEM_CONSUMABLE_WARP
+  displayName: Escape Scroll
+  icon: {fileID: 0}
+  description: Teleports the user safely out of the dungeon.
+  itemType: 0
+  equippableSlotType: 0
+  baseValue: 10
+  isStackable: 1
+  maxStack: 99
+  maxSockets: 0
+  statModifiers: []
+  consumableEffect: {fileID: 11400000, guid: 0c13872392809be409959ca4b6e9716d, type: 2}

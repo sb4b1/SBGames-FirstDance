@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using SB4b1.Logging;
 using SB4b1.Utils;
+using SBGames.Characters.AI;
+using SBGames.Dungeon.Markers;
 using SBGames.Personality;
 using UnityEngine;
 
@@ -72,6 +74,7 @@ public class PartyLeader : MonoBehaviour
     public float LeashDistance => leashDistance;
     public float FallBackHealthThreshold => fallBackHealthThreshold;
     public bool IsAlive => statsManager == null || statsManager.Life > 0;
+    public bool IsEscaped { get; set; }
     public SquadMember ActiveScout => activeScout;
     public SquadFormationConfigSO FormationConfig { get => formationConfig; set => formationConfig = value; }
     public LeaderCheckpointTuningSO CheckpointTuning { get => checkpointTuning; set => checkpointTuning = value; }
@@ -160,12 +163,27 @@ public class PartyLeader : MonoBehaviour
     /// </summary>
     public bool CanScout => ScoutMember != null;
 
+    [Header("Room Loop (Phase 6)")]
+    [SerializeField] private RoomLoopState currentRoomLoopState = RoomLoopState.None;
+    [SerializeField] private RoomVolume currentRoom;
+    [SerializeField] private DoorMarker targetDoor;
+    [SerializeField] private float stateTimer = 0f;
+    private DoorwayStagingController doorwayStagingController;
+
+    public RoomLoopState CurrentRoomLoopState => currentRoomLoopState;
+    public RoomVolume CurrentRoom => currentRoom;
+    public DoorMarker TargetDoor => targetDoor;
+    public RoomLoopTuningSO EffectiveRoomLoopTuning => LeaderProfile != null ? LeaderProfile.RoomLoopTuning : null;
+
     public event System.Action<SquadMember> OnScoutDispatched;
     public event System.Action<SquadMember> OnScoutDebriefed;
     public event System.Action<SquadMember> OnScoutEliminated;
     public event System.Action<PartyLeader> OnLeaderDied;
     public event System.Action<PartyLeader, PartyLeader> OnLeaderChanged;
     public event System.Action<CheckpointDecision, CheckpointReason> OnCheckpointDecision;
+    public event System.Action<RoomVolume> OnRoomEntered;
+    public event System.Action<RoomVolume> OnRoomCleared;
+    public event System.Action<RoomLoopState> OnRoomLoopStateChanged;
 
     private void Awake()
     {
@@ -291,6 +309,472 @@ public class PartyLeader : MonoBehaviour
             }
         }
         return null;
+    }
+
+    public SquadMember FindTank()
+    {
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && m.EffectiveFunction == AdventurerFunction.Tank)
+            {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    private void Update()
+    {
+        UpdateRoomLoop(Time.deltaTime);
+    }
+
+    /// <summary>
+    /// Starts or resumes the room loop at the current position.
+    /// </summary>
+    public void StartRoomLoop()
+    {
+        if (currentRoom == null)
+        {
+            currentRoom = DungeonRoomRegistry.GetRoomAt(transform.position);
+        }
+        if (!blackboard.HasEntrancePosition)
+        {
+            blackboard.EntrancePosition = DungeonRoomRegistry.HasEntrance ? DungeonRoomRegistry.EntrancePosition : transform.position;
+        }
+
+        if (currentRoom != null)
+        {
+            blackboard.RecordRoomVisited(currentRoom.RoomId, currentRoom.transform.position);
+            RecordRoomExits(currentRoom);
+
+            if (currentRoom.IsSafeRoom)
+            {
+                SetRoomLoopState(RoomLoopState.SafeRoomStop);
+                return;
+            }
+        }
+
+        SetRoomLoopState(RoomLoopState.Approach);
+    }
+
+    public void NotifyCombatCleared()
+    {
+        if (currentRoomLoopState == RoomLoopState.Fight)
+        {
+            SetRoomLoopState(RoomLoopState.Regroup);
+        }
+    }
+
+    public void SetRoomLoopState(RoomLoopState newState)
+    {
+        if (currentRoomLoopState == newState) return;
+
+        currentRoomLoopState = newState;
+        stateTimer = 0f;
+
+        var tuning = EffectiveRoomLoopTuning;
+        var profile = LeaderProfile;
+
+        switch (newState)
+        {
+            case RoomLoopState.Approach:
+                // Pick target door
+                targetDoor = SelectNextExit(currentRoom);
+                if (targetDoor == null)
+                {
+                    // No unexplored exits found anywhere -> backtrack/retreat
+                    blackboard.RetreatBlocked = false;
+                    OrderFallBack(blackboard.EntrancePosition);
+                }
+                else
+                {
+                    OrderFollowLeader();
+                }
+                break;
+
+            case RoomLoopState.Staging:
+                // Arrived at doorway threshold
+                float hesitation = profile != null ? profile.DoorwayHesitation : 0.6f;
+                if (doorwayStagingController != null)
+                {
+                    doorwayStagingController.SetHesitationDuration(hesitation);
+                    doorwayStagingController.StartStaging();
+                }
+                OrderStandby();
+
+                // Check boss door recognition
+                if (targetDoor != null && targetDoor.IsBossDoor)
+                {
+                    blackboard.SetBossDoorRecognized(targetDoor.Position);
+                    bool needPreBossRecover = tuning != null && tuning.PreBossRecover;
+                    bool needPreBossCheckpoint = tuning != null && tuning.PreBossCheckpoint;
+
+                    if (needPreBossRecover)
+                    {
+                        OrderRecover();
+                    }
+                    else if (needPreBossCheckpoint)
+                    {
+                        RequestCheckpoint();
+                    }
+                }
+                break;
+
+            case RoomLoopState.ScoutPeek:
+                if (CanScout && targetDoor != null)
+                {
+                    var scout = ScoutMember;
+                    if (scout != null)
+                    {
+                        activeScout = scout;
+                        scout.IsScouting = true;
+                        blackboard.SetOrder(SquadOrderType.ScoutAhead, null, targetDoor.Position);
+                        OnScoutDispatched?.Invoke(scout);
+                    }
+                    else
+                    {
+                        SetRoomLoopState(RoomLoopState.TankEnters);
+                    }
+                }
+                else
+                {
+                    SetRoomLoopState(RoomLoopState.TankEnters);
+                }
+                break;
+
+            case RoomLoopState.TankEnters:
+                // Advance into next room, with Tank leading if present
+                if (targetDoor != null)
+                {
+                    targetDoor.MarkExplored();
+                    blackboard.MarkDoorTraversed(targetDoor.DoorId);
+                    Vector3 marchDir = (targetDoor.Position - transform.position);
+                    if (marchDir.sqrMagnitude > 0.01f)
+                    {
+                        MarchingForward = marchDir.normalized;
+                    }
+                }
+                OrderFollowLeader();
+                break;
+
+            case RoomLoopState.Fight:
+                // Tactical evaluator handles combat focus fire
+                break;
+
+            case RoomLoopState.Regroup:
+                OrderStandby();
+                break;
+
+            case RoomLoopState.Checkpoint:
+                if (currentRoom != null)
+                {
+                    OnRoomCleared?.Invoke(currentRoom);
+                    AdventurerEventHub.RaiseRoomCleared(this, currentRoom, currentRoom.RoomId);
+                }
+                var decision = RequestCheckpoint();
+                if (decision == CheckpointDecision.Advance)
+                {
+                    SetRoomLoopState(RoomLoopState.Approach);
+                }
+                break;
+
+            case RoomLoopState.SafeRoomStop:
+                OrderRecover();
+                break;
+        }
+
+        OnRoomLoopStateChanged?.Invoke(currentRoomLoopState);
+    }
+
+    private void UpdateRoomLoop(float dt)
+    {
+        if (currentRoomLoopState == RoomLoopState.None) return;
+
+        stateTimer += dt;
+        var tuning = EffectiveRoomLoopTuning;
+
+        // Auto-detect current room changes
+        var detectedRoom = DungeonRoomRegistry.GetRoomAt(transform.position);
+        if (detectedRoom != null && detectedRoom != currentRoom)
+        {
+            currentRoom = detectedRoom;
+            blackboard.RecordRoomVisited(currentRoom.RoomId, currentRoom.transform.position);
+            RecordRoomExits(currentRoom);
+            OnRoomEntered?.Invoke(currentRoom);
+            AdventurerEventHub.RaiseRoomEntered(this, currentRoom, currentRoom.RoomId);
+
+            if (currentRoom.IsBossRoom)
+            {
+                AdventurerEventHub.RaiseBossFightStarted(this, currentRoom, targetDoor);
+            }
+
+            if (currentRoom.IsSafeRoom)
+            {
+                SetRoomLoopState(RoomLoopState.SafeRoomStop);
+                return;
+            }
+        }
+
+        // Combat transition takes priority
+        if (IsInCombat())
+        {
+            if (currentRoomLoopState != RoomLoopState.Fight)
+            {
+                SetRoomLoopState(RoomLoopState.Fight);
+            }
+            return;
+        }
+
+        switch (currentRoomLoopState)
+        {
+            case RoomLoopState.Approach:
+                if (targetDoor == null)
+                {
+                    targetDoor = SelectNextExit(currentRoom);
+                    if (targetDoor == null) return;
+                }
+                // Check if leader arrived near doorway
+                float distSq = (transform.position - targetDoor.Position).sqrMagnitude;
+                if (distSq <= 2.25f) // within 1.5m
+                {
+                    SetRoomLoopState(RoomLoopState.Staging);
+                }
+                break;
+
+            case RoomLoopState.Staging:
+                // If the target door is Sealed by DM, the party must wait in Standby indefinitely until the door opens
+                if (targetDoor != null && targetDoor.State == DoorState.Sealed)
+                {
+                    // Remain in Standby, exempt from timeouts
+                    OrderStandby();
+                    break;
+                }
+
+                float maxStagingWait = tuning != null ? tuning.StagingHesitationTimeout : 1.5f;
+                float maxStragglerWait = tuning != null ? tuning.StragglerTimeout : 5.0f;
+                bool stragglersCaughtUp = !AreMembersStraggling();
+
+                if ((stateTimer >= maxStagingWait && stragglersCaughtUp) || stateTimer >= maxStragglerWait)
+                {
+                    if (doorwayStagingController != null && doorwayStagingController.IsStaging)
+                    {
+                        doorwayStagingController.EndStaging();
+                    }
+                    if (CanScout)
+                    {
+                        SetRoomLoopState(RoomLoopState.ScoutPeek);
+                    }
+                    else
+                    {
+                        SetRoomLoopState(RoomLoopState.TankEnters);
+                    }
+                }
+                break;
+
+            case RoomLoopState.ScoutPeek:
+                float scoutTimeout = 4.0f;
+                if (activeScout == null || !activeScout.IsAlive || stateTimer >= scoutTimeout)
+                {
+                    if (activeScout != null)
+                    {
+                        SynchronizeScoutIntel(activeScout);
+                    }
+                    SetRoomLoopState(RoomLoopState.TankEnters);
+                }
+                break;
+
+            case RoomLoopState.TankEnters:
+                if (stateTimer >= 2.0f || (currentRoom != null && currentRoom.Contains(transform.position)))
+                {
+                    if (IsInCombat())
+                    {
+                        SetRoomLoopState(RoomLoopState.Fight);
+                    }
+                    else
+                    {
+                        SetRoomLoopState(RoomLoopState.Regroup);
+                    }
+                }
+                break;
+
+            case RoomLoopState.Fight:
+                // Managed by NotifyCombatCleared or combat ending
+                break;
+
+            case RoomLoopState.Regroup:
+                float regroupWait = tuning != null ? tuning.RegroupTimeout : 4.0f;
+                if (!AreMembersStraggling() || stateTimer >= regroupWait)
+                {
+                    SetRoomLoopState(RoomLoopState.Checkpoint);
+                }
+                break;
+
+            case RoomLoopState.Checkpoint:
+                // RequestCheckpoint was executed upon entering state.
+                // If it chose Recover or Regroup, wait for completion then resume Approach
+                if (LastCheckpointDecision == CheckpointDecision.Recover)
+                {
+                    if (IsPartyRecoveryComplete() || stateTimer >= 5.0f)
+                    {
+                        SetRoomLoopState(RoomLoopState.Approach);
+                    }
+                }
+                else if (LastCheckpointDecision == CheckpointDecision.Regroup)
+                {
+                    if (!AreMembersStraggling() || stateTimer >= 4.0f)
+                    {
+                        SetRoomLoopState(RoomLoopState.Approach);
+                    }
+                }
+                else if (LastCheckpointDecision == CheckpointDecision.Retreat)
+                {
+                    // Stay retreating towards entrance
+                }
+                break;
+
+            case RoomLoopState.SafeRoomStop:
+                float safeDuration = tuning != null ? tuning.SafeRoomDuration : 10.0f;
+                if (stateTimer >= safeDuration || IsPartyRecoveryComplete())
+                {
+                    SetRoomLoopState(RoomLoopState.Approach);
+                }
+                break;
+        }
+    }
+
+    private bool AreMembersStraggling()
+    {
+        float sqrThreshold = (leashDistance * 0.75f) * (leashDistance * 0.75f);
+        Vector3 leaderPos = transform.position;
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m == null || !m.IsAlive) continue;
+            if ((m.transform.position - leaderPos).sqrMagnitude > sqrThreshold)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void RecordRoomExits(RoomVolume room)
+    {
+        if (room == null || room.Exits == null) return;
+        var exits = room.Exits;
+        for (int i = 0; i < exits.Count; i++)
+        {
+            var exit = exits[i];
+            if (exit != null)
+            {
+                var opposite = exit.GetOppositeRoom(room);
+                int oppId = opposite != null ? opposite.RoomId : -1;
+                blackboard.RecordDoorSeen(exit.DoorId, exit.Position, exit.IsBossDoor, oppId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Deterministic fork rule: selects the best exit without map knowledge.
+    /// Never loops into a fully explored branch. Zero allocations.
+    /// </summary>
+    public DoorMarker SelectNextExit(RoomVolume room)
+    {
+        if (room == null)
+        {
+            room = DungeonRoomRegistry.GetRoomAt(transform.position);
+            if (room == null) return null;
+        }
+
+        var exits = room.Exits;
+        if (exits == null || exits.Count == 0)
+        {
+            blackboard.MarkRoomDeadEnd(room.RoomId);
+            return null;
+        }
+
+        var tuning = EffectiveRoomLoopTuning;
+        float distWeight = tuning != null ? tuning.NearestExitWeight : 1.0f;
+        float hazardWeight = tuning != null ? tuning.HazardAvoidanceWeight : 0.0f;
+        float scoutWeight = tuning != null ? tuning.ScoutInfoWeight : 0.0f;
+
+        DoorMarker bestDoor = null;
+        float bestScore = float.MaxValue;
+        Vector3 myPos = transform.position;
+
+        // 1. Evaluate untraversed exits from current room
+        for (int i = 0; i < exits.Count; i++)
+        {
+            var door = exits[i];
+            if (door == null || door.State == DoorState.Sealed) continue;
+
+            var targetRm = door.GetOppositeRoom(room);
+            if (targetRm != null && blackboard.IsRoomFullyExplored(targetRm.RoomId))
+            {
+                continue; // Skip fully explored branches
+            }
+
+            if (blackboard.IsDoorTraversed(door.DoorId))
+            {
+                continue;
+            }
+
+            float dist = Vector3.Distance(myPos, door.Position);
+            float score = dist * distWeight;
+
+            // Penalty if door or target room is hazardous
+            if (targetRm != null && (targetRm.IsHazardous || blackboard.IsRoomDangerous(targetRm.RoomId)))
+            {
+                score += (hazardWeight * 50f);
+            }
+            if (blackboard.IsPositionHazardous(door.Position, 2f))
+            {
+                score += (hazardWeight * 25f);
+            }
+
+            // Tie breaker: lowest DoorId
+            if (score < bestScore || (Mathf.Approximately(score, bestScore) && (bestDoor == null || door.DoorId < bestDoor.DoorId)))
+            {
+                bestScore = score;
+                bestDoor = door;
+            }
+        }
+
+        if (bestDoor != null)
+        {
+            return bestDoor;
+        }
+
+        // All local exits from current room traversed/explored -> current room is fully explored
+        blackboard.MarkRoomFullyExplored(room.RoomId);
+
+        // 2. Backtrack to find closest untraversed door in the known graph
+        var allDoors = DungeonRoomRegistry.Doors;
+        for (int i = 0; i < allDoors.Count; i++)
+        {
+            var door = allDoors[i];
+            if (door == null || door.State == DoorState.Sealed) continue;
+            if (blackboard.IsDoorTraversed(door.DoorId)) continue;
+
+            // Don't head into fully explored rooms
+            if (door.RoomA != null && blackboard.IsRoomFullyExplored(door.RoomA.RoomId) &&
+                door.RoomB != null && blackboard.IsRoomFullyExplored(door.RoomB.RoomId))
+            {
+                continue;
+            }
+
+            float dist = Vector3.Distance(myPos, door.Position);
+            float score = dist * distWeight;
+
+            if (score < bestScore || (Mathf.Approximately(score, bestScore) && (bestDoor == null || door.DoorId < bestDoor.DoorId)))
+            {
+                bestScore = score;
+                bestDoor = door;
+            }
+        }
+
+        return bestDoor;
     }
 
     public bool IsInCombat()
@@ -893,6 +1377,7 @@ public class PartyLeader : MonoBehaviour
             else
             {
                 reason = CheckpointReason.RetreatBlockedFallback;
+                AdventurerEventHub.RaiseLeaderRetreatBlocked(this, reason, transform.position);
                 if (anyMemberScattered)
                 {
                     decision = CheckpointDecision.Regroup;
@@ -933,6 +1418,7 @@ public class PartyLeader : MonoBehaviour
 
         ELogger.Log("Checkpoint", this, LastCheckpointReason);
         OnCheckpointDecision?.Invoke(decision, reason);
+        AdventurerEventHub.RaiseCheckpointDecision(this, decision, reason);
         return decision;
     }
 
@@ -980,11 +1466,13 @@ public class PartyLeader : MonoBehaviour
     {
         RecordRoleIfKey(EffectiveLeaderFunction);
         OnLeaderDied?.Invoke(this);
+        AdventurerEventHub.RaiseLeaderDied(this, transform.position);
 
         if (!allowSuccession)
         {
             ApplyLeaderlessFallbackToSurvivors();
             OnLeaderChanged?.Invoke(this, null);
+            AdventurerEventHub.RaiseLeaderChanged(this, null);
             return;
         }
 
@@ -1024,6 +1512,51 @@ public class PartyLeader : MonoBehaviour
             isSuccessionPending = false;
             ExecuteSuccessionEvaluation();
         }
+    }
+
+    /// <summary>
+    /// Triggered when the leader departs the dungeon alive (e.g. by using a Warp Escape item).
+    /// Runs emergent succession as a leader loss to promote the next living non-escaped candidate.
+    /// </summary>
+    public void HandleLeaderDeparted(string reason = "Warped")
+    {
+        RecordRoleIfKey(EffectiveLeaderFunction);
+        IsEscaped = true;
+
+        if (!allowSuccession)
+        {
+            ApplyLeaderlessFallbackToSurvivors();
+            OnLeaderChanged?.Invoke(this, null);
+            AdventurerEventHub.RaiseLeaderChanged(this, null);
+            return;
+        }
+
+        bool anyLivingCandidate = false;
+        for (int i = 0; i < members.Count; i++)
+        {
+            var m = members[i];
+            if (m != null && m.IsAlive && !m.IsEscaped && m.gameObject != gameObject)
+            {
+                anyLivingCandidate = true;
+                break;
+            }
+        }
+
+        if (!anyLivingCandidate)
+        {
+            DisbandSquad();
+            OnLeaderChanged?.Invoke(this, null);
+            AdventurerEventHub.RaiseLeaderChanged(this, null);
+            return;
+        }
+
+        isSuccessionPending = false;
+        if (successionCoroutine != null)
+        {
+            StopCoroutine(successionCoroutine);
+            successionCoroutine = null;
+        }
+        ExecuteSuccessionEvaluation();
     }
 
     private float GetSuccessionReactionDelay()
@@ -1144,7 +1677,7 @@ public class PartyLeader : MonoBehaviour
         for (int i = 0; i < members.Count; i++)
         {
             var candidate = members[i];
-            if (candidate == null || !candidate.IsAlive || candidate.gameObject == gameObject)
+            if (candidate == null || !candidate.IsAlive || candidate.IsEscaped || candidate.gameObject == gameObject)
             {
                 continue;
             }
@@ -1273,6 +1806,11 @@ public class PartyLeader : MonoBehaviour
             newEvaluator.AutonomousAI = oldEvaluator.AutonomousAI;
         }
 
+        // Inherit dungeon room loop state
+        newLeader.currentRoom = this.currentRoom;
+        newLeader.targetDoor = this.targetDoor;
+        newLeader.currentRoomLoopState = this.currentRoomLoopState;
+
         // Remaining living members accept the new leader with probability squadOrderCompliance; refusers act alone
         for (int i = 0; i < members.Count; i++)
         {
@@ -1313,6 +1851,7 @@ public class PartyLeader : MonoBehaviour
         scoutMember = null;
 
         OnLeaderChanged?.Invoke(this, newLeader);
+        AdventurerEventHub.RaiseLeaderChanged(this, newLeader);
 
         // New leader immediately evaluates a checkpoint decision
         newLeader.RequestCheckpoint();

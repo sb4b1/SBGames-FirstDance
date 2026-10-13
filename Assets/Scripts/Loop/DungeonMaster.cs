@@ -199,13 +199,25 @@ namespace SBGames.Loop
         public DMTalentTreeManager TalentTreeManager { get => talentTreeManager; set => talentTreeManager = value; }
         public string MultiEmpowerTalentId { get => multiEmpowerTalentId; set => multiEmpowerTalentId = value; }
 
-        public static DungeonMaster Instance { get; private set; }
+        private static DungeonMaster instance;
+        public static DungeonMaster Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = FindAnyObjectByType<DungeonMaster>();
+                }
+                return instance;
+            }
+            set => instance = value;
+        }
 
         private void Awake()
         {
-            if (Instance == null)
+            if (instance == null)
             {
-                Instance = this;
+                instance = this;
             }
 
             ClampValues();
@@ -227,9 +239,9 @@ namespace SBGames.Loop
 
         private void OnDestroy()
         {
-            if (Instance == this)
+            if (instance == this)
             {
-                Instance = null;
+                instance = null;
             }
             UnhookInventoryEvents();
         }
@@ -626,6 +638,11 @@ namespace SBGames.Loop
             currentEnergy = Mathf.Min(currentEnergy + amount, maxEnergy);
             OnEnergyChanged?.Invoke(currentEnergy, maxEnergy);
         }
+
+        /// <summary>
+        /// Alias for <see cref="GainEnergy(int)"/> to award bonus energy (e.g. from forfeited warp items).
+        /// </summary>
+        public void AddEnergy(int amount) => GainEnergy(amount);
 
         /// <summary>
         /// Reduces the Dungeon Master's essence. If essence reaches 0, triggers defeat.

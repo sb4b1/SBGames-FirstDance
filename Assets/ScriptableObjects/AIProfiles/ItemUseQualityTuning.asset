@@ -21,6 +21,11 @@ MonoBehaviour:
     seekPartyRearOrBehindTank: 0
     safeEnemyDistance: 0
     perRoomItemQuota: -1
+    warpTriggerHpFraction: 0.15
+    requireNoPotions: 0
+    requireOutOfMelee: 0
+    warpCastDuration: 4.5
+    warpInterruptCooldown: 5
   - quality: 1
     hpTriggerFraction: 0.45
     manaTriggerFraction: 0.3
@@ -29,6 +34,11 @@ MonoBehaviour:
     seekPartyRearOrBehindTank: 0
     safeEnemyDistance: 3.5
     perRoomItemQuota: -1
+    warpTriggerHpFraction: 0.25
+    requireNoPotions: 1
+    requireOutOfMelee: 0
+    warpCastDuration: 3.5
+    warpInterruptCooldown: 4
   - quality: 2
     hpTriggerFraction: 0.65
     manaTriggerFraction: 0.45
@@ -37,5 +47,10 @@ MonoBehaviour:
     seekPartyRearOrBehindTank: 1
     safeEnemyDistance: 5
     perRoomItemQuota: 2
+    warpTriggerHpFraction: 0.35
+    requireNoPotions: 0
+    requireOutOfMelee: 1
+    warpCastDuration: 3
+    warpInterruptCooldown: 3
   squadRecoverTargetHpFraction: 0.85
   squadRecoverTargetManaFraction: 0.75

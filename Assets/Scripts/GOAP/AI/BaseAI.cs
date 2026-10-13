@@ -449,11 +449,11 @@ public class BaseAI : MonoBehaviour, IPoolable
     }
 
     // Emotional state Method
-#region Emotional State
+    #region Emotional State
 
     private void CalculateEmotionalState()
     {
-        
+
     }
 
     public void SenseEnemy()
@@ -486,7 +486,7 @@ public class BaseAI : MonoBehaviour, IPoolable
         }
     }
 
-#endregion
+    #endregion
 
     public void UpdateTargets()
     {
@@ -883,7 +883,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     }
 #endif
 
-#region Planner
+    #region Planner
 
     private void Planner(EnumUtilGoal goalKey)
     {
@@ -927,12 +927,15 @@ public class BaseAI : MonoBehaviour, IPoolable
             case EnumUtilGoal.Recover:
                 provider.RequestGoal<RecoverGoal>();
                 break;
+            case EnumUtilGoal.Warp:
+                provider.RequestGoal<WarpGoal>();
+                break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);
                 break;
         }
     }
-#endregion
+    #endregion
 
     #region Item Recovery & Quality Heuristics (Phase 5)
 
@@ -1244,4 +1247,108 @@ public class BaseAI : MonoBehaviour, IPoolable
 
         return score;
     }
+
+    #region Warp Item Heuristics (Phase 8)
+
+    /// <summary>
+    /// Returns true if this agent can and should use a Warp Escape item now:
+    /// (1) Has usable Warp item in kit (or is already casting Warp)
+    /// (2) Under threat (ThreatLevel > 0, enemy in perception or memory)
+    /// (3) HP fraction &lt;= warpTriggerHpFraction
+    /// (4) If requireNoPotions is true, has no usable health potions remaining
+    /// (5) Recover cannot help (no recovery item usable or below emergency trigger)
+    /// </summary>
+    public bool CanWarpNow()
+    {
+        var kit = ItemKitController;
+        if (kit == null) return false;
+
+        if (kit.IsCastingItem && kit.CastingCategory == ConsumableItemCategory.Warp)
+        {
+            return true;
+        }
+
+        if (!kit.CanUse(ConsumableItemCategory.Warp))
+        {
+            return false;
+        }
+
+        // Threat check: must be in combat / under threat
+        bool underThreat = ThreatLevel > 0 || HasKnownEnemies || (enemyTargets != null && enemyTargets.Count > 0);
+        if (!underThreat) return false;
+
+        var entry = GetItemUseQualityTuningEntry();
+
+        // HP trigger check
+        float maxHp = 100f;
+        if (StatsManager != null && StatsManager.MaxLife != null && StatsManager.MaxLife.Value > 0f)
+        {
+            maxHp = StatsManager.MaxLife.Value;
+        }
+        float currentHp = StatsManager != null ? StatsManager.Life : AgentLife;
+        float hpFrac = Mathf.Clamp01(currentHp / maxHp);
+
+        if (hpFrac > entry.WarpTriggerHpFraction)
+        {
+            return false;
+        }
+
+        // requireNoPotions check
+        if (entry.RequireNoPotions && kit.GetRemainingCount(ConsumableItemCategory.HealthPotion) > 0)
+        {
+            return false;
+        }
+
+        // Recover cannot help: no applicable recovery item right now, or HP is critically below flee threshold
+        GetRecoveryThresholdsAndQuota(out float hpTrigger, out float manaTrigger, out int quota);
+        bool hasPotionsUsable = kit.HasAnyApplicableItemNow(hpTrigger, manaTrigger, quota);
+        if (hasPotionsUsable && !entry.RequireNoPotions && hpFrac > SurvivalHpThreshold * 0.75f)
+        {
+            // If potions are usable and we are not in immediate lethal range, try Recover first
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Computes the desired world position for performing Warp escape.
+    /// If requireOutOfMelee is true and in melee of an enemy, steps back to safe distance; otherwise stands in place.
+    /// </summary>
+    public Vector3 GetDesiredWarpPosition()
+    {
+        Vector3 myPos = transform.position;
+        var entry = GetItemUseQualityTuningEntry();
+
+        if (!entry.RequireOutOfMelee)
+        {
+            return myPos;
+        }
+
+        Transform nearestEnemy = GetNearestThreatTransform(out float nearestDist);
+        float safeDist = entry.SafeEnemyDistance > 0f ? entry.SafeEnemyDistance : 4.0f;
+        if (nearestEnemy != null && nearestDist < safeDist)
+        {
+            Vector3 fleeDir = (myPos - nearestEnemy.position).normalized;
+            if (fleeDir.sqrMagnitude < 0.01f) fleeDir = transform.right;
+            return myPos + fleeDir * (safeDist - nearestDist + 1.0f);
+        }
+
+        return myPos;
+    }
+
+    /// <summary>
+    /// Returns true if agent is positioned safely to start casting Warp.
+    /// </summary>
+    public bool IsReadyToWarpAtCurrentPosition()
+    {
+        var entry = GetItemUseQualityTuningEntry();
+        if (!entry.RequireOutOfMelee) return true;
+
+        Transform nearestEnemy = GetNearestThreatTransform(out float nearestDist);
+        float safeDist = entry.SafeEnemyDistance > 0f ? entry.SafeEnemyDistance : 4.0f;
+        return nearestEnemy == null || nearestDist >= safeDist;
+    }
+
+    #endregion
 }

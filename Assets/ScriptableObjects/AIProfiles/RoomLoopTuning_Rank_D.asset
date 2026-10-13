@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 703178b6d0a24bc45893d0fd3056bd5b, type: 3}
+  m_Name: RoomLoopTuning_Rank_D
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Characters.AI.RoomLoopTuningSO
+  nearestExitWeight: 1
+  hazardAvoidanceWeight: 1
+  scoutInfoWeight: 1
+  stragglerTimeout: 5
+  regroupTimeout: 4
+  safeRoomDuration: 10
+  stagingHesitationTimeout: 1.2
+  preBossCheckpoint: 1
+  preBossRecover: 0

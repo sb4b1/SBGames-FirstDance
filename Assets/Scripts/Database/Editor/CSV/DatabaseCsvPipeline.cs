@@ -287,7 +287,7 @@ namespace SBGames.Database.Editor.CSV
 
         public static readonly string[] CharacterHeaders =
         {
-            "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth"
+            "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds"
         };
 
         public static AdventurerFunction ParseAdventurerFunction(IReadOnlyDictionary<string, string> row)
@@ -320,6 +320,16 @@ namespace SBGames.Database.Editor.CSV
 
         public static Dictionary<string, string> BuildCharacterCsvRow(CharacterEntry c)
         {
+            string extraItems = string.Empty;
+            if (c?.extraItemIds != null && c.extraItemIds.Count > 0)
+            {
+                extraItems = string.Join(";", c.extraItemIds);
+            }
+            else if (c?.baseStats != null && c.baseStats.ExtraItemIds != null && c.baseStats.ExtraItemIds.Count > 0)
+            {
+                extraItems = string.Join(";", c.baseStats.ExtraItemIds);
+            }
+
             return new Dictionary<string, string>
             {
                 ["Id"] = c?.id ?? string.Empty,
@@ -332,7 +342,8 @@ namespace SBGames.Database.Editor.CSV
                 ["AttackTimeInterval"] = c?.baseStats != null ? c.baseStats.AttackTimeInterval.ToString("F1") : "1",
                 ["DefaultSkillIds"] = c?.defaultSkillIds != null ? string.Join(";", c.defaultSkillIds) : string.Empty,
                 ["Function"] = c?.baseStats != null ? c.baseStats.characterFunction.ToString() : AdventurerFunction.None.ToString(),
-                ["Wealth"] = c?.baseStats != null ? c.baseStats.characterWealth.ToString() : AdventurerWealth.Average.ToString()
+                ["Wealth"] = c?.baseStats != null ? c.baseStats.characterWealth.ToString() : AdventurerWealth.Average.ToString(),
+                ["ExtraItemIds"] = extraItems
             };
         }
 
@@ -348,6 +359,14 @@ namespace SBGames.Database.Editor.CSV
             if (row.TryGetValue("AttackTimeInterval", out var atiStr) && float.TryParse(atiStr, out var ati)) baseStats.AttackTimeInterval = ati;
             baseStats.characterFunction = ParseAdventurerFunction(row);
             baseStats.characterWealth = ParseAdventurerWealth(row);
+
+            if (row.TryGetValue("ExtraItemIds", out var extraStr))
+            {
+                baseStats.extraItemIds = extraStr
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .ToList();
+            }
         }
 
         public static void ExportCharactersCsv()
@@ -410,6 +429,14 @@ namespace SBGames.Database.Editor.CSV
                 if (row.TryGetValue("DefaultSkillIds", out var skillsStr))
                 {
                     entry.defaultSkillIds = skillsStr
+                        .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(s => s.Trim())
+                        .ToList();
+                }
+
+                if (row.TryGetValue("ExtraItemIds", out var extraStr))
+                {
+                    entry.extraItemIds = extraStr
                         .Split(';', StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => s.Trim())
                         .ToList();

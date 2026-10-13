@@ -18,6 +18,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
     public bool HasLeader => currentLeader != null && currentLeader.IsAlive;
     public bool IsStayingLoose => isStayingLoose && !HasLeader;
     public bool IsAlive => statsManager == null || statsManager.Life > 0;
+    public bool IsEscaped { get; set; }
 
     public AdventurerFunction CharacterFunction => StatsManager != null ? StatsManager.CharacterFunction : AdventurerFunction.None;
     public AdventurerFunction EffectiveFunction => StatsManager != null ? StatsManager.EffectiveFunction : AdventurerFunction.DPS;

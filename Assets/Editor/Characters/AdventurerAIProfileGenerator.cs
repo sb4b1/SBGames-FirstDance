@@ -316,6 +316,65 @@ namespace SBGames.Characters.AI.Editor
             Debug.Log($"[AdventurerAIProfileGenerator] Created/verified Phase 5 consumable items, rank kits, DefaultItemKitModifiers, ItemUseQualityTuning, and assigned startingItemKit on {updatedProfiles} profile(s).");
         }
 
+        [MenuItem("SBGames/AI/Create Default Phase 6 Room Loop Tuning")]
+        public static void CreateDefaultPhase6RoomLoopTuning()
+        {
+            if (!AssetDatabase.IsValidFolder(ScriptableObjectsRoot))
+            {
+                AssetDatabase.CreateFolder("Assets", "ScriptableObjects");
+            }
+            if (!AssetDatabase.IsValidFolder(ProfilesFolder))
+            {
+                AssetDatabase.CreateFolder(ScriptableObjectsRoot, "AIProfiles");
+            }
+
+            var tuningE = GetOrCreateRoomLoopTuning($"{ProfilesFolder}/RoomLoopTuning_Rank_E.asset", CharacterRank.E);
+            var tuningD = GetOrCreateRoomLoopTuning($"{ProfilesFolder}/RoomLoopTuning_Rank_D.asset", CharacterRank.D);
+            var tuningC = GetOrCreateRoomLoopTuning($"{ProfilesFolder}/RoomLoopTuning_Rank_C.asset", CharacterRank.C);
+
+            int updatedProfiles = 0;
+            updatedProfiles += SetRoomLoopTuningOnly("Profile_Rank_E", tuningE);
+            updatedProfiles += SetRoomLoopTuningOnly("Profile_Rank_D", tuningD);
+            updatedProfiles += SetRoomLoopTuningOnly("Profile_Rank_C", tuningC);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[AdventurerAIProfileGenerator] Created/verified Phase 6 RoomLoopTuning assets and assigned to {updatedProfiles} profile(s).");
+        }
+
+        private static RoomLoopTuningSO GetOrCreateRoomLoopTuning(string path, CharacterRank rank)
+        {
+            var tuning = AssetDatabase.LoadAssetAtPath<RoomLoopTuningSO>(path);
+            if (tuning == null)
+            {
+                tuning = RoomLoopTuningSO.CreateDefault(rank);
+                AssetDatabase.CreateAsset(tuning, path);
+            }
+            return tuning;
+        }
+
+        private static int SetRoomLoopTuningOnly(string profileAssetName, RoomLoopTuningSO tuning)
+        {
+            string assetPath = $"{ProfilesFolder}/{profileAssetName}.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>(assetPath);
+            if (existing == null)
+            {
+                return 0;
+            }
+
+            var so = new SerializedObject(existing);
+            var prop = so.FindProperty("roomLoopTuning");
+            if (prop == null)
+            {
+                return 0;
+            }
+
+            prop.objectReferenceValue = tuning;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(existing);
+            return 1;
+        }
+
         private static RestoreHealthEffect GetOrCreateHpEffect(string path, float healAmount)
         {
             var effect = AssetDatabase.LoadAssetAtPath<RestoreHealthEffect>(path);

@@ -7,6 +7,8 @@ using SBGames.Characters.AI;
 using SBGames.Database.CSV;
 using SBGames.Inventory.Core.Effects;
 using SBGames.Inventory.Data;
+using SBGames.Loop;
+using SBGames.Loop.Talents;
 using SBGames.Personality;
 using SBGames.Personality.Data;
 using UnityEditor;
@@ -22,12 +24,14 @@ namespace SBGames.Tests
         [SetUp]
         public void SetUp()
         {
+            SBGames.Dungeon.Markers.DungeonRoomRegistry.Clear();
             _rootGo = new GameObject("Test_Adventurer");
         }
 
         [TearDown]
         public void TearDown()
         {
+            SBGames.Dungeon.Markers.DungeonRoomRegistry.Clear();
             if (_rootGo != null)
             {
                 UnityEngine.Object.DestroyImmediate(_rootGo);
@@ -1140,6 +1144,693 @@ namespace SBGames.Tests
             Assert.AreEqual(SquadOrderType.FollowLeader, leader.Blackboard.CurrentOrder);
 
             UnityEngine.Object.DestroyImmediate(baseStats);
+        }
+
+        [Test]
+        public void Phase6_RoomLoop_DeterministicForkRule_SelectsNearestUntraversed_AndIgnoresFullyExploredBranch()
+        {
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+
+            var room1Go = new GameObject("Room1");
+            var room1 = room1Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room1.RoomId = 1;
+            room1.SetBounds(new Bounds(Vector3.zero, Vector3.one * 10f));
+
+            var room2Go = new GameObject("Room2");
+            var room2 = room2Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room2.RoomId = 2;
+            room2.SetBounds(new Bounds(new Vector3(20, 0, 0), Vector3.one * 10f));
+
+            var room3Go = new GameObject("Room3");
+            var room3 = room3Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room3.RoomId = 3;
+            room3.SetBounds(new Bounds(new Vector3(0, 20, 0), Vector3.one * 10f));
+
+            var door1Go = new GameObject("Door1");
+            door1Go.transform.position = new Vector3(5, 0, 0); // dist 5 to room 2
+            var door1 = door1Go.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door1.DoorId = 10;
+            door1.RoomA = room1;
+            door1.RoomB = room2;
+            room1.AddExit(door1);
+
+            var door2Go = new GameObject("Door2");
+            door2Go.transform.position = new Vector3(0, 3, 0); // dist 3 to room 3
+            var door2 = door2Go.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door2.DoorId = 20;
+            door2.RoomA = room1;
+            door2.RoomB = room3;
+            room1.AddExit(door2);
+
+            // Door2 is closer (dist 3 < dist 5), so it should be chosen first
+            var selected1 = leader.SelectNextExit(room1);
+            Assert.AreSame(door2, selected1, "Should select nearest unexplored door (Door2).");
+
+            // Mark Room 3 as fully explored -> should now skip Door 2 and select Door 1
+            leader.Blackboard.MarkRoomFullyExplored(3);
+            var selected2 = leader.SelectNextExit(room1);
+            Assert.AreSame(door1, selected2, "Should never enter a fully explored branch.");
+
+            // Mark Door 1 traversed -> no more untraversed exits in Room 1
+            leader.Blackboard.MarkDoorTraversed(door1.DoorId);
+            var selected3 = leader.SelectNextExit(room1);
+            Assert.IsNull(selected3, "When all exits from Room 1 are explored/traversed, return null.");
+            Assert.IsTrue(leader.Blackboard.IsRoomFullyExplored(1));
+
+            UnityEngine.Object.DestroyImmediate(room1Go);
+            UnityEngine.Object.DestroyImmediate(room2Go);
+            UnityEngine.Object.DestroyImmediate(room3Go);
+            UnityEngine.Object.DestroyImmediate(door1Go);
+            UnityEngine.Object.DestroyImmediate(door2Go);
+        }
+
+        [Test]
+        public void Phase6_RoomLoop_RankC_HazardAvoidance_PenalizesHazardousExits()
+        {
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            var profileC = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_C.asset");
+            if (profileC != null)
+            {
+                var ai = leaderGo.AddComponent<BaseAI>();
+                ai.ApplyAdventurerProfile(profileC);
+            }
+
+            var room1Go = new GameObject("Room1");
+            var room1 = room1Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room1.RoomId = 1;
+            room1.SetBounds(new Bounds(Vector3.zero, Vector3.one * 10f));
+
+            var room2Go = new GameObject("Room2_Hazardous");
+            var room2 = room2Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room2.RoomId = 2;
+            room2.IsHazardous = true;
+            room2.SetBounds(new Bounds(new Vector3(10, 0, 0), Vector3.one * 10f));
+
+            var room3Go = new GameObject("Room3_Safe");
+            var room3 = room3Go.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room3.RoomId = 3;
+            room3.SetBounds(new Bounds(new Vector3(0, 15, 0), Vector3.one * 10f));
+
+            var door1Go = new GameObject("Door1_To_Hazard");
+            door1Go.transform.position = new Vector3(3, 0, 0); // Closer (dist 3) but into hazardous room!
+            var door1 = door1Go.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door1.DoorId = 10;
+            door1.RoomA = room1;
+            door1.RoomB = room2;
+            room1.AddExit(door1);
+
+            var door2Go = new GameObject("Door2_To_Safe");
+            door2Go.transform.position = new Vector3(0, 5, 0); // Farther (dist 5) but safe!
+            var door2 = door2Go.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door2.DoorId = 20;
+            door2.RoomA = room1;
+            door2.RoomB = room3;
+            room1.AddExit(door2);
+
+            // With Rank C hazard avoidance weight, Door 2 (safe) must be preferred over Door 1 (hazardous) despite being farther
+            var selected = leader.SelectNextExit(room1);
+            Assert.AreSame(door2, selected, "Rank C should avoid hazardous room and pick the safe exit.");
+
+            UnityEngine.Object.DestroyImmediate(room1Go);
+            UnityEngine.Object.DestroyImmediate(room2Go);
+            UnityEngine.Object.DestroyImmediate(room3Go);
+            UnityEngine.Object.DestroyImmediate(door1Go);
+            UnityEngine.Object.DestroyImmediate(door2Go);
+        }
+
+        [Test]
+        public void Phase6_RoomLoop_BossDoor_RecognizedOnSight()
+        {
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+
+            var doorGo = new GameObject("BossDoor");
+            doorGo.transform.position = new Vector3(10, 0, 0);
+            var door = doorGo.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door.DoorId = 99;
+            door.IsBossDoor = true;
+
+            Assert.IsFalse(leader.Blackboard.BossDoorRecognized);
+
+            // Record door seen
+            leader.Blackboard.RecordDoorSeen(door.DoorId, door.Position, door.IsBossDoor, -1);
+            Assert.IsTrue(leader.Blackboard.BossDoorRecognized);
+            Assert.AreEqual(door.Position, leader.Blackboard.BossDoorPosition);
+
+            UnityEngine.Object.DestroyImmediate(doorGo);
+        }
+
+        [Test]
+        public void Phase6_RoomLoop_SafeRoom_TriggersRecoverOrder()
+        {
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+
+            var roomGo = new GameObject("SafeRoom");
+            var room = roomGo.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room.RoomId = 77;
+            room.IsSafeRoom = true;
+            room.SetBounds(new Bounds(Vector3.zero, Vector3.one * 10f));
+
+            leader.StartRoomLoop();
+            // Leader detects current room is safe room -> transitions to SafeRoomStop -> SquadOrderType.Recover
+            Assert.AreEqual(RoomLoopState.SafeRoomStop, leader.CurrentRoomLoopState);
+            Assert.AreEqual(SquadOrderType.Recover, leader.Blackboard.CurrentOrder);
+
+            UnityEngine.Object.DestroyImmediate(roomGo);
+        }
+
+        [Test]
+        public void Phase7_AdventurerEventHub_RaisesEvents_ZeroAlloc()
+        {
+            bool potionConsumedFired = false;
+            bool bossFightFired = false;
+            bool retreatBlockedFired = false;
+            bool unitEscapedFired = false;
+
+            Action<PotionConsumedEvent> potionHandler = (e) =>
+            {
+                if (e.UserName == "HeroA" && e.ItemId == "item_hp") potionConsumedFired = true;
+            };
+            Action<BossFightStartedEvent> bossHandler = (e) =>
+            {
+                bossFightFired = true;
+            };
+            Action<LeaderRetreatBlockedEvent> blockedHandler = (e) =>
+            {
+                if (e.RefusalReason == CheckpointReason.RetreatBlockedFallback) retreatBlockedFired = true;
+            };
+            Action<UnitEscapedEvent> escapeHandler = (e) =>
+            {
+                if (e.UnitId == "adv_1") unitEscapedFired = true;
+            };
+
+            AdventurerEventHub.OnPotionConsumed += potionHandler;
+            AdventurerEventHub.OnBossFightStarted += bossHandler;
+            AdventurerEventHub.OnLeaderRetreatBlocked += blockedHandler;
+            AdventurerEventHub.OnUnitEscaped += escapeHandler;
+
+            try
+            {
+                // JIT warmup
+                for (int i = 0; i < 10; i++)
+                {
+                    AdventurerEventHub.RaisePotionConsumed(_rootGo, "HeroA", ConsumableItemCategory.HealthPotion, "item_hp");
+                    AdventurerEventHub.RaiseBossFightStarted(null, null, null);
+                    AdventurerEventHub.RaiseLeaderRetreatBlocked(null, CheckpointReason.RetreatBlockedFallback, Vector3.zero);
+                    AdventurerEventHub.RaiseUnitEscaped("adv_1", "HeroA", Vector3.zero);
+                }
+
+                GC.Collect();
+                long allocStart = GC.GetAllocatedBytesForCurrentThread();
+
+                AdventurerEventHub.RaisePotionConsumed(_rootGo, "HeroA", ConsumableItemCategory.HealthPotion, "item_hp");
+                AdventurerEventHub.RaiseBossFightStarted(null, null, null);
+                AdventurerEventHub.RaiseLeaderRetreatBlocked(null, CheckpointReason.RetreatBlockedFallback, Vector3.zero);
+                AdventurerEventHub.RaiseUnitEscaped("adv_1", "HeroA", Vector3.zero);
+
+                long allocEnd = GC.GetAllocatedBytesForCurrentThread();
+
+                Assert.IsTrue(potionConsumedFired);
+                Assert.IsTrue(bossFightFired);
+                Assert.IsTrue(retreatBlockedFired);
+                Assert.IsTrue(unitEscapedFired);
+                Assert.AreEqual(0, allocEnd - allocStart, "Event hub dispatches struct payloads with zero heap allocation.");
+            }
+            finally
+            {
+                AdventurerEventHub.OnPotionConsumed -= potionHandler;
+                AdventurerEventHub.OnBossFightStarted -= bossHandler;
+                AdventurerEventHub.OnLeaderRetreatBlocked -= blockedHandler;
+                AdventurerEventHub.OnUnitEscaped -= escapeHandler;
+            }
+        }
+
+        [Test]
+        public void Phase7_DoorMarker_OpenClose_TogglesBlockers()
+        {
+            var doorGo = new GameObject("DoorTest");
+            var door = doorGo.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+
+            var colliderGo = new GameObject("Collider");
+            colliderGo.transform.SetParent(doorGo.transform);
+            var col = colliderGo.AddComponent<BoxCollider2D>();
+
+            var visualGo = new GameObject("Visual");
+            visualGo.transform.SetParent(doorGo.transform);
+
+            var so = new SerializedObject(door);
+            so.FindProperty("physicalBlockerCollider").objectReferenceValue = col;
+            so.FindProperty("visualObstacle").objectReferenceValue = visualGo;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            door.Open();
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Explored, door.State);
+            Assert.IsFalse(col.enabled);
+            Assert.IsFalse(visualGo.activeSelf);
+
+            door.Close();
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Sealed, door.State);
+            Assert.IsTrue(col.enabled);
+            Assert.IsTrue(visualGo.activeSelf);
+
+            door.Open();
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Explored, door.State);
+            Assert.IsFalse(col.enabled);
+            Assert.IsFalse(visualGo.activeSelf);
+
+            UnityEngine.Object.DestroyImmediate(doorGo);
+        }
+
+        [Test]
+        public void Phase7_DMSealAbilityController_LocksDoorAndSetsRetreatBlocked_AndReleasesOnBossDeath()
+        {
+            var dmGo = new GameObject("DMSealTest");
+            var dmSeal = dmGo.AddComponent<DMSealAbilityController>();
+
+            var talentManager = dmGo.AddComponent<DMTalentTreeManager>();
+            var treeConfig = ScriptableObject.CreateInstance<TalentTreeConfigSO>();
+            var sealNode = ScriptableObject.CreateInstance<TalentNodeSO>();
+            sealNode.Initialize("DM_CONTROL_SEAL", "Dungeon Seal", 40, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Triggered, DungeonRank.D);
+            treeConfig.Initialize("TestTree", new[] { sealNode });
+
+            var talentSo = new SerializedObject(talentManager);
+            talentSo.FindProperty("customConfig").objectReferenceValue = treeConfig;
+            talentSo.ApplyModifiedPropertiesWithoutUndo();
+            talentManager.ForceUnlock(sealNode);
+
+            var combatHandler = dmGo.AddComponent<CombatResultHandler>();
+            dmSeal.Initialize(talentManager, combatHandler);
+
+            var doorGo = new GameObject("BossDoor");
+            var door = doorGo.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door.IsBossDoor = true;
+
+            var roomGo = new GameObject("BossRoom");
+            var room = roomGo.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room.IsBossRoom = true;
+            room.AddExit(door);
+
+            var leaderGo = new GameObject("Leader");
+            var leader = leaderGo.AddComponent<PartyLeader>();
+
+            combatHandler.BeginCombat(1);
+
+            // Trigger boss fight started
+            AdventurerEventHub.RaiseBossFightStarted(leader, room, door);
+
+            // Fast-forward countdown
+            dmSeal.TriggerImmediateSealForTesting(door, leader);
+
+            Assert.IsTrue(dmSeal.IsSealActive);
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Sealed, door.State);
+            Assert.IsTrue(leader.RetreatBlocked);
+
+            // Now simulate boss death
+            combatHandler.ReportBossDeath();
+
+            Assert.IsFalse(dmSeal.IsSealActive);
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Explored, door.State);
+            Assert.IsFalse(leader.RetreatBlocked);
+
+            UnityEngine.Object.DestroyImmediate(leaderGo);
+            UnityEngine.Object.DestroyImmediate(roomGo);
+            UnityEngine.Object.DestroyImmediate(doorGo);
+            UnityEngine.Object.DestroyImmediate(dmGo);
+        }
+
+        [Test]
+        public void Phase7_CombatResultHandler_EscapedAdventurer_DoesNotCountAsKill_AndEndsBattleWhenAllEscaped()
+        {
+            var handlerGo = new GameObject("CombatHandlerTest");
+            var handler = handlerGo.AddComponent<CombatResultHandler>();
+
+            handler.BeginCombat(1);
+            handler.RegisterAdventurer("hero_1", "Fleeing Hero 1", 100f);
+            handler.RegisterAdventurer("hero_2", "Fleeing Hero 2", 100f);
+
+            Assert.AreEqual(2, handler.TotalAdventurersCount);
+            Assert.AreEqual(2, handler.ActiveAdventurersCount);
+            Assert.AreEqual(0, handler.EscapedAdventurersCount);
+            Assert.AreEqual(0, handler.DefeatedAdventurersCount);
+
+            // First hero escapes
+            handler.ReportAdventurerEscape("hero_1");
+            Assert.AreEqual(1, handler.ActiveAdventurersCount);
+            Assert.AreEqual(1, handler.EscapedAdventurersCount);
+            Assert.AreEqual(0, handler.DefeatedAdventurersCount, "Escaped heroes do not count as kills.");
+            Assert.AreEqual(CombatState.CombatActive, handler.CurrentCombatState);
+
+            // Second hero escapes -> all units out of dungeon
+            handler.ReportAdventurerEscape("hero_2");
+            Assert.AreEqual(0, handler.ActiveAdventurersCount);
+            Assert.AreEqual(2, handler.EscapedAdventurersCount);
+            Assert.AreEqual(0, handler.DefeatedAdventurersCount, "Defeated count remains 0 when all escape.");
+
+            // Outcome evaluated as victory for dungeon defense
+            Assert.AreEqual(BattleOutcome.Victory, handler.EvaluatedOutcome);
+            Assert.AreEqual(CombatState.AwaitingAcknowledgment, handler.CurrentCombatState);
+            Assert.IsTrue(handler.LastResultData.HasValue);
+
+            var result = handler.LastResultData.Value;
+            Assert.AreEqual(2, result.EscapedAdventurers);
+            Assert.AreEqual(0, result.DefeatedAdventurers);
+            Assert.IsNotNull(result.Report);
+            Assert.AreEqual(2, result.Report.Escapes.Count);
+
+            UnityEngine.Object.DestroyImmediate(handlerGo);
+        }
+
+        [Test]
+        public void Phase7_PostBattleReport_RecordsEventsUpToCapacity()
+        {
+            var report = new PostBattleReport();
+
+            for (int i = 0; i < PostBattleReport.MAX_CAPACITY + 10; i++)
+            {
+                report.RecordEscape($"unit_{i}", $"Hero_{i}", i);
+                report.RecordPotionUsed($"Hero_{i}", ConsumableItemCategory.HealthPotion, $"item_{i}", i);
+                report.RecordBlockedRetreat($"Hero_{i}", CheckpointReason.RetreatBlockedFallback, i);
+                report.RecordDeath($"Hero_{i}", Vector3.zero, i);
+            }
+
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.Escapes.Count);
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.PotionsUsed.Count);
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.BlockedRetreats.Count);
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.Deaths.Count);
+
+            report.Clear();
+            Assert.AreEqual(0, report.Escapes.Count);
+            Assert.AreEqual(0, report.PotionsUsed.Count);
+            Assert.AreEqual(0, report.BlockedRetreats.Count);
+            Assert.AreEqual(0, report.Deaths.Count);
+        }
+
+        [Test]
+        public void Phase8_ExtraItemIds_KitResolution_ResolvesWarpCategory()
+        {
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.extraItemIds = new List<string> { "ITEM_CONSUMABLE_WARP" };
+            baseStats.characterFunction = AdventurerFunction.DPS;
+
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.ResolveRuntimeKit();
+
+            Assert.Greater(kitCtrl.GetRemainingCount(ConsumableItemCategory.Warp), 0);
+            Assert.AreEqual(1, kitCtrl.GetRemainingCount(ConsumableItemCategory.Warp));
+
+            UnityEngine.Object.DestroyImmediate(baseStats);
+        }
+
+        [Test]
+        public void Phase8_WarpCastCompletion_MarksEscaped_DeactivatesCarrier_AndRaisesEvents()
+        {
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 100f;
+            baseStats.extraItemIds = new List<string> { "ITEM_CONSUMABLE_WARP" };
+            stats.SetBaseStats(baseStats);
+
+            var member = _rootGo.AddComponent<SquadMember>();
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.ResolveRuntimeKit();
+
+            bool warpStartedFired = false;
+            bool warpCompletedFired = false;
+            bool unitEscapedFired = false;
+
+            Action<AdventurerWarpEventData> onStarted = (e) =>
+            {
+                if (e.User == _rootGo) warpStartedFired = true;
+            };
+            Action<AdventurerWarpEventData> onCompleted = (e) =>
+            {
+                if (e.User == _rootGo) warpCompletedFired = true;
+            };
+            Action<UnitEscapedEvent> onEscaped = (e) =>
+            {
+                if (e.UnitName == _rootGo.name) unitEscapedFired = true;
+            };
+
+            AdventurerEventHub.OnWarpStarted += onStarted;
+            AdventurerEventHub.OnWarpCompleted += onCompleted;
+            AdventurerEventHub.OnUnitEscaped += onEscaped;
+
+            try
+            {
+                Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.Warp));
+                Assert.IsTrue(kitCtrl.IsCastingItem);
+                Assert.AreEqual(ConsumableItemCategory.Warp, kitCtrl.CastingCategory);
+                Assert.IsTrue(warpStartedFired);
+
+                // Advance cast to completion
+                kitCtrl.AdvanceCast(10f);
+
+                Assert.IsFalse(kitCtrl.IsCastingItem);
+                Assert.IsTrue(warpCompletedFired);
+                Assert.IsTrue(unitEscapedFired);
+                Assert.IsTrue(member.IsEscaped);
+                Assert.IsFalse(_rootGo.activeSelf);
+            }
+            finally
+            {
+                AdventurerEventHub.OnWarpStarted -= onStarted;
+                AdventurerEventHub.OnWarpCompleted -= onCompleted;
+                AdventurerEventHub.OnUnitEscaped -= onEscaped;
+                UnityEngine.Object.DestroyImmediate(baseStats);
+            }
+        }
+
+        [Test]
+        public void Phase8_LeaderSuccession_WhenLeaderWarps_PromotesNextLivingCandidate()
+        {
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+
+            var member2Go = new GameObject("Member2_Candidate");
+            var member2 = member2Go.AddComponent<SquadMember>();
+            var stats2 = member2Go.AddComponent<CharacterStatsManager>();
+            var baseStats2 = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats2.MaxLife = 100f;
+            baseStats2.characterFunction = AdventurerFunction.DPS;
+            stats2.SetBaseStats(baseStats2);
+
+            var member3Go = new GameObject("Member3_Escaped");
+            var member3 = member3Go.AddComponent<SquadMember>();
+            var stats3 = member3Go.AddComponent<CharacterStatsManager>();
+            var baseStats3 = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats3.MaxLife = 100f;
+            baseStats3.characterFunction = AdventurerFunction.Tank;
+            stats3.SetBaseStats(baseStats3);
+            member3.IsEscaped = true; // Candidate 3 already escaped
+
+            leader.RegisterMember(member2);
+            leader.RegisterMember(member3);
+
+            bool leaderChangedFired = false;
+            Action<LeaderChangedEvent> onLeaderChanged = (e) =>
+            {
+                if (e.NewLeader != null && e.NewLeader.gameObject == member2Go) leaderChangedFired = true;
+            };
+            AdventurerEventHub.OnLeaderChanged += onLeaderChanged;
+
+            try
+            {
+                // Leader warps out
+                leader.HandleLeaderDeparted("Warped");
+
+                Assert.IsTrue(leader.IsEscaped);
+                Assert.IsTrue(leaderChangedFired, "Promoted candidate must become new leader.");
+            }
+            finally
+            {
+                AdventurerEventHub.OnLeaderChanged -= onLeaderChanged;
+                UnityEngine.Object.DestroyImmediate(member2Go);
+                UnityEngine.Object.DestroyImmediate(member3Go);
+                UnityEngine.Object.DestroyImmediate(baseStats2);
+                UnityEngine.Object.DestroyImmediate(baseStats3);
+            }
+        }
+
+        [Test]
+        public void Phase8_CarrierDyingWithUnusedWarp_ForfeitsBonusEnergyToDM_AndRaisesEvent()
+        {
+            var dmGo = new GameObject("DM_Instance");
+            var dm = dmGo.AddComponent<DungeonMaster>();
+            int initialEnergy = dm.Energy;
+
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 50f;
+            baseStats.extraItemIds = new List<string> { "ITEM_CONSUMABLE_WARP" };
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.ForfeitBonusEnergy = 15;
+            kitCtrl.ResolveRuntimeKit();
+
+            bool forfeitEventFired = false;
+            Action<AdventurerWarpForfeitEventData> onForfeit = (e) =>
+            {
+                if (e.User == _rootGo && e.EnergyAwarded == 15) forfeitEventFired = true;
+            };
+            AdventurerEventHub.OnWarpItemForfeited += onForfeit;
+
+            try
+            {
+                Assert.AreEqual(1, kitCtrl.GetRemainingCount(ConsumableItemCategory.Warp));
+
+                // Carrier dies
+                stats.TakeDamage(new DamageData(100f, DamageType.True));
+
+                Assert.IsTrue(forfeitEventFired, "AdventurerEventHub.OnWarpItemForfeited must fire on death with unused warp.");
+                Assert.AreEqual(initialEnergy + 15, dm.Energy, "DM Energy must increase by forfeit bonus.");
+            }
+            finally
+            {
+                AdventurerEventHub.OnWarpItemForfeited -= onForfeit;
+                UnityEngine.Object.DestroyImmediate(baseStats);
+                UnityEngine.Object.DestroyImmediate(dmGo);
+            }
+        }
+
+        [Test]
+        public void Phase8_DMSeal_OpensWhenAllLivingInteriorMembersEscapedOrDead()
+        {
+            var dmGo = new GameObject("DMSealTest");
+            var dmSeal = dmGo.AddComponent<DMSealAbilityController>();
+
+            var talentManager = dmGo.AddComponent<DMTalentTreeManager>();
+            var treeConfig = ScriptableObject.CreateInstance<TalentTreeConfigSO>();
+            var sealNode = ScriptableObject.CreateInstance<TalentNodeSO>();
+            sealNode.Initialize("DM_CONTROL_SEAL", "Dungeon Seal", 40, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Triggered, DungeonRank.D);
+            treeConfig.Initialize("TestTree", new[] { sealNode });
+
+            var talentSo = new SerializedObject(talentManager);
+            talentSo.FindProperty("customConfig").objectReferenceValue = treeConfig;
+            talentSo.ApplyModifiedPropertiesWithoutUndo();
+            talentManager.ForceUnlock(sealNode);
+
+            var combatHandler = dmGo.AddComponent<CombatResultHandler>();
+            dmSeal.Initialize(talentManager, combatHandler);
+
+            var doorGo = new GameObject("BossDoor");
+            var door = doorGo.AddComponent<SBGames.Dungeon.Markers.DoorMarker>();
+            door.IsBossDoor = true;
+
+            var roomGo = new GameObject("BossRoom");
+            var room = roomGo.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            room.IsBossRoom = true;
+            room.SetBounds(new Bounds(Vector3.zero, Vector3.one * 20f));
+            room.AddExit(door);
+
+            var leaderGo = _rootGo;
+            var leader = leaderGo.AddComponent<PartyLeader>();
+            var leaderStats = leaderGo.AddComponent<CharacterStatsManager>();
+            var leaderBaseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            leaderBaseStats.MaxLife = 100f;
+            leaderStats.SetBaseStats(leaderBaseStats);
+
+            var memberGo = new GameObject("MemberInside");
+            var member = memberGo.AddComponent<SquadMember>();
+            var memberStats = memberGo.AddComponent<CharacterStatsManager>();
+            var memberBaseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            memberBaseStats.MaxLife = 100f;
+            memberStats.SetBaseStats(memberBaseStats);
+            leader.RegisterMember(member);
+
+            combatHandler.BeginCombat(1);
+
+            // Trigger seal
+            dmSeal.TriggerImmediateSealForTesting(door, leader, room);
+            Assert.IsTrue(dmSeal.IsSealActive);
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Sealed, door.State);
+
+            // While both alive inside room, seal condition not satisfied
+            Assert.IsFalse(dmSeal.EvaluateSealReleaseForTesting());
+
+            // Member dies
+            memberStats.TakeDamage(new DamageData(100f, DamageType.True));
+            Assert.IsFalse(dmSeal.EvaluateSealReleaseForTesting(), "Leader is still alive inside room.");
+
+            // Leader escapes (via warp)
+            leader.IsEscaped = true;
+
+            // Now all interior members are either dead or escaped -> seal opens!
+            Assert.IsTrue(dmSeal.EvaluateSealReleaseForTesting(), "Seal must open when all interior members dead or escaped.");
+            Assert.IsFalse(dmSeal.IsSealActive);
+            Assert.AreEqual(SBGames.Dungeon.Markers.DoorState.Explored, door.State);
+            Assert.IsFalse(leader.RetreatBlocked);
+
+            UnityEngine.Object.DestroyImmediate(memberGo);
+            UnityEngine.Object.DestroyImmediate(roomGo);
+            UnityEngine.Object.DestroyImmediate(doorGo);
+            UnityEngine.Object.DestroyImmediate(dmGo);
+            UnityEngine.Object.DestroyImmediate(leaderBaseStats);
+            UnityEngine.Object.DestroyImmediate(memberBaseStats);
+        }
+
+        [Test]
+        public void Phase8_UtilityWarpGoal_EvaluatesHysteresisDuringCast()
+        {
+            var baseStats = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStats.MaxLife = 100f;
+            baseStats.extraItemIds = new List<string> { "ITEM_CONSUMABLE_WARP" };
+
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            stats.SetBaseStats(baseStats);
+
+            var kitCtrl = _rootGo.AddComponent<AdventurerItemKitController>();
+            kitCtrl.ResolveRuntimeKit();
+
+            var ai = _rootGo.AddComponent<BaseAI>();
+            var warpGoal = ScriptableObject.CreateInstance<UtilityWarpGoal>();
+
+            // When not casting, score evaluates based on health deficit
+            float idleScore = warpGoal.Evaluate(ai);
+            Assert.Less(idleScore, 1.0f);
+
+            // Start casting warp
+            Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.Warp));
+            Assert.IsTrue(kitCtrl.IsCastingItem);
+
+            // During active warp cast, commitment score must be 1.10f
+            float activeScore = warpGoal.Evaluate(ai);
+            Assert.AreEqual(1.10f, activeScore, 0.0001f, "UtilityWarpGoal must return 1.10f commitment score during active warp cast.");
+
+            UnityEngine.Object.DestroyImmediate(warpGoal);
+            UnityEngine.Object.DestroyImmediate(baseStats);
+        }
+
+        [Test]
+        public void Phase8_PostBattleReport_RecordsWarpUsageAndForfeit()
+        {
+            var report = new PostBattleReport();
+
+            for (int i = 0; i < PostBattleReport.MAX_CAPACITY + 5; i++)
+            {
+                report.RecordWarpUsage($"Hero_{i}", "ITEM_CONSUMABLE_WARP", "Completed", i * 1.5f);
+                report.RecordWarpForfeit($"Hero_{i}", "ITEM_CONSUMABLE_WARP", 10, i * 2.0f);
+            }
+
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.WarpUsages.Count);
+            Assert.AreEqual(PostBattleReport.MAX_CAPACITY, report.WarpForfeits.Count);
+
+            Assert.AreEqual("Hero_0", report.WarpUsages[0].UserName);
+            Assert.AreEqual("ITEM_CONSUMABLE_WARP", report.WarpUsages[0].ItemId);
+            Assert.AreEqual("Completed", report.WarpUsages[0].Outcome);
+
+            Assert.AreEqual("Hero_0", report.WarpForfeits[0].UserName);
+            Assert.AreEqual(10, report.WarpForfeits[0].EnergyAwarded);
+
+            report.Clear();
+            Assert.AreEqual(0, report.WarpUsages.Count);
+            Assert.AreEqual(0, report.WarpForfeits.Count);
         }
     }
 }

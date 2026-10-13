@@ -153,6 +153,18 @@ namespace SBGames.Loop.Editor
             );
             talentMap[trap03.TalentId] = trap03;
 
+            var trapSeal = CreateOrUpdateNode(
+                id: "DM_CONTROL_SEAL",
+                name: "Dungeon Seal",
+                cost: 40,
+                pillar: TalentPillar.TrapControl,
+                tier: TalentTier.Tier2,
+                minRank: DungeonRank.D,
+                type: TalentType.Triggered,
+                desc: "Auto-Active: When adventurers breach the boss room, automatically seals the entrance door after 5s and blocks adventurer retreat until the encounter resolves."
+            );
+            talentMap[trapSeal.TalentId] = trapSeal;
+
             var trap04 = CreateOrUpdateNode(
                 id: "DM_TRAP_04",
                 name: "Chain Reaction",
@@ -300,6 +312,7 @@ namespace SBGames.Loop.Editor
             trap01.Initialize("DM_TRAP_01", "Rune Etching", 20, TalentPillar.TrapControl, TalentTier.Tier1, TalentType.Passive, DungeonRank.E, new[] { core01 }, desc: "Reduces the Energy cost of all Traps and Environmental Hazards by 25%.");
             trap02.Initialize("DM_TRAP_02", "Leyline Siphon", 35, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Triggered, DungeonRank.D, new[] { trap01 }, desc: "Sprung traps harvest Energy directly into the DM pool and grant Essence on lethal strikes.");
             trap03.Initialize("DM_TRAP_03", "Choke Snare", 35, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Passive, DungeonRank.D, new[] { trap01 }, desc: "Trap detonation heavily slows adventurers and makes them take increased damage from monsters.");
+            trapSeal.Initialize("DM_CONTROL_SEAL", "Dungeon Seal", 40, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Triggered, DungeonRank.D, new[] { trap01 }, desc: "Auto-Active: When adventurers breach the boss room, automatically seals the entrance door after 5s and blocks adventurer retreat until the encounter resolves.");
             trap04.Initialize("DM_TRAP_04", "Chain Reaction", 55, TalentPillar.TrapControl, TalentTier.Tier3, TalentType.Passive, DungeonRank.C, new[] { trap02, trap03 }, TalentPrerequisiteLogic.Any, desc: "Traps triggering near other hazards trigger adjacent traps in a devastating cascade.");
             trap05.Initialize("DM_TRAP_05", "Abyssal Barricade", 60, TalentPillar.TrapControl, TalentTier.Tier3, TalentType.ActivePower, DungeonRank.C, new[] { trap02, trap03 }, activeCost: 15, cooldown: 60f, desc: "Active Power: Erects an indestructible shadow barrier forcing adventurers into trap corridors.");
 
@@ -384,6 +397,33 @@ namespace SBGames.Loop.Editor
             );
 
             return asset;
+        }
+
+        [MenuItem("Tools/SBGames/Generate DM Seal Talent Node", priority = 101)]
+        public static TalentNodeSO GenerateDMSealTalentNode()
+        {
+            EnsureDirectories();
+            var node = CreateOrUpdateNode(
+                id: "DM_CONTROL_SEAL",
+                name: "Dungeon Seal",
+                cost: 40,
+                pillar: TalentPillar.TrapControl,
+                tier: TalentTier.Tier2,
+                minRank: DungeonRank.D,
+                desc: "Auto-Active: When adventurers breach the boss room, automatically seals the entrance door after 5s and blocks adventurer retreat until the encounter resolves.",
+                type: TalentType.Triggered
+            );
+            var trap01Path = $"{TalentsFolder}/DM_TRAP_01.asset";
+            var trap01 = AssetDatabase.LoadAssetAtPath<TalentNodeSO>(trap01Path);
+            if (trap01 != null)
+            {
+                node.Initialize("DM_CONTROL_SEAL", "Dungeon Seal", 40, TalentPillar.TrapControl, TalentTier.Tier2, TalentType.Triggered, DungeonRank.D, new[] { trap01 }, desc: "Auto-Active: When adventurers breach the boss room, automatically seals the entrance door after 5s and blocks adventurer retreat until the encounter resolves.");
+            }
+            EditorUtility.SetDirty(node);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log($"[DMTalentTreeGenerator] Generated DM Seal Talent Node at {TalentsFolder}/DM_CONTROL_SEAL.asset");
+            return node;
         }
 
         private static void EnsureDirectories()

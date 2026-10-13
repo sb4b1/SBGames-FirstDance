@@ -28,3 +28,4 @@ MonoBehaviour:
   stepUpThreshold: 0.7
   leaderlessBehavior: 0
   startingItemKit: {fileID: 11400000, guid: d3a2b6fa91b2b5d47ac9d22e405881fd, type: 2}
+  roomLoopTuning: {fileID: 11400000, guid: a62e56aa34842d742bffae15112133d5, type: 2}

@@ -78,6 +78,7 @@ namespace SBGames.Database
         public GameObject prefab;
         public CharacterBaseStatSO baseStats;
         public List<string> defaultSkillIds = new();
+        public List<string> extraItemIds = new();
         public HybridGameObjectReference hybridPrefab = new();
 
         /// <summary>

@@ -14,6 +14,7 @@ public class NormalAgentTypeFactory : AgentTypeFactoryBase
             factory.AddCapability<SquadCapabilityFactory>();
             factory.AddCapability<SurvivalCapabilityFactory>();
             factory.AddCapability<RecoveryCapabilityFactory>();
+            factory.AddCapability<WarpCapabilityFactory>();
 
             return factory.Build();
         }

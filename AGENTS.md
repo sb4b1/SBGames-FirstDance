@@ -29,3 +29,4 @@ Before adding or changing AI code (`Assets/Scripts/GOAP/`: actions, goals, senso
 ### Unity Automation
 
 Always use the **Unity CLI** (`unity` / `C:\Users\Admin\AppData\Local\Unity\bin\unity.exe`) for Unity Editor automation, package management, testing, and project inspection instead of Unity MCP.
+The Unity Editor is always kept running by the user: prioritize pipeline commands (`unity cmd console`, `unity cmd eval`, `unity cmd recompile`, etc.) for reading logs and interacting with the editor.

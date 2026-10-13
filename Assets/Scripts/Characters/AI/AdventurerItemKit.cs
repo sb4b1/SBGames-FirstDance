@@ -9,7 +9,8 @@ public enum ConsumableItemCategory
     None = 0,
     HealthPotion = 1,
     ManaPotion = 2,
-    StatusCure = 3
+    StatusCure = 3,
+    Warp = 4
 }
 
 [Serializable]
@@ -61,6 +62,7 @@ public class AdventurerItemKit : ScriptableObject
         if (effect is RestoreHealthEffect) return ConsumableItemCategory.HealthPotion;
         if (effect is RestoreManaEffect) return ConsumableItemCategory.ManaPotion;
         if (effect is CureStatusEffect) return ConsumableItemCategory.StatusCure;
+        if (effect is WarpEscapeEffect) return ConsumableItemCategory.Warp;
 
         string id = item.ItemID;
         if (!string.IsNullOrEmpty(id))
@@ -80,6 +82,12 @@ public class AdventurerItemKit : ScriptableObject
                 id.IndexOf("ANTIDOTE", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return ConsumableItemCategory.StatusCure;
+            }
+            if (id.IndexOf("WARP", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                id.IndexOf("ESCAPE", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                id.IndexOf("TELEPORT", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return ConsumableItemCategory.Warp;
             }
         }
 

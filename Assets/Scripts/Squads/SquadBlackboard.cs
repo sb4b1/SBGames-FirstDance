@@ -15,6 +15,60 @@ public class SquadBlackboard
     [SerializeField] private System.Collections.Generic.List<KnownEnemyRecord> knownEnemies = new(8);
     [SerializeField] private System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> sharedHazards = new(16);
 
+    [System.Serializable]
+    public struct DungeonRoomRecord
+    {
+        public int RoomId;
+        public bool Seen;
+        public bool Visited;
+        public bool FullyExplored;
+        public bool DeadEnd;
+        public bool Dangerous;
+        public Vector3 Center;
+
+        public DungeonRoomRecord(int roomId, Vector3 center)
+        {
+            RoomId = roomId;
+            Seen = true;
+            Visited = false;
+            FullyExplored = false;
+            DeadEnd = false;
+            Dangerous = false;
+            Center = center;
+        }
+    }
+
+    [System.Serializable]
+    public struct DungeonDoorRecord
+    {
+        public int DoorId;
+        public bool Seen;
+        public bool Traversed;
+        public bool IsBossDoor;
+        public Vector3 Position;
+        public int ConnectedRoomId;
+
+        public DungeonDoorRecord(int doorId, Vector3 position, bool isBossDoor, int connectedRoomId)
+        {
+            DoorId = doorId;
+            Seen = true;
+            Traversed = false;
+            IsBossDoor = isBossDoor;
+            Position = position;
+            ConnectedRoomId = connectedRoomId;
+        }
+    }
+
+    [SerializeField] private Vector3 entrancePosition;
+    [SerializeField] private bool hasEntrancePosition;
+    [SerializeField] private bool bossDoorRecognized;
+    [SerializeField] private Vector3 bossDoorPosition;
+    [SerializeField] private int currentRoomId = -1;
+    [SerializeField] private System.Collections.Generic.List<DungeonRoomRecord> knownRooms = new(32);
+    [SerializeField] private System.Collections.Generic.List<DungeonDoorRecord> knownDoors = new(64);
+    [SerializeField] private int[] visitedRoomHistory = new int[16];
+    [SerializeField] private int visitedHistoryCount = 0;
+
     public Transform LeaderTransform
     {
         get => leaderTransform;
@@ -36,6 +90,207 @@ public class SquadBlackboard
     public bool HasKnownEnemies => knownEnemies.Count > 0;
     public System.Collections.Generic.List<CharacterAIMemory.HazardMemoryRecord> SharedHazards => sharedHazards;
     public bool HasSharedHazards => sharedHazards.Count > 0;
+
+    public Vector3 EntrancePosition
+    {
+        get => entrancePosition;
+        set
+        {
+            entrancePosition = value;
+            hasEntrancePosition = true;
+        }
+    }
+
+    public bool HasEntrancePosition => hasEntrancePosition;
+    public bool BossDoorRecognized => bossDoorRecognized;
+    public Vector3 BossDoorPosition => bossDoorPosition;
+    public int CurrentRoomId => currentRoomId;
+    public System.Collections.Generic.IReadOnlyList<DungeonRoomRecord> KnownRooms => knownRooms;
+    public System.Collections.Generic.IReadOnlyList<DungeonDoorRecord> KnownDoors => knownDoors;
+
+    public void SetBossDoorRecognized(Vector3 position)
+    {
+        bossDoorRecognized = true;
+        bossDoorPosition = position;
+    }
+
+    public void RecordRoomSeen(int roomId, Vector3 center, bool isDangerous = false)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId)
+            {
+                var r = knownRooms[i];
+                r.Seen = true;
+                if (isDangerous) r.Dangerous = true;
+                knownRooms[i] = r;
+                return;
+            }
+        }
+        var record = new DungeonRoomRecord(roomId, center) { Dangerous = isDangerous };
+        knownRooms.Add(record);
+    }
+
+    public void RecordRoomVisited(int roomId, Vector3 center)
+    {
+        currentRoomId = roomId;
+        bool found = false;
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId)
+            {
+                var r = knownRooms[i];
+                r.Visited = true;
+                r.Seen = true;
+                knownRooms[i] = r;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            var record = new DungeonRoomRecord(roomId, center) { Visited = true };
+            knownRooms.Add(record);
+        }
+
+        // Add to ring buffer history
+        if (visitedHistoryCount < visitedRoomHistory.Length)
+        {
+            visitedRoomHistory[visitedHistoryCount++] = roomId;
+        }
+        else
+        {
+            for (int i = 0; i < visitedRoomHistory.Length - 1; i++)
+            {
+                visitedRoomHistory[i] = visitedRoomHistory[i + 1];
+            }
+            visitedRoomHistory[visitedRoomHistory.Length - 1] = roomId;
+        }
+    }
+
+    public void MarkRoomFullyExplored(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId)
+            {
+                var r = knownRooms[i];
+                r.FullyExplored = true;
+                knownRooms[i] = r;
+                return;
+            }
+        }
+        knownRooms.Add(new DungeonRoomRecord(roomId, Vector3.zero) { FullyExplored = true });
+    }
+
+    public void MarkRoomDeadEnd(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId)
+            {
+                var r = knownRooms[i];
+                r.DeadEnd = true;
+                r.FullyExplored = true;
+                knownRooms[i] = r;
+                return;
+            }
+        }
+        knownRooms.Add(new DungeonRoomRecord(roomId, Vector3.zero) { DeadEnd = true, FullyExplored = true });
+    }
+
+    public bool IsRoomVisited(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId) return knownRooms[i].Visited;
+        }
+        return false;
+    }
+
+    public bool IsRoomFullyExplored(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId) return knownRooms[i].FullyExplored;
+        }
+        return false;
+    }
+
+    public bool IsRoomDeadEnd(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId) return knownRooms[i].DeadEnd;
+        }
+        return false;
+    }
+
+    public bool IsRoomDangerous(int roomId)
+    {
+        for (int i = 0; i < knownRooms.Count; i++)
+        {
+            if (knownRooms[i].RoomId == roomId) return knownRooms[i].Dangerous;
+        }
+        return false;
+    }
+
+    public void RecordDoorSeen(int doorId, Vector3 position, bool isBossDoor, int connectedRoomId)
+    {
+        for (int i = 0; i < knownDoors.Count; i++)
+        {
+            if (knownDoors[i].DoorId == doorId)
+            {
+                var d = knownDoors[i];
+                d.Seen = true;
+                if (isBossDoor) d.IsBossDoor = true;
+                if (connectedRoomId != -1) d.ConnectedRoomId = connectedRoomId;
+                knownDoors[i] = d;
+                if (isBossDoor) SetBossDoorRecognized(position);
+                return;
+            }
+        }
+        knownDoors.Add(new DungeonDoorRecord(doorId, position, isBossDoor, connectedRoomId));
+        if (isBossDoor) SetBossDoorRecognized(position);
+    }
+
+    public void MarkDoorTraversed(int doorId)
+    {
+        for (int i = 0; i < knownDoors.Count; i++)
+        {
+            if (knownDoors[i].DoorId == doorId)
+            {
+                var d = knownDoors[i];
+                d.Traversed = true;
+                knownDoors[i] = d;
+                return;
+            }
+        }
+        knownDoors.Add(new DungeonDoorRecord(doorId, Vector3.zero, false, -1) { Traversed = true });
+    }
+
+    public bool IsDoorTraversed(int doorId)
+    {
+        for (int i = 0; i < knownDoors.Count; i++)
+        {
+            if (knownDoors[i].DoorId == doorId) return knownDoors[i].Traversed;
+        }
+        return false;
+    }
+
+    public bool WasRoomVisitedRecently(int roomId, int withinLastN = 5)
+    {
+        int checkCount = Mathf.Min(withinLastN, visitedHistoryCount);
+        for (int i = 0; i < checkCount; i++)
+        {
+            int index = visitedHistoryCount - 1 - i;
+            if (index >= 0 && index < visitedRoomHistory.Length && visitedRoomHistory[index] == roomId)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public event Action<Transform, Vector3> OnEnemyReported;
     public event Action<Vector2Int, Vector3, float> OnHazardReported;
@@ -188,6 +443,30 @@ public class SquadBlackboard
         for (int i = 0; i < source.sharedHazards.Count; i++)
         {
             sharedHazards.Add(source.sharedHazards[i]);
+        }
+
+        entrancePosition = source.entrancePosition;
+        hasEntrancePosition = source.hasEntrancePosition;
+        bossDoorRecognized = source.bossDoorRecognized;
+        bossDoorPosition = source.bossDoorPosition;
+        currentRoomId = source.currentRoomId;
+
+        knownRooms.Clear();
+        for (int i = 0; i < source.knownRooms.Count; i++)
+        {
+            knownRooms.Add(source.knownRooms[i]);
+        }
+
+        knownDoors.Clear();
+        for (int i = 0; i < source.knownDoors.Count; i++)
+        {
+            knownDoors.Add(source.knownDoors[i]);
+        }
+
+        visitedHistoryCount = source.visitedHistoryCount;
+        for (int i = 0; i < visitedRoomHistory.Length && i < source.visitedRoomHistory.Length; i++)
+        {
+            visitedRoomHistory[i] = source.visitedRoomHistory[i];
         }
     }
 }

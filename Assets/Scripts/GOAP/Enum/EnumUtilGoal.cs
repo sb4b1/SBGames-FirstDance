@@ -12,5 +12,6 @@ public enum EnumUtilGoal
     AlertAllies,
     ScoutRecon,
     DebriefLeader,
-    Recover
+    Recover,
+    Warp
 }

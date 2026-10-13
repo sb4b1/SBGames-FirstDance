@@ -6,3 +6,4 @@ ITEM_CONSUMABLE_MANA_POTION,Mana Potion,Restores mana to spellcasters and healer
 ITEM_CONSUMABLE_STATUS_CURE,Status Cure,Cures active harmful status effects when consumed.,Consumable,None,99
 ITEM_RUNE_L001,Lesser Power Rune,,Rune,Rune,10
 ITEN_RUNE_TEST,ITEN_RUNE_TEST,,Rune,Rune,10
+ITEM_CONSUMABLE_WARP,Escape Scroll,Teleports the user safely out of the dungeon.,Consumable,None,99

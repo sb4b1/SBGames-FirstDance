@@ -20,6 +20,18 @@ public struct ItemUseQualityTuningEntry
     [Tooltip("Maximum number of consumable items usable per room (-1 = unlimited).")]
     [SerializeField] private int perRoomItemQuota;
 
+    [Header("Warp Item Tuning (Phase 8)")]
+    [Tooltip("HP fraction [0, 1] below which the adventurer considers using a single-user warp escape item.")]
+    [SerializeField, Range(0.05f, 0.95f)] private float warpTriggerHpFraction;
+    [Tooltip("If true, carrier must have zero usable health potions remaining before triggering warp.")]
+    [SerializeField] private bool requireNoPotions;
+    [Tooltip("If true, carrier steps back out of enemy melee range before starting the warp cast.")]
+    [SerializeField] private bool requireOutOfMelee;
+    [Tooltip("Duration in seconds of the interruptible warp item cast.")]
+    [SerializeField, Range(1.0f, 10.0f)] private float warpCastDuration;
+    [Tooltip("Cooldown in seconds before retrying warp if interrupted by stun, knockback, etc.")]
+    [SerializeField, Range(0.5f, 15.0f)] private float warpInterruptCooldown;
+
     public ItemUseQuality Quality => quality;
     public float HpTriggerFraction => hpTriggerFraction;
     public float ManaTriggerFraction => manaTriggerFraction;
@@ -28,6 +40,11 @@ public struct ItemUseQualityTuningEntry
     public bool SeekPartyRearOrBehindTank => seekPartyRearOrBehindTank;
     public float SafeEnemyDistance => safeEnemyDistance;
     public int PerRoomItemQuota => perRoomItemQuota;
+    public float WarpTriggerHpFraction => warpTriggerHpFraction;
+    public bool RequireNoPotions => requireNoPotions;
+    public bool RequireOutOfMelee => requireOutOfMelee;
+    public float WarpCastDuration => warpCastDuration > 0f ? warpCastDuration : 3.5f;
+    public float WarpInterruptCooldown => warpInterruptCooldown > 0f ? warpInterruptCooldown : 5.0f;
 
     public ItemUseQualityTuningEntry(
         ItemUseQuality quality,
@@ -37,7 +54,12 @@ public struct ItemUseQualityTuningEntry
         bool backOutOfMeleeFirst,
         bool seekPartyRearOrBehindTank,
         float safeEnemyDistance,
-        int perRoomItemQuota)
+        int perRoomItemQuota,
+        float warpTriggerHpFraction = 0.20f,
+        bool requireNoPotions = true,
+        bool requireOutOfMelee = false,
+        float warpCastDuration = 3.5f,
+        float warpInterruptCooldown = 5.0f)
     {
         this.quality = quality;
         this.hpTriggerFraction = Mathf.Clamp01(hpTriggerFraction);
@@ -47,6 +69,11 @@ public struct ItemUseQualityTuningEntry
         this.seekPartyRearOrBehindTank = seekPartyRearOrBehindTank;
         this.safeEnemyDistance = Mathf.Max(0f, safeEnemyDistance);
         this.perRoomItemQuota = perRoomItemQuota;
+        this.warpTriggerHpFraction = Mathf.Clamp01(warpTriggerHpFraction);
+        this.requireNoPotions = requireNoPotions;
+        this.requireOutOfMelee = requireOutOfMelee;
+        this.warpCastDuration = Mathf.Max(0.5f, warpCastDuration);
+        this.warpInterruptCooldown = Mathf.Max(0f, warpInterruptCooldown);
     }
 }
 
@@ -77,7 +104,7 @@ public class ItemUseQualityTuningSO : ScriptableObject
     {
         return new ItemUseQualityTuningEntry[]
         {
-            // LateWasteful (0, Rank E): drinks late in place while being hit, no retreat positioning, unlimited per-room quota
+            // LateWasteful (0, Rank E): drinks late in place while being hit, warp too late (0.15), doesn't wait for zero potions, in melee, long cast
             new ItemUseQualityTuningEntry(
                 quality: ItemUseQuality.LateWasteful,
                 hpTriggerFraction: 0.28f,
@@ -86,9 +113,14 @@ public class ItemUseQualityTuningSO : ScriptableObject
                 backOutOfMeleeFirst: false,
                 seekPartyRearOrBehindTank: false,
                 safeEnemyDistance: 0f,
-                perRoomItemQuota: -1),
+                perRoomItemQuota: -1,
+                warpTriggerHpFraction: 0.15f,
+                requireNoPotions: false,
+                requireOutOfMelee: false,
+                warpCastDuration: 4.5f,
+                warpInterruptCooldown: 5.0f),
 
-            // Adequate (1, Rank D): steps back out of melee first, moderate trigger thresholds, unlimited per-room quota
+            // Adequate (1, Rank D): steps back out of melee first, warp below flee threshold (0.25) with no potions left
             new ItemUseQualityTuningEntry(
                 quality: ItemUseQuality.Adequate,
                 hpTriggerFraction: 0.45f,
@@ -97,9 +129,14 @@ public class ItemUseQualityTuningSO : ScriptableObject
                 backOutOfMeleeFirst: true,
                 seekPartyRearOrBehindTank: false,
                 safeEnemyDistance: 3.5f,
-                perRoomItemQuota: -1),
+                perRoomItemQuota: -1,
+                warpTriggerHpFraction: 0.25f,
+                requireNoPotions: true,
+                requireOutOfMelee: false,
+                warpCastDuration: 3.5f,
+                warpInterruptCooldown: 4.0f),
 
-            // WellTimed (2, Rank C): moves behind Tank/party rear, drinks when safe, respects per-room item quota
+            // WellTimed (2, Rank C): moves behind Tank/party rear, steps out of melee first, warps earlier (0.35) so cast finishes
             new ItemUseQualityTuningEntry(
                 quality: ItemUseQuality.WellTimed,
                 hpTriggerFraction: 0.65f,
@@ -108,7 +145,12 @@ public class ItemUseQualityTuningSO : ScriptableObject
                 backOutOfMeleeFirst: true,
                 seekPartyRearOrBehindTank: true,
                 safeEnemyDistance: 5.0f,
-                perRoomItemQuota: 2)
+                perRoomItemQuota: 2,
+                warpTriggerHpFraction: 0.35f,
+                requireNoPotions: false,
+                requireOutOfMelee: true,
+                warpCastDuration: 3.0f,
+                warpInterruptCooldown: 3.0f)
         };
     }
 

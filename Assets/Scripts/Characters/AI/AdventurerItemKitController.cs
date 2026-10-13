@@ -1,13 +1,18 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using SB4b1.Logging;
+using SBGames.Characters.AI;
+using SBGames.Database;
 using SBGames.Inventory.Data;
+using SBGames.Loop;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 public class AdventurerItemKitController : MonoBehaviour, IPoolable
 {
     public const int MaxKitSlots = 8;
-    public const int CategoryCount = 4; // None=0, HealthPotion=1, ManaPotion=2, StatusCure=3
+    public const int CategoryCount = 5; // None=0, HealthPotion=1, ManaPotion=2, StatusCure=3, Warp=4
 
     [Serializable]
     public struct RuntimeKitSlot
@@ -23,12 +28,15 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
     [SerializeField] private AdventurerItemKit overrideStartingKit;
     [SerializeField] private ItemKitModifiers kitModifiers;
     [SerializeField] private ItemUseQualityTuningSO qualityTuning;
+    [SerializeField] private ItemDatabaseSO itemDatabase;
 
     [Header("Cast & Cooldown Timing")]
     [Tooltip("Duration in seconds of the interruptible item use cast before consumption completes.")]
     [SerializeField, Range(0.1f, 2.0f)] private float castDuration = 0.75f;
     [Tooltip("Cooldown in seconds per item slot after an item is consumed.")]
     [SerializeField, Range(0.5f, 15.0f)] private float itemCooldown = 6.0f;
+    [Tooltip("Bonus DM Energy awarded when carrier dies while holding an unused warp item.")]
+    [SerializeField, Min(0)] private int forfeitBonusEnergy = 15;
 
     private readonly RuntimeKitSlot[] slots = new RuntimeKitSlot[MaxKitSlots];
     private int activeSlotCount;
@@ -48,7 +56,7 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
     private bool isDeathSubscribed;
     private bool isKitResolved;
 
-    // Preallocated buffers for zero-alloc kit resolution indexed by ConsumableItemCategory (0..3)
+    // Preallocated buffers for zero-alloc kit resolution indexed by ConsumableItemCategory (0..4)
     private readonly ItemDataSO[] resolvedCategoryItems = new ItemDataSO[CategoryCount];
     private readonly int[] resolvedCategoryCounts = new int[CategoryCount];
 
@@ -59,14 +67,19 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
     public AdventurerItemKit OverrideStartingKit { get => overrideStartingKit; set => overrideStartingKit = value; }
     public ItemKitModifiers KitModifiers { get => kitModifiers; set => kitModifiers = value; }
     public ItemUseQualityTuningSO QualityTuning { get => qualityTuning; set => qualityTuning = value; }
+    public ItemDatabaseSO ItemDatabase { get => itemDatabase; set => itemDatabase = value; }
     public float CastDuration { get => castDuration; set => castDuration = Mathf.Max(0.05f, value); }
     public float ItemCooldown { get => itemCooldown; set => itemCooldown = Mathf.Max(0f, value); }
+    public int ForfeitBonusEnergy { get => forfeitBonusEnergy; set => forfeitBonusEnergy = Mathf.Max(0, value); }
 
     public bool IsCastingItem => isCastingItem;
     public float CastRemainingTime => isCastingItem ? castRemainingTime : 0f;
     public ItemDataSO CastingItem => (isCastingItem && castingSlotIndex >= 0 && castingSlotIndex < activeSlotCount)
         ? slots[castingSlotIndex].Item
         : null;
+    public ConsumableItemCategory CastingCategory => (isCastingItem && castingSlotIndex >= 0 && castingSlotIndex < activeSlotCount)
+        ? slots[castingSlotIndex].Category
+        : ConsumableItemCategory.None;
 
     public int ActiveSlotCount => activeSlotCount;
     public int TotalInitialCount => totalInitialCount;
@@ -165,6 +178,16 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
     private void HandleCharacterDeath(CharacterStatsManager deadStats)
     {
         CancelCast("Death");
+        int remainingWarp = GetRemainingCount(ConsumableItemCategory.Warp);
+        if (remainingWarp > 0)
+        {
+            if (DungeonMaster.Instance != null)
+            {
+                DungeonMaster.Instance.AddEnergy(forfeitBonusEnergy);
+            }
+            ELogger.Log("WarpItemForfeited", this, $"Awarded {forfeitBonusEnergy} Energy for {remainingWarp} forfeited warp item(s).");
+            AdventurerEventHub.RaiseWarpItemForfeited(gameObject, gameObject.name, "ITEM_CONSUMABLE_WARP", forfeitBonusEnergy);
+        }
     }
 
     /// <summary>
@@ -176,13 +199,14 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
     }
 
     /// <summary>
-    /// Resolves the final runtime item kit from (rank kit + function modifier + wealth modifier).
+    /// Resolves the final runtime item kit from (rank kit + function modifier + wealth modifier + extra items).
     /// Mana potions are only granted if the character has MaxMana &gt; 0.
     /// Zero managed allocations.
     /// </summary>
     public void ResolveRuntimeKit()
     {
         CacheComponents();
+        SubscribeDeath();
 
         var profile = baseAI != null ? baseAI.AdventurerProfile : null;
         AdventurerItemKit baseKit = overrideStartingKit != null
@@ -192,8 +216,9 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
         AdventurerFunction function = statsManager != null ? statsManager.CharacterFunction : AdventurerFunction.None;
         AdventurerWealth wealth = statsManager != null ? statsManager.CharacterWealth : AdventurerWealth.Average;
         bool hasManaPool = statsManager != null && statsManager.MaxMana != null && statsManager.MaxMana.Value > 0f;
+        var extraIds = statsManager != null && statsManager.BaseStats != null ? statsManager.BaseStats.ExtraItemIds : null;
 
-        ResolveRuntimeKit(baseKit, kitModifiers, function, wealth, hasManaPool);
+        ResolveRuntimeKit(baseKit, kitModifiers, function, wealth, hasManaPool, extraIds);
     }
 
     /// <summary>
@@ -204,8 +229,11 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
         ItemKitModifiers modifiers,
         AdventurerFunction function,
         AdventurerWealth wealth,
-        bool hasManaPool)
+        bool hasManaPool,
+        IReadOnlyList<string> extraItemIds = null)
     {
+        CacheComponents();
+        SubscribeDeath();
         CancelCast("ResolveKit");
 
         for (int c = 0; c < CategoryCount; c++)
@@ -294,7 +322,47 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
             resolvedCategoryCounts[(int)ConsumableItemCategory.ManaPotion] = 0;
         }
 
-        // 5. Commit category slots (floored at 0)
+        // 5. Extra items from designer data (per-character extra items, e.g. Warp item)
+        if (extraItemIds != null && extraItemIds.Count > 0)
+        {
+            EnsureItemDatabase();
+            for (int i = 0; i < extraItemIds.Count; i++)
+            {
+                string extraId = extraItemIds[i];
+                if (string.IsNullOrWhiteSpace(extraId)) continue;
+
+                ItemDataSO extraItem = itemDatabase != null ? itemDatabase.Get(extraId) : null;
+                if (extraItem != null)
+                {
+                    ConsumableItemCategory extraCat = AdventurerItemKit.ClassifyItem(extraItem);
+                    if (extraCat != ConsumableItemCategory.None)
+                    {
+                        int catIdx = (int)extraCat;
+                        if (resolvedCategoryItems[catIdx] == null)
+                        {
+                            resolvedCategoryItems[catIdx] = extraItem;
+                        }
+                        resolvedCategoryCounts[catIdx]++;
+                    }
+                    else if (activeSlotCount < MaxKitSlots)
+                    {
+                        slots[activeSlotCount] = new RuntimeKitSlot
+                        {
+                            Item = extraItem,
+                            Category = ConsumableItemCategory.None,
+                            InitialCount = 1,
+                            RemainingCount = 1,
+                            CooldownReadyTime = 0f
+                        };
+                        activeSlotCount++;
+                        totalInitialCount++;
+                        totalRemainingCount++;
+                    }
+                }
+            }
+        }
+
+        // 6. Commit category slots (floored at 0)
         for (int c = 1; c < CategoryCount; c++)
         {
             int finalCount = Mathf.Max(0, resolvedCategoryCounts[c]);
@@ -318,6 +386,67 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
         }
 
         isKitResolved = true;
+    }
+
+    /// <summary>
+    /// Programmatically adds an extra item to the runtime kit (useful for unit testing or runtime equipment).
+    /// </summary>
+    public void AddExtraItem(ItemDataSO item, int count = 1)
+    {
+        if (item == null || count <= 0) return;
+        ConsumableItemCategory cat = AdventurerItemKit.ClassifyItem(item);
+        if (cat != ConsumableItemCategory.None)
+        {
+            for (int i = 0; i < activeSlotCount; i++)
+            {
+                if (slots[i].Category == cat)
+                {
+                    slots[i].RemainingCount += count;
+                    slots[i].InitialCount += count;
+                    totalInitialCount += count;
+                    totalRemainingCount += count;
+                    return;
+                }
+            }
+        }
+
+        if (activeSlotCount < MaxKitSlots)
+        {
+            slots[activeSlotCount] = new RuntimeKitSlot
+            {
+                Item = item,
+                Category = cat,
+                InitialCount = count,
+                RemainingCount = count,
+                CooldownReadyTime = 0f
+            };
+            activeSlotCount++;
+            totalInitialCount += count;
+            totalRemainingCount += count;
+        }
+    }
+
+    private void EnsureItemDatabase()
+    {
+        if (itemDatabase != null) return;
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            var guids = UnityEditor.AssetDatabase.FindAssets("t:ItemDatabaseSO");
+            if (guids.Length > 0)
+            {
+                itemDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemDatabaseSO>(UnityEditor.AssetDatabase.GUIDToAssetPath(guids[0]));
+            }
+        }
+#endif
+        if (itemDatabase == null)
+        {
+            var dbs = Resources.FindObjectsOfTypeAll<ItemDatabaseSO>();
+            if (dbs != null && dbs.Length > 0)
+            {
+                itemDatabase = dbs[0];
+            }
+        }
     }
 
     public int GetRemainingCount(ConsumableItemCategory category)
@@ -454,6 +583,10 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
         ItemDataSO interruptedItem = (castingSlotIndex >= 0 && castingSlotIndex < activeSlotCount)
             ? slots[castingSlotIndex].Item
             : null;
+        ConsumableItemCategory interruptedCat = (castingSlotIndex >= 0 && castingSlotIndex < activeSlotCount)
+            ? slots[castingSlotIndex].Category
+            : ConsumableItemCategory.None;
+        int interruptedSlotIdx = castingSlotIndex;
 
         isCastingItem = false;
         castingSlotIndex = -1;
@@ -461,20 +594,48 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
 
         if (interruptedItem != null)
         {
+            if (interruptedCat == ConsumableItemCategory.Warp && interruptedSlotIdx >= 0 && interruptedSlotIdx < activeSlotCount)
+            {
+                float now = Application.isPlaying ? Time.time : currentClockTime;
+                slots[interruptedSlotIdx].CooldownReadyTime = now + GetWarpInterruptCooldown();
+                AdventurerEventHub.RaiseWarpInterrupted(gameObject, gameObject.name, interruptedItem.ItemID);
+            }
+
             ELogger.Log("ItemCastInterrupted", this, reason);
             OnItemCastInterrupted?.Invoke(this, interruptedItem);
         }
+    }
+
+    private float GetWarpCastDuration()
+    {
+        var quality = baseAI != null ? baseAI.ItemUseQuality : ItemUseQuality.Adequate;
+        var entry = ItemUseQualityTuningSO.GetEntryOrDefault(qualityTuning, quality);
+        return entry.WarpCastDuration;
+    }
+
+    private float GetWarpInterruptCooldown()
+    {
+        var quality = baseAI != null ? baseAI.ItemUseQuality : ItemUseQuality.Adequate;
+        var entry = ItemUseQualityTuningSO.GetEntryOrDefault(qualityTuning, quality);
+        return entry.WarpInterruptCooldown;
     }
 
     private void BeginSlotCast(int slotIndex)
     {
         isCastingItem = true;
         castingSlotIndex = slotIndex;
-        castRemainingTime = castDuration;
 
         ItemDataSO item = slots[slotIndex].Item;
+        ConsumableItemCategory cat = slots[slotIndex].Category;
+        castRemainingTime = (cat == ConsumableItemCategory.Warp) ? GetWarpCastDuration() : castDuration;
+
         ELogger.Log("ItemCastStart", this, item != null ? item.ItemID : string.Empty);
         OnItemCastStarted?.Invoke(this, item);
+
+        if (cat == ConsumableItemCategory.Warp)
+        {
+            AdventurerEventHub.RaiseWarpStarted(gameObject, gameObject.name, item != null ? item.ItemID : "ITEM_CONSUMABLE_WARP");
+        }
     }
 
     private bool CompleteCast()
@@ -510,8 +671,16 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
         slot.CooldownReadyTime = now + itemCooldown;
         itemsUsedInCurrentRoom++;
 
-        ELogger.Log("PotionConsumed", this, slot.Item.ItemID);
-        OnPotionConsumed?.Invoke(this, slot.Item);
+        if (slot.Category == ConsumableItemCategory.Warp)
+        {
+            AdventurerEventHub.RaiseWarpCompleted(gameObject, gameObject.name, slot.Item.ItemID);
+        }
+        else
+        {
+            ELogger.Log("PotionConsumed", this, slot.Item.ItemID);
+            OnPotionConsumed?.Invoke(this, slot.Item);
+            AdventurerEventHub.RaisePotionConsumed(gameObject, gameObject.name, slot.Category, slot.Item.ItemID);
+        }
         return true;
     }
 

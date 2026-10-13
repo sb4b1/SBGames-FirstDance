@@ -90,6 +90,10 @@ public class AdventurerAIProfile : ScriptableObject
     [Tooltip("Baseline consumable item kit granted to adventurers of this rank at spawn.")]
     [SerializeField] private AdventurerItemKit startingItemKit;
 
+    [Header("Room Loop Tuning (Phase 6)")]
+    [Tooltip("Room loop state machine timings, weights, and boss door policies for this rank.")]
+    [SerializeField] private SBGames.Characters.AI.RoomLoopTuningSO roomLoopTuning;
+
     public CharacterRank Rank => rank;
     public float DecisionInterval => decisionInterval;
     public float VisionRadius => visionRadius;
@@ -106,6 +110,7 @@ public class AdventurerAIProfile : ScriptableObject
     public float StepUpThreshold => stepUpThreshold;
     public LeaderlessBehavior LeaderlessBehavior => leaderlessBehavior;
     public AdventurerItemKit StartingItemKit => startingItemKit;
+    public SBGames.Characters.AI.RoomLoopTuningSO RoomLoopTuning => roomLoopTuning;
 
     /// <summary>
     /// Computes the individual flee HP threshold adjusted by a personality multiplier.
