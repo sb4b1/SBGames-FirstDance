@@ -2,6 +2,14 @@
 
 ## Agent skills
 
+### Project overview
+
+High-level architecture, game loop, directory layout, and binding rules. See `docs/agents/project_overview.md`.
+
+### Engineering guide
+
+Code-level technical architecture, component lifecycles, data flow, and feature extension playbooks. See `docs/engineering_guide.md`.
+
 ### Issue tracker
 
 Issues and specs live in GitHub Issues. See `docs/agents/issue-tracker.md`.
