@@ -49,3 +49,29 @@ Date: 2026-10-15
 7. **Batch Simulation Seam & NavMesh Verification**:
    - Pure C# Seam Check verifies Ground tile continuity across all adjacent abutting doorway openings for every generated seed.
    - Post-build 2D NavMesh path check validates complete unobstructed connectivity from Entrance to Boss room.
+
+## Amendment: Dynamic Room Sizes, Freeform Openings, Pathway Pieces, and Seam Snapping
+
+Date: 2026-10-15
+
+### Settled Design Specifications
+1. **Dynamic Piece Sizes ($W \times H \ge 4 \times 4$)**:
+   - Pieces are no longer locked to a fixed 16x16 macro cell. Each `DungeonPiece` declares its own custom dimensions (`width x height` in tiles, e.g. 10x10 small room, 24x18 large room, 6x8 pathway).
+   - Fixed cell-size mismatch rejections are removed from `DungeonRuntimeBuilder` so diverse room and corridor sizes coexist in the same dungeon.
+2. **Piece Structural Roles (`PieceRole`)**:
+   - Each piece is categorized as either `Room` (Entrance, Normal, SafeRoom, Boss) or `Pathway` (corridor connectors).
+   - Both roles are instantiated and registered in `DungeonRoomRegistry`, enabling AI navigation and DM monster/trap placement across both rooms and pathways (excluding Entrance).
+3. **Freeform 2-Tile Openings (`PieceOpening`)**:
+   - A piece can declare any number of 2-tile-wide openings at arbitrary tile coordinates along its boundary (`AnchorTile` + outward `CardinalDirection` normal).
+   - Non-square quarter-turn rotation cleanly swaps effective dimensions ($W' = H, H' = W$) and maps anchor coordinates and outward directions through full 4-turn cycles.
+4. **Collision-Free Seam Snapping**:
+   - The pure C# `DungeonSeamLayoutSolver` computes exact world origin alignment for piece sockets:
+     $$\text{OriginB} = \text{OriginA} + \text{OpeningA.AnchorTile} + \text{Normal}(\text{OpeningA.Direction}) - \text{OpeningB.AnchorTile}$$
+   - Direct `Room -> Room` connections occur whenever opposite sockets snap without tile overlap against `OccupiedDungeonTiles` (footprint of Ground $\cup$ Walls).
+   - When direct room fit overlaps, or when `pathwayProbability` (default 0.35f) rolls true, a `Pathway` piece is inserted to bridge the rooms (`Room -> Pathway -> Room`) without tile overlap.
+5. **Prefab Mode Authoring with Dynamic Bounds**:
+   - Authoring window provides presets for diverse room and pathway dimensions.
+   - Scene view overlays draw dynamic $W \times H$ frames, freeform 2-tile opening handles, and bounded buildable mask painting.
+   - "Fit Bounds to Painted Tiles" helper automatically recalibrates `CellSize` to the tight bounding box of painted Ground and Wall tiles.
+6. **Pure C# Verification**:
+   - Comprehensive unit tests in `Assets/Tests/DungeonPieceTests.cs` verify non-square rotation cycles, seam snapping math, zero overlap, direct room-to-room and room-to-pathway layout solving, and unused opening capping.

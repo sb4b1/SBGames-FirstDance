@@ -22,6 +22,9 @@ namespace SBGames.Dungeon.Unity
         [Tooltip("Number of safe rooms to generate (0 or 1, placed along the deeper half).")]
         [SerializeField, Range(0, 1)] private int safeRoomCount = 1;
 
+        [Tooltip("Probability [0..1] of preferring a Pathway piece vs direct Room-to-Room snapping when connecting rooms.")]
+        [SerializeField, Range(0f, 1f)] private float pathwayProbability = 0.35f;
+
         [Header("Piece Set (Optional)")]
         [Tooltip("Optional authored piece set. If null, per-room-type prefab slots and procedural fallbacks are used.")]
         [SerializeField] private SBGames.Dungeon.Unity.Pieces.PieceSetSO pieceSet;
@@ -74,6 +77,7 @@ namespace SBGames.Dungeon.Unity
         public float BranchProbability => branchProbability;
         public float LoopProbability => loopProbability;
         public int SafeRoomCount => safeRoomCount;
+        public float PathwayProbability => pathwayProbability;
         public float CellsPerSoftSlot => cellsPerSoftSlot;
         public float MaxCapacityMultiplier => maxCapacityMultiplier;
         public float NormalSoftMultiplier => normalSoftMultiplier;
@@ -105,11 +109,13 @@ namespace SBGames.Dungeon.Unity
                 roomWidth,
                 roomHeight,
                 corridorLength,
-                corridorWidth
+                corridorWidth,
+                pathwayProbability
             );
         }
 
         public void SetPieceSetForTesting(SBGames.Dungeon.Unity.Pieces.PieceSetSO set) => pieceSet = set;
         public void SetCorridorLengthForTesting(int length) => corridorLength = length;
+        public void SetPathwayProbabilityForTesting(float prob) => pathwayProbability = prob;
     }
 }

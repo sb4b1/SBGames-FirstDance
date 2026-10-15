@@ -70,10 +70,10 @@ namespace SBGames.Tests
             var badges2 = PieceValidator.ValidatePiece(multiFootprint, cellW, cellH);
             Assert.IsTrue(PieceValidator.HasErrors(badges2));
 
-            // 3. Error: Rotatable on non-square cell
+            // 3. Non-square rotatable pieces are now valid (dimensions swap on odd turns)
             var rotatableNonSquare = new DungeonPieceDescriptor("p3", DungeonRoomType.Normal, OpeningFlags.North, isRotatable: true);
             var badges3 = PieceValidator.ValidatePiece(rotatableNonSquare, 10, 8);
-            Assert.IsTrue(PieceValidator.HasErrors(badges3));
+            Assert.IsFalse(PieceValidator.HasErrors(badges3), "Non-square rotatable pieces are valid under dynamic piece sizing.");
 
             // 4. Error: Buildable mask out of bounds
             var oobMask = new DungeonPieceDescriptor("p4", DungeonRoomType.Normal, OpeningFlags.North);
@@ -554,5 +554,272 @@ namespace SBGames.Tests
             Assert.AreEqual(5, report.SeamCheckPassedSeeds);
         }
 #endif
+
+        [Test]
+        public void PieceOpening_EdgeTiles_AndOutsideTiles_CalculatedCorrectly()
+        {
+            // North opening at (4, 9), width 2
+            var northOp = new PieceOpening(4, 9, CardinalDirection.North, 2);
+            var edgeN = northOp.GetEdgeTiles();
+            Assert.AreEqual(2, edgeN.Count);
+            Assert.AreEqual(new GridCoord(4, 9), edgeN[0]);
+            Assert.AreEqual(new GridCoord(5, 9), edgeN[1]);
+
+            var outsideN = northOp.GetOutsideConnectionTiles();
+            Assert.AreEqual(2, outsideN.Count);
+            Assert.AreEqual(new GridCoord(4, 10), outsideN[0]);
+            Assert.AreEqual(new GridCoord(5, 10), outsideN[1]);
+
+            // East opening at (9, 3), width 2
+            var eastOp = new PieceOpening(9, 3, CardinalDirection.East, 2);
+            var edgeE = eastOp.GetEdgeTiles();
+            Assert.AreEqual(new GridCoord(9, 3), edgeE[0]);
+            Assert.AreEqual(new GridCoord(9, 4), edgeE[1]);
+
+            var outsideE = eastOp.GetOutsideConnectionTiles();
+            Assert.AreEqual(new GridCoord(10, 3), outsideE[0]);
+            Assert.AreEqual(new GridCoord(10, 4), outsideE[1]);
+        }
+
+        [Test]
+        public void PieceOpening_NonSquareRotation_CyclePreservesDimensionsAndOpenings()
+        {
+            int cellW = 20;
+            int cellH = 12;
+
+            // North opening at anchor (6, 11), width 2
+            var op = new PieceOpening(6, 11, CardinalDirection.North, 2);
+
+            // 1 turn: (20x12) -> (12x20), North -> East
+            // newAnchor = (curH - 1, curW - width - anchor.X) = (11, 20 - 2 - 6) = (11, 12)
+            var op1 = op.RotateClockwise(cellW, cellH, 1);
+            Assert.AreEqual(CardinalDirection.East, op1.Direction);
+            Assert.AreEqual(new GridCoord(11, 12), op1.AnchorTile);
+
+            // 2 turns: (12x20) -> (20x12), East -> South
+            // newAnchor = (anchor.Y, 0) = (12, 0)
+            var op2 = op.RotateClockwise(cellW, cellH, 2);
+            Assert.AreEqual(CardinalDirection.South, op2.Direction);
+            Assert.AreEqual(new GridCoord(12, 0), op2.AnchorTile);
+
+            // 3 turns: (20x12) -> (12x20), South -> West
+            // newAnchor = (0, curW - width - anchor.X) = (0, 20 - 2 - 12) = (0, 6)
+            var op3 = op.RotateClockwise(cellW, cellH, 3);
+            Assert.AreEqual(CardinalDirection.West, op3.Direction);
+            Assert.AreEqual(new GridCoord(0, 6), op3.AnchorTile);
+
+            // 4 turns: full cycle back to (6, 11) North
+            var op4 = op.RotateClockwise(cellW, cellH, 4);
+            Assert.AreEqual(op, op4);
+        }
+
+        [Test]
+        public void OpeningGeometry_CalculateSnappedWorldOrigin_SnapsOppositeOpeningsCorrectly()
+        {
+            // Room A at (10, 20) with East opening at local (15, 4)
+            var originA = new GridCoord(10, 20);
+            var openingA = new PieceOpening(15, 4, CardinalDirection.East, 2);
+
+            // Room B with West opening at local (0, 2)
+            var openingB = new PieceOpening(0, 2, CardinalDirection.West, 2);
+
+            // OriginB = OriginA + OpeningA.AnchorTile + Normal(OpeningA.Direction) - OpeningB.AnchorTile
+            // OriginB = (10, 20) + (15, 4) + (1, 0) - (0, 2) = (26, 22)
+            var originB = OpeningGeometry.CalculateSnappedWorldOrigin(originA, openingA, openingB);
+            Assert.AreEqual(new GridCoord(26, 22), originB);
+
+            // Verify seam alignment:
+            // Outside connection of A in world: (10+15+1, 20+4) = (26, 24) and (26, 25)
+            // Edge tiles of B in world: (26+0, 22+2) = (26, 24) and (26+0, 22+3) = (26, 25)
+            var outsideA = openingA.GetOutsideConnectionTiles();
+            var edgeB = openingB.GetEdgeTiles();
+            for (int i = 0; i < 2; i++)
+            {
+                var worldOutsideA = originA + outsideA[i];
+                var worldEdgeB = originB + edgeB[i];
+                Assert.AreEqual(worldOutsideA, worldEdgeB, $"Seam tile {i} must align exactly.");
+            }
+        }
+
+        [Test]
+        public void PieceValidator_FreeformOpenings_BadgesCorrect()
+        {
+            int w = 14;
+            int h = 10;
+
+            // 1. Overlapping openings error
+            var opA = new PieceOpening(4, 9, CardinalDirection.North, 2); // tiles (4,9), (5,9)
+            var opB = new PieceOpening(5, 9, CardinalDirection.North, 2); // tiles (5,9), (6,9) - overlaps at (5,9)
+            var pieceOverlap = new DungeonPieceDescriptor("overlap", PieceRole.Room, DungeonRoomType.Normal, w, h, new[] { opA, opB });
+            var badges1 = PieceValidator.ValidatePiece(pieceOverlap, w, h);
+            Assert.IsTrue(PieceValidator.HasErrors(badges1));
+            Assert.IsTrue(badges1.Exists(b => b.Message.Contains("overlap")));
+
+            // 2. Missing ground at edge tiles error
+            var opValid = new PieceOpening(4, 9, CardinalDirection.North, 2);
+            var pieceMissingGround = new DungeonPieceDescriptor("missingGround", PieceRole.Room, DungeonRoomType.Normal, w, h, new[] { opValid });
+            var groundPartial = new HashSet<GridCoord> { new GridCoord(4, 9) }; // missing (5, 9)
+            var badges2 = PieceValidator.ValidatePiece(pieceMissingGround, w, h, groundCells: groundPartial);
+            Assert.IsTrue(PieceValidator.HasErrors(badges2));
+            Assert.IsTrue(badges2.Exists(b => b.Message.Contains("does not have painted Ground")));
+
+            // 3. Ground reaches outer border where no opening declared -> Warning
+            var fullGround = new HashSet<GridCoord>
+            {
+                new GridCoord(4, 9), new GridCoord(5, 9), // Opening tiles
+                new GridCoord(0, 4) // Border tile with no opening
+            };
+            var pieceUndeclaredGround = new DungeonPieceDescriptor("undeclaredBorder", PieceRole.Room, DungeonRoomType.Normal, w, h, new[] { opValid });
+            var badges3 = PieceValidator.ValidatePiece(pieceUndeclaredGround, w, h, groundCells: fullGround);
+            Assert.IsFalse(PieceValidator.HasErrors(badges3));
+            Assert.IsTrue(badges3.Exists(b => b.IsWarning && b.Message.Contains("outer border")));
+        }
+
+        [Test]
+        public void DungeonSeamLayoutSolver_DirectRoomToRoom_SnapsSeamsWithZeroOverlap()
+        {
+            var rng = new MockRng();
+
+            // Entrance piece (12x10) with East opening at (11, 4)
+            var entOp = new PieceOpening(11, 4, CardinalDirection.East, 2);
+            var entDesc = new DungeonPieceDescriptor("ent_12x10", PieceRole.Room, DungeonRoomType.Entrance, 12, 10, new[] { entOp })
+            {
+                EntryAnchorCount = 1
+            };
+
+            // Normal piece (14x12) with West opening at (0, 3)
+            var normOp = new PieceOpening(0, 3, CardinalDirection.West, 2);
+            var normDesc = new DungeonPieceDescriptor("norm_14x12", PieceRole.Room, DungeonRoomType.Normal, 14, 12, new[] { normOp });
+
+            // Graph: Room 0 (Entrance) -> East -> Room 1 (Normal)
+            var graph = new DungeonLayoutGraph();
+            var nodeEnt = new DungeonLayoutNode(0, DungeonRoomType.Entrance, new GridCoord(0, 0));
+            var nodeNorm = new DungeonLayoutNode(1, DungeonRoomType.Normal, new GridCoord(1, 0));
+            graph.AddRoom(nodeEnt);
+            graph.AddRoom(nodeNorm);
+            graph.AddDoor(new DungeonDoorConnection(0, 0, 1, CardinalDirection.East, false));
+
+            var result = DungeonSeamLayoutSolver.Solve(
+                graph,
+                new[] { entDesc, normDesc },
+                pathwayProbability: 0f,
+                openingWidth: 2,
+                rng: rng
+            );
+
+            Assert.IsTrue(result.Success, $"Solve failed: {result.FailureReason}");
+            Assert.AreEqual(2, result.PlacedRooms.Count);
+            Assert.AreEqual(0, result.PlacedPathways.Count);
+            Assert.AreEqual(1, result.Seams.Count);
+
+            // World origin of entrance is (0, 0)
+            var placedEnt = result.PlacedRooms[0];
+            var placedNorm = result.PlacedRooms[1];
+            Assert.AreEqual(new GridCoord(0, 0), placedEnt.WorldOrigin);
+
+            // Snapped origin of normal room:
+            // (0, 0) + (11, 4) + (1, 0) - (0, 3) = (12, 1)
+            Assert.AreEqual(new GridCoord(12, 1), placedNorm.WorldOrigin);
+
+            // Verify seam alignment
+            var seam = result.Seams[0];
+            var outEnt0 = placedEnt.WorldOrigin + seam.OpeningA.GetOutsideConnectionTiles()[0];
+            var edgeNorm0 = placedNorm.WorldOrigin + seam.OpeningB.GetEdgeTiles()[0];
+            Assert.AreEqual(outEnt0, edgeNorm0);
+
+            // Verify tile count matches sum with zero overlap
+            int totalExpectedTiles = (12 * 10) + (14 * 12);
+            Assert.AreEqual(totalExpectedTiles, result.OccupiedDungeonTiles.Count);
+        }
+
+        [Test]
+        public void DungeonSeamLayoutSolver_RoomToPathwayToRoom_BridgesWhenPathwayForcedOrNeeded()
+        {
+            var rng = new MockRng();
+
+            // Entrance piece (10x10) with South opening at (4, 0)
+            var entOp = new PieceOpening(4, 0, CardinalDirection.South, 2);
+            var entDesc = new DungeonPieceDescriptor("ent_10x10", PieceRole.Room, DungeonRoomType.Entrance, 10, 10, new[] { entOp })
+            {
+                EntryAnchorCount = 1
+            };
+
+            // Straight pathway (6x8) with North opening at (2, 7) and South opening at (2, 0)
+            var pathNorthOp = new PieceOpening(2, 7, CardinalDirection.North, 2);
+            var pathSouthOp = new PieceOpening(2, 0, CardinalDirection.South, 2);
+            var pathDesc = new DungeonPieceDescriptor("path_straight_6x8", PieceRole.Pathway, DungeonRoomType.Normal, 6, 8, new[] { pathNorthOp, pathSouthOp });
+
+            // Normal room (12x12) with North opening at (5, 11)
+            var normOp = new PieceOpening(5, 11, CardinalDirection.North, 2);
+            var normDesc = new DungeonPieceDescriptor("norm_12x12", PieceRole.Room, DungeonRoomType.Normal, 12, 12, new[] { normOp });
+
+            // Graph: Room 0 (Entrance) -> South -> Room 1 (Normal)
+            var graph = new DungeonLayoutGraph();
+            var nodeEnt = new DungeonLayoutNode(0, DungeonRoomType.Entrance, new GridCoord(0, 0));
+            var nodeNorm = new DungeonLayoutNode(1, DungeonRoomType.Normal, new GridCoord(0, -1));
+            graph.AddRoom(nodeEnt);
+            graph.AddRoom(nodeNorm);
+            graph.AddDoor(new DungeonDoorConnection(0, 0, 1, CardinalDirection.South, false));
+
+            var result = DungeonSeamLayoutSolver.Solve(
+                graph,
+                new[] { entDesc, normDesc, pathDesc },
+                pathwayProbability: 1.0f, // Force pathway insertion
+                openingWidth: 2,
+                rng: rng
+            );
+
+            Assert.IsTrue(result.Success, $"Solve failed: {result.FailureReason}");
+            Assert.AreEqual(2, result.PlacedRooms.Count, "Must have placed 2 rooms.");
+            Assert.AreEqual(1, result.PlacedPathways.Count, "Must have placed 1 pathway connector.");
+            Assert.AreEqual(2, result.Seams.Count, "Must have 2 seams (Room->Path and Path->Room).");
+
+            var placedPath = result.PlacedPathways[0];
+            Assert.AreEqual(PieceRole.Pathway, placedPath.Descriptor.Role);
+
+            // Zero collision/overlap in occupied tiles
+            int expectedTiles = (10 * 10) + (6 * 8) + (12 * 12);
+            Assert.AreEqual(expectedTiles, result.OccupiedDungeonTiles.Count);
+        }
+
+        [Test]
+        public void DungeonSeamLayoutSolver_UnusedSockets_CollectedForCapping()
+        {
+            var rng = new MockRng();
+
+            // Entrance (10x10) with East opening at (9, 4)
+            var entOp = new PieceOpening(9, 4, CardinalDirection.East, 2);
+            var entDesc = new DungeonPieceDescriptor("ent", PieceRole.Room, DungeonRoomType.Entrance, 10, 10, new[] { entOp })
+            {
+                EntryAnchorCount = 1
+            };
+
+            // Normal room (10x10) with 3 openings (West at (0, 4), North at (4, 9), East at (9, 4))
+            var normWest = new PieceOpening(0, 4, CardinalDirection.West, 2);
+            var normNorth = new PieceOpening(4, 9, CardinalDirection.North, 2);
+            var normEast = new PieceOpening(9, 4, CardinalDirection.East, 2);
+            var normDesc = new DungeonPieceDescriptor("norm_3way", PieceRole.Room, DungeonRoomType.Normal, 10, 10, new[] { normWest, normNorth, normEast });
+
+            var graph = new DungeonLayoutGraph();
+            var nodeEnt = new DungeonLayoutNode(0, DungeonRoomType.Entrance, new GridCoord(0, 0));
+            var nodeNorm = new DungeonLayoutNode(1, DungeonRoomType.Normal, new GridCoord(1, 0));
+            graph.AddRoom(nodeEnt);
+            graph.AddRoom(nodeNorm);
+            graph.AddDoor(new DungeonDoorConnection(0, 0, 1, CardinalDirection.East, false));
+
+            var result = DungeonSeamLayoutSolver.Solve(
+                graph,
+                new[] { entDesc, normDesc },
+                pathwayProbability: 0f,
+                openingWidth: 2,
+                rng: rng
+            );
+
+            Assert.IsTrue(result.Success);
+            // normNorth and normEast are unused sockets that need capping
+            Assert.AreEqual(2, result.UnusedSockets.Count);
+            Assert.IsTrue(result.UnusedSockets.Exists(s => s.Opening.Direction == CardinalDirection.North));
+            Assert.IsTrue(result.UnusedSockets.Exists(s => s.Opening.Direction == CardinalDirection.East));
+        }
     }
 }

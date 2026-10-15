@@ -348,11 +348,19 @@ namespace SBGames.Testing
 
         private void EnsureCameraAndAudioListener()
         {
-            if (Camera.main != null) return;
+            if (Camera.main != null)
+            {
+                if (Camera.main.GetComponent<SBGames.Cameras.CameraController2D>() == null)
+                {
+                    Camera.main.gameObject.AddComponent<SBGames.Cameras.CameraController2D>();
+                }
+                return;
+            }
 
             var camGo = new GameObject("Main Camera");
             var cam = camGo.AddComponent<Camera>();
             camGo.AddComponent<AudioListener>();
+            camGo.AddComponent<SBGames.Cameras.CameraController2D>();
             camGo.tag = "MainCamera";
 
             cam.orthographic = true;
@@ -360,7 +368,7 @@ namespace SBGames.Testing
             camGo.transform.position = new Vector3(0f, 0f, -10f);
             camGo.transform.SetParent(transform);
 
-            Debug.Log("[CombatBootstrap] Spawned 2D Orthographic Main Camera.", camGo);
+            Debug.Log("[CombatBootstrap] Spawned 2D Orthographic Main Camera with CameraController2D.", camGo);
         }
 
         #endregion

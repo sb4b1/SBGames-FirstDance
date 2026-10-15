@@ -76,4 +76,16 @@ _Avoid_: Door width, exit size, corridor thickness
 The uniform pixel resolution per tile (16, 32, or 48) enforced across all tileset sprites within a Piece Set, requiring texture Pixels Per Unit (PPU) to equal Tile Pixel Size so that each tile maps 1:1 to a 1-unit world cell.
 _Avoid_: Sprite size, tile resolution, pixel scale
 
+**Piece Role**:
+The structural role of a Dungeon Piece: either `Room` (Entrance, Normal, SafeRoom, Boss) or `Pathway` (corridor connectors bridging rooms). Both can be placed and registered in `DungeonRoomRegistry`.
+_Avoid_: Piece category, room class, corridor type
+
+**Piece Opening**:
+A freeform doorway socket of declared width along any tile coordinate on the piece's painted wall boundary with an outward cardinal normal direction.
+_Avoid_: Door slot, opening marker, exit port
+
+**Seam Snapping**:
+Exact 1:1 alignment between opposite `PieceOpening` sockets connecting two adjacent pieces without tile overlap.
+_Avoid_: Room snapping, doorway docking, tile gluing
+
 

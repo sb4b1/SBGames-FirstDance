@@ -83,12 +83,80 @@ namespace SBGames.Dungeon.Core.Pieces
         }
 
         /// <summary>
+        /// Rotates a cardinal direction clockwise by 1 quarter turn (90 degrees).
+        /// </summary>
+        public static CardinalDirection RotateClockwise(this CardinalDirection direction)
+        {
+            return (CardinalDirection)(((int)direction + 1) % 4);
+        }
+
+        /// <summary>
+        /// Gets the effective (width, height) after rotating a piece of dimensions (cellW, cellH) by k quarter turns.
+        /// </summary>
+        public static void GetEffectiveDimensions(int cellW, int cellH, int quarterTurns, out int effW, out int effH)
+        {
+            int k = ((quarterTurns % 4) + 4) % 4;
+            if (k % 2 == 0)
+            {
+                effW = cellW;
+                effH = cellH;
+            }
+            else
+            {
+                effW = cellH;
+                effH = cellW;
+            }
+        }
+
+        /// <summary>
+        /// Rotates a coordinate within a rectangle of dimensions (cellW, cellH) clockwise by k quarter turns.
+        /// Odd quarter-turns swap width and height accurately.
+        /// </summary>
+        public static GridCoord RotateCoord(GridCoord coord, int quarterTurns, int cellW, int cellH)
+        {
+            int k = ((quarterTurns % 4) + 4) % 4;
+            if (k == 0) return coord;
+
+            int x = coord.X;
+            int y = coord.Y;
+            int curW = cellW;
+            int curH = cellH;
+
+            for (int step = 0; step < k; step++)
+            {
+                int newX = y;
+                int newY = curW - 1 - x;
+                x = newX;
+                y = newY;
+                int temp = curW;
+                curW = curH;
+                curH = temp;
+            }
+
+            return new GridCoord(x, y);
+        }
+
+        /// <summary>
         /// Rotates a coordinate within a square cell of size cellSize clockwise by k quarter turns.
         /// Consistent with DungeonPieceDescriptor.RotateLocalCoord.
         /// </summary>
         public static GridCoord RotateCoord(GridCoord coord, int quarterTurns, int cellSize)
         {
-            return DungeonPieceDescriptor.RotateLocalCoord(coord, quarterTurns, cellSize);
+            return RotateCoord(coord, quarterTurns, cellSize, cellSize);
+        }
+
+        /// <summary>
+        /// Rotates an enumerable of coordinates within a rectangle (cellW, cellH) clockwise by k quarter turns.
+        /// </summary>
+        public static List<GridCoord> RotateCoords(IEnumerable<GridCoord> coords, int quarterTurns, int cellW, int cellH)
+        {
+            var list = new List<GridCoord>();
+            if (coords == null) return list;
+            foreach (var c in coords)
+            {
+                list.Add(RotateCoord(c, quarterTurns, cellW, cellH));
+            }
+            return list;
         }
 
         /// <summary>
@@ -96,13 +164,35 @@ namespace SBGames.Dungeon.Core.Pieces
         /// </summary>
         public static List<GridCoord> RotateCoords(IEnumerable<GridCoord> coords, int quarterTurns, int cellSize)
         {
-            var list = new List<GridCoord>();
-            if (coords == null) return list;
-            foreach (var c in coords)
+            return RotateCoords(coords, quarterTurns, cellSize, cellSize);
+        }
+
+        /// <summary>
+        /// Computes the exact seam-snapped world tile origin for Piece B attaching via openingB to Piece A at originA via openingA.
+        /// Requires openingB.Direction == Opposite(openingA.Direction).
+        /// Formula: OriginB = OriginA + OpeningA.AnchorTile + Normal(OpeningA.Direction) - OpeningB.AnchorTile.
+        /// </summary>
+        public static GridCoord CalculateSnappedWorldOrigin(GridCoord originA, PieceOpening openingA, PieceOpening openingB)
+        {
+            var (dx, dy) = openingA.Direction.ToOffset();
+            return new GridCoord(
+                originA.X + openingA.AnchorTile.X + dx - openingB.AnchorTile.X,
+                originA.Y + openingA.AnchorTile.Y + dy - openingB.AnchorTile.Y
+            );
+        }
+
+        /// <summary>
+        /// Derives a legacy OpeningFlags bitmask from a collection of PieceOpening sockets for backward compatibility.
+        /// </summary>
+        public static OpeningFlags ToOpeningFlags(IEnumerable<PieceOpening> openings)
+        {
+            if (openings == null) return OpeningFlags.None;
+            OpeningFlags flags = OpeningFlags.None;
+            foreach (var o in openings)
             {
-                list.Add(RotateCoord(c, quarterTurns, cellSize));
+                flags |= o.Direction.ToOpeningFlag();
             }
-            return list;
+            return flags;
         }
     }
 }

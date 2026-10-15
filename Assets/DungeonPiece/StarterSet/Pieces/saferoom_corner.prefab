@@ -116,13 +116,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Dungeon.Unity.Pieces.DungeonPiece
   pieceId: saferoom_corner
+  role: 0
   roomType: 2
   openings: 3
+  openingsList: []
   isRotatable: 1
   hasDirectionalArt: 0
   weight: 1
   minCountPerDungeon: 0
   maxCountPerDungeon: 0
+  cellSize: {x: 16, y: 16}
   footprint: {x: 1, y: 1}
   groundTilemap: {fileID: 3336504620342271124}
   wallsTilemap: {fileID: 3684182438447167175}
@@ -310,12 +313,12 @@ MonoBehaviour:
   - {x: 2, y: 14}
   - {x: 3, y: 14}
   - {x: 4, y: 14}
-  - {x: 5, y: 14}
   - {x: 10, y: 14}
   - {x: 11, y: 14}
   - {x: 12, y: 14}
   - {x: 13, y: 14}
   - {x: 14, y: 14}
+  - {x: 5, y: 14}
   entryAnchors: []
   exitAnchors: []
   hazardAnchors: []

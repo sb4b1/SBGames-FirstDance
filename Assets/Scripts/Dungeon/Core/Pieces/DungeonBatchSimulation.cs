@@ -56,6 +56,7 @@ namespace SBGames.Dungeon.Core.Pieces
         public string FailureMessage { get; set; } = string.Empty;
         public bool SeamCheckPassed { get; set; } = true;
         public List<string> SeamCheckFailures { get; set; } = new List<string>();
+        public DungeonSeamLayoutResult SeamLayout { get; set; }
     }
 
     /// <summary>
@@ -141,8 +142,76 @@ namespace SBGames.Dungeon.Core.Pieces
                     }
 
                     var rng = new GameRngDungeonAdapter((uint)Math.Abs(usedSeed + 101));
+                    var seamLayout = DungeonSeamLayoutSolver.Solve(graph, pieces, config.GeneratorConfig.pathwayProbability, config.OpeningWidth, rng);
+
+                    if (seamLayout != null && seamLayout.Success)
+                    {
+                        seedSucceeded = true;
+                        seedResult.SeamLayout = seamLayout;
+                        seedResult.RoomCount = seamLayout.PlacedRooms.Count + seamLayout.PlacedPathways.Count;
+                        seedResult.CappedSidesCount = seamLayout.UnusedSockets.Count;
+                        seedResult.TotalCappedSides = OpeningFlags.None;
+
+                        var chosenPieces = new List<string>();
+                        foreach (var r in seamLayout.PlacedRooms.Values)
+                        {
+                            chosenPieces.Add(r.Descriptor.PieceId);
+                            if (report.PieceSelectionCounts.ContainsKey(r.Descriptor.PieceId))
+                            {
+                                report.PieceSelectionCounts[r.Descriptor.PieceId]++;
+                            }
+                        }
+                        foreach (var p in seamLayout.PlacedPathways)
+                        {
+                            chosenPieces.Add(p.Descriptor.PieceId);
+                            if (report.PieceSelectionCounts.ContainsKey(p.Descriptor.PieceId))
+                            {
+                                report.PieceSelectionCounts[p.Descriptor.PieceId]++;
+                            }
+                        }
+                        seedResult.SelectedPieceIds = chosenPieces;
+
+                        bool seedSeamPassed = true;
+                        var seedSeamFailures = new List<string>();
+
+                        for (int s = 0; s < seamLayout.Seams.Count; s++)
+                        {
+                            var seam = seamLayout.Seams[s];
+                            if (seam.PieceA.RotatedGroundCells != null && seam.PieceA.RotatedGroundCells.Count > 0)
+                            {
+                                var edgesA = seam.OpeningA.GetEdgeTiles();
+                                for (int e = 0; e < edgesA.Count; e++)
+                                {
+                                    if (!seam.PieceA.RotatedGroundCells.Contains(edgesA[e]))
+                                    {
+                                        seedSeamPassed = false;
+                                        seedSeamFailures.Add($"Seed {usedSeed}: Piece {seam.PieceA.Descriptor.PieceId} missing Ground at seam edge {edgesA[e]} (dir {seam.OpeningA.Direction}) connecting to {seam.PieceB.Descriptor.PieceId}");
+                                    }
+                                }
+                            }
+
+                            if (seam.PieceB.RotatedGroundCells != null && seam.PieceB.RotatedGroundCells.Count > 0)
+                            {
+                                var edgesB = seam.OpeningB.GetEdgeTiles();
+                                for (int e = 0; e < edgesB.Count; e++)
+                                {
+                                    if (!seam.PieceB.RotatedGroundCells.Contains(edgesB[e]))
+                                    {
+                                        seedSeamPassed = false;
+                                        seedSeamFailures.Add($"Seed {usedSeed}: Piece {seam.PieceB.Descriptor.PieceId} missing Ground at seam edge {edgesB[e]} (dir {seam.OpeningB.Direction}) connecting to {seam.PieceA.Descriptor.PieceId}");
+                                    }
+                                }
+                            }
+                        }
+
+                        seedResult.SeamCheckPassed = seedSeamPassed;
+                        seedResult.SeamCheckFailures = seedSeamFailures;
+                        break;
+                    }
+
+                    // Fallback to standalone piece selector if seam placement did not resolve
                     var usageCounts = new Dictionary<string, int>();
-                    var chosenPieces = new List<string>();
+                    var fallbackChosenPieces = new List<string>();
                     var roomSelections = new Dictionary<int, DungeonPieceSelectionResult>();
                     OpeningFlags cumulativeCaps = OpeningFlags.None;
                     int capsCount = 0;
@@ -162,7 +231,7 @@ namespace SBGames.Dungeon.Core.Pieces
 
                         roomSelections[node.RoomId] = selection;
                         string pieceId = selection.SelectedPiece.PieceId;
-                        chosenPieces.Add(pieceId);
+                        fallbackChosenPieces.Add(pieceId);
                         usageCounts[pieceId] = usageCounts.TryGetValue(pieceId, out int cnt) ? cnt + 1 : 1;
 
                         if (selection.CappedSides != OpeningFlags.None)
@@ -178,12 +247,12 @@ namespace SBGames.Dungeon.Core.Pieces
                         seedResult.RoomCount = graph.Rooms.Count;
                         seedResult.CappedSidesCount = capsCount;
                         seedResult.TotalCappedSides = cumulativeCaps;
-                        seedResult.SelectedPieceIds = chosenPieces;
+                        seedResult.SelectedPieceIds = fallbackChosenPieces;
 
                         // Increment global piece usage
-                        for (int c = 0; c < chosenPieces.Count; c++)
+                        for (int c = 0; c < fallbackChosenPieces.Count; c++)
                         {
-                            string pid = chosenPieces[c];
+                            string pid = fallbackChosenPieces[c];
                             if (report.PieceSelectionCounts.ContainsKey(pid))
                             {
                                 report.PieceSelectionCounts[pid]++;

@@ -309,16 +309,21 @@ namespace SBGames.Placement
             }
 
             // Right Click: Cancel selection, or if nothing selected, sell/remove unit on hovered tile
-            if (WasRightMouseButtonPressed())
+            // Only triggers if the click was stationary (not consumed by camera pan drag)
+            if (WasRightMouseButtonReleased())
             {
-                if (IsPlacementActive)
+                bool wasCameraDrag = SBGames.Cameras.CameraController2D.Instance != null && SBGames.Cameras.CameraController2D.Instance.HasDraggedThisPress;
+                if (!wasCameraDrag)
                 {
-                    DeselectUnit();
-                }
-                else if (isCursorOnGrid)
-                {
-                    // Attempt removal during Build Phase
-                    DungeonPlacementManager.Instance.TryRemoveUnit(currentHoveredCell);
+                    if (IsPlacementActive)
+                    {
+                        DeselectUnit();
+                    }
+                    else if (isCursorOnGrid)
+                    {
+                        // Attempt removal during Build Phase
+                        DungeonPlacementManager.Instance.TryRemoveUnit(currentHoveredCell);
+                    }
                 }
             }
         }
@@ -409,16 +414,16 @@ namespace SBGames.Placement
 #endif
         }
 
-        private bool WasRightMouseButtonPressed()
+        private bool WasRightMouseButtonReleased()
         {
 #if ENABLE_INPUT_SYSTEM
             if (Mouse.current != null)
             {
-                return Mouse.current.rightButton.wasPressedThisFrame;
+                return Mouse.current.rightButton.wasReleasedThisFrame;
             }
 #endif
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return UnityEngine.Input.GetMouseButtonDown(1);
+            return UnityEngine.Input.GetMouseButtonUp(1);
 #else
             return false;
 #endif

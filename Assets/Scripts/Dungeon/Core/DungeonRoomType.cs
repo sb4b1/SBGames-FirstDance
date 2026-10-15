@@ -28,6 +28,7 @@ namespace SBGames.Dungeon.Core
     /// Pure C# integer coordinate pair for macro room-grid and tile-grid positioning.
     /// Zero UnityEngine dependencies.
     /// </summary>
+    [Serializable]
     public readonly struct GridCoord : IEquatable<GridCoord>
     {
         public readonly int X;
@@ -57,6 +58,8 @@ namespace SBGames.Dungeon.Core
 
         public static bool operator ==(GridCoord left, GridCoord right) => left.Equals(right);
         public static bool operator !=(GridCoord left, GridCoord right) => !left.Equals(right);
+        public static GridCoord operator +(GridCoord left, GridCoord right) => new GridCoord(left.X + right.X, left.Y + right.Y);
+        public static GridCoord operator -(GridCoord left, GridCoord right) => new GridCoord(left.X - right.X, left.Y - right.Y);
     }
 
     /// <summary>

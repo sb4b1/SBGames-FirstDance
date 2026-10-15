@@ -186,10 +186,16 @@ namespace SBGames.Editor.Dungeon
                 if (GUILayout.Button("+ New Piece", EditorStyles.toolbarButton, GUILayout.Width(95)))
                 {
                     GenericMenu menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Normal Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Normal, OpeningFlags.North, true));
-                    menu.AddItem(new GUIContent("Entrance Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Entrance, OpeningFlags.North, true));
-                    menu.AddItem(new GUIContent("Boss Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Boss, OpeningFlags.North, true));
-                    menu.AddItem(new GUIContent("Safe Room Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.SafeRoom, OpeningFlags.North, true));
+                    menu.AddItem(new GUIContent("Room / Normal (Default Size)"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.Normal));
+                    menu.AddItem(new GUIContent("Room / Normal Small (10x10)"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.Normal, 10, 10));
+                    menu.AddItem(new GUIContent("Room / Normal Large (24x18)"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.Normal, 24, 18));
+                    menu.AddItem(new GUIContent("Pathway / Straight (6x8)"), false, () => CreatePieceFromTemplate(null, PieceRole.Pathway, DungeonRoomType.Normal, 6, 8));
+                    menu.AddItem(new GUIContent("Pathway / Straight (8x6)"), false, () => CreatePieceFromTemplate(null, PieceRole.Pathway, DungeonRoomType.Normal, 8, 6));
+                    menu.AddItem(new GUIContent("Pathway / Corner (8x8)"), false, () => CreatePieceFromTemplate(null, PieceRole.Pathway, DungeonRoomType.Normal, 8, 8));
+                    menu.AddItem(new GUIContent("Pathway / T-Junction (10x10)"), false, () => CreatePieceFromTemplate(null, PieceRole.Pathway, DungeonRoomType.Normal, 10, 10));
+                    menu.AddItem(new GUIContent("Special / Entrance Piece"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.Entrance));
+                    menu.AddItem(new GUIContent("Special / Boss Piece"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.Boss));
+                    menu.AddItem(new GUIContent("Special / Safe Room Piece"), false, () => CreatePieceFromTemplate(null, PieceRole.Room, DungeonRoomType.SafeRoom));
                     menu.ShowAsContext();
                 }
 
@@ -202,16 +208,18 @@ namespace SBGames.Editor.Dungeon
             // Table Header
             using (new EditorGUILayout.HorizontalScope("box"))
             {
-                GUILayout.Label("Status", EditorStyles.boldLabel, GUILayout.Width(50));
-                GUILayout.Label("Preview", EditorStyles.boldLabel, GUILayout.Width(50));
-                GUILayout.Label("Piece ID", EditorStyles.boldLabel, GUILayout.Width(160));
-                GUILayout.Label("Room Type", EditorStyles.boldLabel, GUILayout.Width(90));
-                GUILayout.Label("Openings", EditorStyles.boldLabel, GUILayout.Width(80));
+                GUILayout.Label("Status", EditorStyles.boldLabel, GUILayout.Width(45));
+                GUILayout.Label("Preview", EditorStyles.boldLabel, GUILayout.Width(45));
+                GUILayout.Label("Piece ID", EditorStyles.boldLabel, GUILayout.Width(140));
+                GUILayout.Label("Role", EditorStyles.boldLabel, GUILayout.Width(65));
+                GUILayout.Label("Room Type", EditorStyles.boldLabel, GUILayout.Width(80));
+                GUILayout.Label("Size", EditorStyles.boldLabel, GUILayout.Width(55));
+                GUILayout.Label("Openings", EditorStyles.boldLabel, GUILayout.Width(70));
                 GUILayout.Label("Rotatable", EditorStyles.boldLabel, GUILayout.Width(65));
-                GUILayout.Label("Weight", EditorStyles.boldLabel, GUILayout.Width(55));
-                GUILayout.Label("Min/Max", EditorStyles.boldLabel, GUILayout.Width(65));
+                GUILayout.Label("Weight", EditorStyles.boldLabel, GUILayout.Width(50));
+                GUILayout.Label("Min/Max", EditorStyles.boldLabel, GUILayout.Width(60));
                 GUILayout.FlexibleSpace();
-                GUILayout.Label("Actions", EditorStyles.boldLabel, GUILayout.Width(80));
+                GUILayout.Label("Actions", EditorStyles.boldLabel, GUILayout.Width(110));
             }
 
             // Table Rows
@@ -271,37 +279,49 @@ namespace SBGames.Editor.Dungeon
                     }
 
                     // ID & Select Button
-                    if (GUILayout.Button(piece.PieceId, EditorStyles.linkLabel, GUILayout.Width(150)))
+                    if (GUILayout.Button(piece.PieceId, EditorStyles.linkLabel, GUILayout.Width(140)))
                     {
                         _selectedPieceIndex = i;
                         selectedTabIndex = 1; // switch to editor tab
                     }
 
+                    // Role
+                    GUILayout.Label(piece.Role.ToString(), GUILayout.Width(65));
+
                     // Room Type
-                    GUILayout.Label(piece.RoomType.ToString(), GUILayout.Width(90));
+                    GUILayout.Label(piece.RoomType.ToString(), GUILayout.Width(80));
+
+                    // Size
+                    GUILayout.Label($"{piece.CellSize.x}x{piece.CellSize.y}", GUILayout.Width(55));
 
                     // Openings
-                    GUILayout.Label(piece.Openings.ToString(), GUILayout.Width(80));
+                    GUILayout.Label(piece.Openings.ToString(), GUILayout.Width(70));
 
                     // Rotatable
                     GUILayout.Label(piece.IsRotatable ? "Yes" : "No", GUILayout.Width(65));
 
                     // Weight
-                    GUILayout.Label(piece.Weight.ToString("F1"), GUILayout.Width(55));
+                    GUILayout.Label(piece.Weight.ToString("F1"), GUILayout.Width(50));
 
                     // Min/Max
                     string minMax = $"{piece.MinCountPerDungeon}/{(piece.MaxCountPerDungeon == 0 ? "∞" : piece.MaxCountPerDungeon.ToString())}";
-                    GUILayout.Label(minMax, GUILayout.Width(65));
+                    GUILayout.Label(minMax, GUILayout.Width(60));
 
                     GUILayout.FlexibleSpace();
 
-                    // Edit & Ping Buttons
-                    if (GUILayout.Button("Edit", EditorStyles.miniButtonLeft, GUILayout.Width(38)))
+                    // Edit, Fit & Ping Buttons
+                    if (GUILayout.Button("Edit", EditorStyles.miniButtonLeft, GUILayout.Width(35)))
                     {
                         _selectedPieceIndex = i;
                         selectedTabIndex = 1;
                     }
-                    if (GUILayout.Button("Ping", EditorStyles.miniButtonRight, GUILayout.Width(38)))
+                    if (GUILayout.Button("Fit", EditorStyles.miniButtonMid, GUILayout.Width(30)))
+                    {
+                        Undo.RecordObject(piece, "Fit Bounds");
+                        piece.FitBoundsToPaintedTiles();
+                        EditorUtility.SetDirty(piece);
+                    }
+                    if (GUILayout.Button("Ping", EditorStyles.miniButtonRight, GUILayout.Width(35)))
                     {
                         EditorGUIUtility.PingObject(go);
                     }
@@ -379,7 +399,9 @@ namespace SBGames.Editor.Dungeon
 
                     EditorGUI.BeginChangeCheck();
                     string newId = EditorGUILayout.TextField("Piece ID", piece.PieceId);
+                    var newRole = (PieceRole)EditorGUILayout.EnumPopup("Role", piece.Role);
                     var newType = (DungeonRoomType)EditorGUILayout.EnumPopup("Room Type", piece.RoomType);
+                    var newSize = EditorGUILayout.Vector2IntField("Cell Size (WxH)", piece.CellSize);
                     var newOpenings = (OpeningFlags)EditorGUILayout.EnumFlagsField("Openings", piece.Openings);
                     bool newRotatable = EditorGUILayout.Toggle("Is Rotatable", piece.IsRotatable);
                     bool newDirectional = EditorGUILayout.Toggle("Has Directional Art", piece.HasDirectionalArt);
@@ -391,13 +413,23 @@ namespace SBGames.Editor.Dungeon
                     {
                         Undo.RecordObject(piece, "Modify Piece Properties");
                         piece.PieceId = newId;
+                        piece.Role = newRole;
                         piece.RoomType = newType;
+                        piece.CellSize = newSize;
                         piece.Openings = newOpenings;
                         piece.IsRotatable = newRotatable;
                         piece.HasDirectionalArt = newDirectional;
                         piece.Weight = newWeight;
                         piece.MinCountPerDungeon = newMin;
                         piece.MaxCountPerDungeon = newMax;
+                        EditorUtility.SetDirty(piece);
+                    }
+
+                    EditorGUILayout.Space(6);
+                    if (GUILayout.Button("Fit Bounds to Painted Tiles", GUILayout.Height(24)))
+                    {
+                        Undo.RecordObject(piece, "Fit Bounds");
+                        piece.FitBoundsToPaintedTiles();
                         EditorUtility.SetDirty(piece);
                     }
 
@@ -415,21 +447,43 @@ namespace SBGames.Editor.Dungeon
                 // Right Column: Interactive Buildable Mask Matrix
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.LabelField("Buildable Mask Grid Painter", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField($"Buildable Mask Grid Painter ({piece.CellSize.x}x{piece.CellSize.y})", EditorStyles.boldLabel);
                     EditorGUILayout.LabelField($"Active Placement Cells: {piece.BuildableCells.Count}", EditorStyles.miniLabel);
 
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        var oldBg = GUI.backgroundColor;
+                        if (DungeonPieceEditor.EditMaskInScene) GUI.backgroundColor = new Color(0.3f, 0.95f, 0.4f);
+                        if (GUILayout.Button(DungeonPieceEditor.EditMaskInScene ? "✓ Scene Mask Paint: ON" : "✎ Scene Mask Paint: OFF", GUILayout.Height(24)))
+                        {
+                            DungeonPieceEditor.EditMaskInScene = !DungeonPieceEditor.EditMaskInScene;
+                            if (DungeonPieceEditor.EditMaskInScene) DungeonPieceEditor.ShowMaskOverlay = true;
+                            SceneView.RepaintAll();
+                        }
+                        GUI.backgroundColor = oldBg;
+
+                        if (DungeonPieceEditor.ShowMaskOverlay) GUI.backgroundColor = new Color(0.4f, 0.85f, 1f);
+                        if (GUILayout.Button(DungeonPieceEditor.ShowMaskOverlay ? "👁 Overlay: ON" : "👁 Overlay: OFF", GUILayout.Width(100), GUILayout.Height(24)))
+                        {
+                            DungeonPieceEditor.ShowMaskOverlay = !DungeonPieceEditor.ShowMaskOverlay;
+                            SceneView.RepaintAll();
+                        }
+                        GUI.backgroundColor = oldBg;
+                    }
+
+                    EditorGUILayout.Space(2);
                     using (new EditorGUILayout.HorizontalScope())
                     {
                         if (GUILayout.Button("Fill All", EditorStyles.miniButtonLeft))
                         {
                             Undo.RecordObject(piece, "Fill All Mask");
-                            piece.FillBuildableBox(activePieceSet.CellSize.x, activePieceSet.CellSize.y, margin: 0);
+                            piece.FillBuildableBox(piece.CellSize.x, piece.CellSize.y, margin: 0);
                             EditorUtility.SetDirty(piece);
                         }
                         if (GUILayout.Button("Fill Interior (Margin 1)", EditorStyles.miniButtonMid))
                         {
                             Undo.RecordObject(piece, "Fill Interior Mask");
-                            piece.FillBuildableBox(activePieceSet.CellSize.x, activePieceSet.CellSize.y, margin: 1);
+                            piece.FillBuildableBox(piece.CellSize.x, piece.CellSize.y, margin: 1);
                             EditorUtility.SetDirty(piece);
                         }
                         if (GUILayout.Button("Clear", EditorStyles.miniButtonRight))
@@ -441,7 +495,7 @@ namespace SBGames.Editor.Dungeon
                     }
 
                     EditorGUILayout.Space(4);
-                    DrawMaskMatrix(piece, activePieceSet.CellSize.x, activePieceSet.CellSize.y);
+                    DrawMaskMatrix(piece, piece.CellSize.x, piece.CellSize.y);
                 }
             }
 
@@ -769,7 +823,10 @@ namespace SBGames.Editor.Dungeon
 
         public GameObject CreatePieceFromTemplate(
             string pieceName = null,
+            PieceRole role = PieceRole.Room,
             DungeonRoomType roomType = DungeonRoomType.Normal,
+            int? customWidth = null,
+            int? customHeight = null,
             OpeningFlags openings = OpeningFlags.North,
             bool openInPrefabMode = true)
         {
@@ -790,14 +847,14 @@ namespace SBGames.Editor.Dungeon
                 AssetDatabase.Refresh();
             }
 
+            int cellW = customWidth.HasValue && customWidth.Value > 0 ? customWidth.Value : activePieceSet.CellSize.x;
+            int cellH = customHeight.HasValue && customHeight.Value > 0 ? customHeight.Value : activePieceSet.CellSize.y;
+
             if (string.IsNullOrEmpty(pieceName))
             {
-                string typePrefix = roomType == DungeonRoomType.Normal ? "piece" : roomType.ToString().ToLowerInvariant();
-                pieceName = $"{typePrefix}_{activePieceSet.PiecePrefabs.Count + 1:D2}";
+                string rolePrefix = role == PieceRole.Pathway ? "corridor" : (roomType == DungeonRoomType.Normal ? "piece" : roomType.ToString().ToLowerInvariant());
+                pieceName = $"{rolePrefix}_{cellW}x{cellH}_{activePieceSet.PiecePrefabs.Count + 1:D2}";
             }
-
-            int cellW = activePieceSet.CellSize.x;
-            int cellH = activePieceSet.CellSize.y;
 
             // 1. Root GameObject
             var rootGo = new GameObject(pieceName);
@@ -817,7 +874,9 @@ namespace SBGames.Editor.Dungeon
             // DungeonPiece component
             var pieceComp = rootGo.AddComponent<DungeonPiece>();
             pieceComp.PieceId = pieceName;
+            pieceComp.Role = role;
             pieceComp.RoomType = roomType;
+            pieceComp.CellSize = new Vector2Int(cellW, cellH);
             pieceComp.Openings = openings;
             pieceComp.IsRotatable = true;
             pieceComp.Footprint = Vector2Int.one;

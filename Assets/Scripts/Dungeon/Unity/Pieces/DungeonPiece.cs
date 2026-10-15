@@ -18,10 +18,12 @@ namespace SBGames.Dungeon.Unity.Pieces
     {
         [Header("Identity & Type")]
         [SerializeField] private string pieceId = "piece_01";
+        [SerializeField] private PieceRole role = PieceRole.Room;
         [SerializeField] private DungeonRoomType roomType = DungeonRoomType.Normal;
 
         [Header("Doorway Openings")]
         [SerializeField] private OpeningFlags openings = OpeningFlags.North;
+        [SerializeField] private List<PieceOpening> openingsList = new List<PieceOpening>();
         [SerializeField] private bool isRotatable = true;
         [SerializeField] private bool hasDirectionalArt = false;
 
@@ -31,6 +33,7 @@ namespace SBGames.Dungeon.Unity.Pieces
         [SerializeField, Min(0)] private int maxCountPerDungeon = 0; // 0 = unlimited
 
         [Header("Footprint & Grid")]
+        [SerializeField] private Vector2Int cellSize = new Vector2Int(16, 16);
         [SerializeField] private Vector2Int footprint = Vector2Int.one; // strictly 1x1 in v1
 
         [Header("Tilemaps")]
@@ -63,16 +66,34 @@ namespace SBGames.Dungeon.Unity.Pieces
             set => pieceId = value;
         }
 
+        public PieceRole Role
+        {
+            get => role;
+            set => role = value;
+        }
+
         public DungeonRoomType RoomType
         {
             get => roomType;
             set => roomType = value;
         }
 
+        public Vector2Int CellSize
+        {
+            get => cellSize;
+            set => cellSize = new Vector2Int(Mathf.Max(1, value.x), Mathf.Max(1, value.y));
+        }
+
         public OpeningFlags Openings
         {
-            get => openings;
+            get => openingsList != null && openingsList.Count > 0 ? OpeningGeometry.ToOpeningFlags(openingsList) : openings;
             set => openings = value;
+        }
+
+        public List<PieceOpening> OpeningsList
+        {
+            get => openingsList;
+            set => openingsList = value;
         }
 
         public bool IsRotatable
@@ -202,8 +223,10 @@ namespace SBGames.Dungeon.Unity.Pieces
         /// Returns the set of piece-local grid coordinates containing Ground tiles.
         /// Evaluates tile positions within 0..cellWidth-1 and 0..cellHeight-1.
         /// </summary>
-        public HashSet<GridCoord> GetGroundCellCoords(int cellWidth = 16, int cellHeight = 16)
+        public HashSet<GridCoord> GetGroundCellCoords(int cellWidth = 0, int cellHeight = 0)
         {
+            int w = cellWidth > 0 ? cellWidth : cellSize.x;
+            int h = cellHeight > 0 ? cellHeight : cellSize.y;
             var set = new HashSet<GridCoord>();
             if (groundTilemap == null)
             {
@@ -215,7 +238,7 @@ namespace SBGames.Dungeon.Unity.Pieces
             bool hasDirectTiles = false;
             foreach (var pos in groundTilemap.cellBounds.allPositionsWithin)
             {
-                if (groundTilemap.HasTile(pos) && pos.x >= 0 && pos.x < cellWidth && pos.y >= 0 && pos.y < cellHeight)
+                if (groundTilemap.HasTile(pos) && pos.x >= 0 && pos.x < w && pos.y >= 0 && pos.y < h)
                 {
                     hasDirectTiles = true;
                     break;
@@ -226,8 +249,8 @@ namespace SBGames.Dungeon.Unity.Pieces
             int offsetY = 0;
             if (!hasDirectTiles)
             {
-                offsetX = cellWidth / 2;
-                offsetY = cellHeight / 2;
+                offsetX = w / 2;
+                offsetY = h / 2;
             }
 
             foreach (var pos in groundTilemap.cellBounds.allPositionsWithin)
@@ -236,7 +259,7 @@ namespace SBGames.Dungeon.Unity.Pieces
                 {
                     int gx = pos.x + offsetX;
                     int gy = pos.y + offsetY;
-                    if (gx >= 0 && gx < cellWidth && gy >= 0 && gy < cellHeight)
+                    if (gx >= 0 && gx < w && gy >= 0 && gy < h)
                     {
                         set.Add(new GridCoord(gx, gy));
                     }
@@ -247,6 +270,181 @@ namespace SBGames.Dungeon.Unity.Pieces
         }
 
         /// <summary>
+        /// Returns the set of piece-local grid coordinates containing Wall obstacle tiles.
+        /// </summary>
+        public HashSet<GridCoord> GetWallCellCoords(int cellWidth = 0, int cellHeight = 0)
+        {
+            int w = cellWidth > 0 ? cellWidth : cellSize.x;
+            int h = cellHeight > 0 ? cellHeight : cellSize.y;
+            var set = new HashSet<GridCoord>();
+            if (wallsTilemap == null)
+            {
+                AutoFindTilemaps();
+            }
+
+            if (wallsTilemap == null) return set;
+
+            bool hasDirectWalls = false;
+            foreach (var pos in wallsTilemap.cellBounds.allPositionsWithin)
+            {
+                if (wallsTilemap.HasTile(pos) && pos.x >= 0 && pos.x < w && pos.y >= 0 && pos.y < h)
+                {
+                    hasDirectWalls = true;
+                    break;
+                }
+            }
+
+            int offX = hasDirectWalls ? 0 : (w / 2);
+            int offY = hasDirectWalls ? 0 : (h / 2);
+
+            foreach (var pos in wallsTilemap.cellBounds.allPositionsWithin)
+            {
+                if (wallsTilemap.HasTile(pos))
+                {
+                    int wx = pos.x + offX;
+                    int wy = pos.y + offY;
+                    if (wx >= 0 && wx < w && wy >= 0 && wy < h)
+                    {
+                        set.Add(new GridCoord(wx, wy));
+                    }
+                }
+            }
+
+            return set;
+        }
+
+        /// <summary>
+        /// Returns the set of all piece-local tiles occupied by either Ground or Walls.
+        /// Used for exact zero-overlap collision checks.
+        /// </summary>
+        public HashSet<GridCoord> OccupiedLocalTiles
+        {
+            get
+            {
+                var occupied = GetGroundCellCoords(cellSize.x, cellSize.y);
+                var walls = GetWallCellCoords(cellSize.x, cellSize.y);
+                foreach (var w in walls)
+                {
+                    occupied.Add(w);
+                }
+                return occupied;
+            }
+        }
+
+        /// <summary>
+        /// Fits piece bounds to painted tiles, shifting tiles to start at (0, 0) if needed,
+        /// updating cellSize and the room volume.
+        /// </summary>
+        public void FitBoundsToPaintedTiles()
+        {
+            AutoFindTilemaps();
+
+            bool hasAnyTile = false;
+            int minX = int.MaxValue;
+            int minY = int.MaxValue;
+            int maxX = int.MinValue;
+            int maxY = int.MinValue;
+
+            void CheckMap(UnityEngine.Tilemaps.Tilemap tm)
+            {
+                if (tm == null) return;
+                tm.CompressBounds();
+                var bounds = tm.cellBounds;
+                foreach (var pos in bounds.allPositionsWithin)
+                {
+                    if (tm.HasTile(pos))
+                    {
+                        hasAnyTile = true;
+                        if (pos.x < minX) minX = pos.x;
+                        if (pos.y < minY) minY = pos.y;
+                        if (pos.x > maxX) maxX = pos.x;
+                        if (pos.y > maxY) maxY = pos.y;
+                    }
+                }
+            }
+
+            CheckMap(groundTilemap);
+            CheckMap(wallsTilemap);
+            CheckMap(decorationTilemap);
+
+            if (!hasAnyTile) return;
+
+            int shiftX = -minX;
+            int shiftY = -minY;
+            if (shiftX != 0 || shiftY != 0)
+            {
+                void ShiftMap(UnityEngine.Tilemaps.Tilemap tm)
+                {
+                    if (tm == null) return;
+                    var tiles = new List<(Vector3Int pos, UnityEngine.Tilemaps.TileBase tile)>();
+                    foreach (var pos in tm.cellBounds.allPositionsWithin)
+                    {
+                        if (tm.HasTile(pos))
+                        {
+                            tiles.Add((pos, tm.GetTile(pos)));
+                        }
+                    }
+                    tm.ClearAllTiles();
+                    foreach (var (pos, tile) in tiles)
+                    {
+                        tm.SetTile(new Vector3Int(pos.x + shiftX, pos.y + shiftY, pos.z), tile);
+                    }
+                    tm.CompressBounds();
+                }
+
+                ShiftMap(groundTilemap);
+                ShiftMap(wallsTilemap);
+                ShiftMap(decorationTilemap);
+
+                for (int i = 0; i < buildableCells.Count; i++)
+                {
+                    buildableCells[i] = new Vector2Int(buildableCells[i].x + shiftX, buildableCells[i].y + shiftY);
+                }
+
+                if (openingsList != null)
+                {
+                    for (int i = 0; i < openingsList.Count; i++)
+                    {
+                        var op = openingsList[i];
+                        openingsList[i] = new PieceOpening(
+                            new GridCoord(op.AnchorTile.X + shiftX, op.AnchorTile.Y + shiftY),
+                            op.Direction,
+                            op.Width
+                        );
+                    }
+                }
+
+                var shiftWorld = new Vector3(shiftX, shiftY, 0);
+                void ShiftAnchorList(List<Transform> list)
+                {
+                    if (list == null) return;
+                    foreach (var t in list)
+                    {
+                        if (t != null) t.localPosition += shiftWorld;
+                    }
+                }
+                ShiftAnchorList(entryAnchors);
+                ShiftAnchorList(exitAnchors);
+                ShiftAnchorList(hazardAnchors);
+                ShiftAnchorList(lootAnchors);
+            }
+
+            cellSize = new Vector2Int(maxX - minX + 1, maxY - minY + 1);
+
+            var col = GetComponent<BoxCollider2D>();
+            if (col != null)
+            {
+                col.size = new Vector2(cellSize.x, cellSize.y);
+                col.offset = new Vector2(cellSize.x * 0.5f, cellSize.y * 0.5f);
+            }
+
+            EnsureRoomVolume(
+                new Vector3(cellSize.x * 0.5f, cellSize.y * 0.5f, 0f),
+                new Vector3(cellSize.x, cellSize.y, 1f)
+            );
+        }
+
+        /// <summary>
         /// Generates the buildable placement mask: Ground cells, minus cells covered by Walls,
         /// minus an edge margin, minus cells within openingClearance of each declared Opening.
         /// The resulting mask is stored in buildableCells and remains hand-editable.
@@ -254,10 +452,13 @@ namespace SBGames.Dungeon.Unity.Pieces
         public void GenerateBuildableMaskFromGround(
             int margin = 1,
             int openingClearance = 2,
-            int cellWidth = 16,
-            int cellHeight = 16,
+            int cellWidth = 0,
+            int cellHeight = 0,
             int openingWidth = 2)
         {
+            int effW = cellWidth > 0 ? cellWidth : cellSize.x;
+            int effH = cellHeight > 0 ? cellHeight : cellSize.y;
+
             if (groundTilemap == null)
             {
                 AutoFindTilemaps();
@@ -265,58 +466,52 @@ namespace SBGames.Dungeon.Unity.Pieces
 
             if (groundTilemap == null)
             {
-                FillBuildableBox(cellWidth, cellHeight, margin);
+                FillBuildableBox(effW, effH, margin);
                 return;
             }
 
-            var groundSet = GetGroundCellCoords(cellWidth, cellHeight);
+            var groundSet = GetGroundCellCoords(effW, effH);
             if (groundSet.Count == 0)
             {
-                FillBuildableBox(cellWidth, cellHeight, margin);
+                FillBuildableBox(effW, effH, margin);
                 return;
             }
 
             // Find wall cells
-            var wallSet = new HashSet<GridCoord>();
-            if (wallsTilemap != null)
+            var wallSet = GetWallCellCoords(effW, effH);
+
+            // Calculate opening clearance cells
+            var clearanceSet = new HashSet<GridCoord>();
+            if (openingsList != null && openingsList.Count > 0)
             {
-                bool hasDirectWalls = false;
-                foreach (var pos in wallsTilemap.cellBounds.allPositionsWithin)
+                foreach (var op in openingsList)
                 {
-                    if (wallsTilemap.HasTile(pos) && pos.x >= 0 && pos.x < cellWidth && pos.y >= 0 && pos.y < cellHeight)
+                    var edgeCoords = op.GetEdgeTiles();
+                    foreach (var edge in edgeCoords)
                     {
-                        hasDirectWalls = true;
-                        break;
-                    }
-                }
-
-                int offX = hasDirectWalls ? 0 : (cellWidth / 2);
-                int offY = hasDirectWalls ? 0 : (cellHeight / 2);
-
-                foreach (var pos in wallsTilemap.cellBounds.allPositionsWithin)
-                {
-                    if (wallsTilemap.HasTile(pos))
-                    {
-                        int wx = pos.x + offX;
-                        int wy = pos.y + offY;
-                        if (wx >= 0 && wx < cellWidth && wy >= 0 && wy < cellHeight)
+                        for (int dx = -openingClearance + 1; dx < openingClearance; dx++)
                         {
-                            wallSet.Add(new GridCoord(wx, wy));
+                            for (int dy = -openingClearance + 1; dy < openingClearance; dy++)
+                            {
+                                int cx = edge.X + dx;
+                                int cy = edge.Y + dy;
+                                if (cx >= 0 && cx < effW && cy >= 0 && cy < effH)
+                                {
+                                    clearanceSet.Add(new GridCoord(cx, cy));
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            // Calculate opening clearance cells
-            var clearanceSet = new HashSet<GridCoord>();
-            if (OpeningGeometry.CanCenterOpening(cellWidth, cellHeight, openingWidth))
+            else if (OpeningGeometry.CanCenterOpening(effW, effH, openingWidth))
             {
                 for (int d = 0; d < 4; d++)
                 {
                     var dir = (CardinalDirection)d;
                     if (openings.ContainsDirection(dir))
                     {
-                        var edgeCoords = OpeningGeometry.GetOpeningEdgeCoords(cellWidth, cellHeight, openingWidth, dir);
+                        var edgeCoords = OpeningGeometry.GetOpeningEdgeCoords(effW, effH, openingWidth, dir);
                         foreach (var edge in edgeCoords)
                         {
                             for (int dx = -openingClearance + 1; dx < openingClearance; dx++)
@@ -325,7 +520,7 @@ namespace SBGames.Dungeon.Unity.Pieces
                                 {
                                     int cx = edge.X + dx;
                                     int cy = edge.Y + dy;
-                                    if (cx >= 0 && cx < cellWidth && cy >= 0 && cy < cellHeight)
+                                    if (cx >= 0 && cx < effW && cy >= 0 && cy < effH)
                                     {
                                         clearanceSet.Add(new GridCoord(cx, cy));
                                     }
@@ -343,7 +538,7 @@ namespace SBGames.Dungeon.Unity.Pieces
                 if (wallSet.Contains(cell)) continue;
 
                 // Minus edge margin
-                if (cell.X < margin || cell.X >= cellWidth - margin || cell.Y < margin || cell.Y >= cellHeight - margin)
+                if (cell.X < margin || cell.X >= effW - margin || cell.Y < margin || cell.Y >= effH - margin)
                 {
                     continue;
                 }
@@ -378,8 +573,13 @@ namespace SBGames.Dungeon.Unity.Pieces
             return new DungeonPieceDescriptor
             {
                 PieceId = string.IsNullOrEmpty(pieceId) ? gameObject.name : pieceId,
+                Role = role,
                 RoomType = roomType,
-                Openings = openings,
+                CellWidth = cellSize.x,
+                CellHeight = cellSize.y,
+                Openings = Openings,
+                OpeningsList = openingsList != null ? new List<PieceOpening>(openingsList) : new List<PieceOpening>(),
+                OccupiedLocalTiles = OccupiedLocalTiles,
                 IsRotatable = isRotatable,
                 Weight = weight,
                 MinCountPerDungeon = minCountPerDungeon,
@@ -388,7 +588,7 @@ namespace SBGames.Dungeon.Unity.Pieces
                 BuildableMask = mask,
                 HasDirectionalArt = hasDirectionalArt,
                 EntryAnchorCount = validEntryAnchors,
-                GroundCells = GetGroundCellCoords()
+                GroundCells = GetGroundCellCoords(cellSize.x, cellSize.y)
             };
         }
 
@@ -399,8 +599,17 @@ namespace SBGames.Dungeon.Unity.Pieces
         {
             if (descriptor == null) return;
             pieceId = descriptor.PieceId;
+            role = descriptor.Role;
             roomType = descriptor.RoomType;
+            if (descriptor.CellWidth > 0 && descriptor.CellHeight > 0)
+            {
+                cellSize = new Vector2Int(descriptor.CellWidth, descriptor.CellHeight);
+            }
             openings = descriptor.Openings;
+            if (descriptor.OpeningsList != null)
+            {
+                openingsList = new List<PieceOpening>(descriptor.OpeningsList);
+            }
             isRotatable = descriptor.IsRotatable;
             weight = descriptor.Weight;
             minCountPerDungeon = descriptor.MinCountPerDungeon;

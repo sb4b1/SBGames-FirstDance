@@ -15,10 +15,12 @@ namespace SBGames.Dungeon.Core
         public float loopProbability = 0f;
         public int safeRoomCount = 1;
 
+        public float pathwayProbability = 0.35f;
+
         // Spatial metrics for tile placement and world positioning
         public int roomWidth = 16;
         public int roomHeight = 16;
-        public int corridorLength = 4;
+        public int corridorLength = 0;
         public int corridorWidth = 2;
 
         public DungeonGeneratorConfig() { }
@@ -31,8 +33,9 @@ namespace SBGames.Dungeon.Core
             int safeRoomCount = 1,
             int roomWidth = 16,
             int roomHeight = 16,
-            int corridorLength = 4,
-            int corridorWidth = 2)
+            int corridorLength = 0,
+            int corridorWidth = 2,
+            float pathwayProbability = 0.35f)
         {
             this.minNormalRooms = Math.Max(1, minNormalRooms);
             this.maxNormalRooms = Math.Max(this.minNormalRooms, maxNormalRooms);
@@ -43,6 +46,7 @@ namespace SBGames.Dungeon.Core
             this.roomHeight = Math.Max(4, roomHeight);
             this.corridorLength = Math.Max(0, corridorLength);
             this.corridorWidth = Math.Max(1, corridorWidth);
+            this.pathwayProbability = Math.Max(0f, Math.Min(1f, pathwayProbability));
         }
     }
 }

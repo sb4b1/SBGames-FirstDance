@@ -44,6 +44,12 @@ namespace SBGames.Dungeon.Core.Pieces
         /// </summary>
         public HashSet<GridCoord> GroundCells { get; set; } = new HashSet<GridCoord>();
 
+        public PieceRole Role { get; set; } = PieceRole.Room;
+        public int CellWidth { get; set; } = 0;
+        public int CellHeight { get; set; } = 0;
+        public List<PieceOpening> OpeningsList { get; set; } = new List<PieceOpening>();
+        public HashSet<GridCoord> OccupiedLocalTiles { get; set; } = new HashSet<GridCoord>();
+
         public DungeonPieceDescriptor() { }
 
         public DungeonPieceDescriptor(
@@ -57,6 +63,7 @@ namespace SBGames.Dungeon.Core.Pieces
         {
             PieceId = pieceId;
             RoomType = roomType;
+            Role = PieceRole.Room;
             Openings = openings;
             IsRotatable = isRotatable;
             Weight = Math.Max(0.01f, weight);
@@ -64,6 +71,36 @@ namespace SBGames.Dungeon.Core.Pieces
             MaxCountPerDungeon = Math.Max(0, maxCount);
             Footprint = new GridCoord(1, 1);
             BuildableMask = new HashSet<GridCoord>();
+            OpeningsList = new List<PieceOpening>();
+            OccupiedLocalTiles = new HashSet<GridCoord>();
+        }
+
+        public DungeonPieceDescriptor(
+            string pieceId,
+            PieceRole role,
+            DungeonRoomType roomType,
+            int cellWidth,
+            int cellHeight,
+            IEnumerable<PieceOpening> openings,
+            bool isRotatable = false,
+            float weight = 1.0f,
+            int minCount = 0,
+            int maxCount = 0)
+        {
+            PieceId = pieceId;
+            Role = role;
+            RoomType = roomType;
+            CellWidth = Math.Max(1, cellWidth);
+            CellHeight = Math.Max(1, cellHeight);
+            OpeningsList = openings != null ? new List<PieceOpening>(openings) : new List<PieceOpening>();
+            Openings = OpeningGeometry.ToOpeningFlags(OpeningsList);
+            IsRotatable = isRotatable;
+            Weight = Math.Max(0.01f, weight);
+            MinCountPerDungeon = Math.Max(0, minCount);
+            MaxCountPerDungeon = Math.Max(0, maxCount);
+            Footprint = new GridCoord(1, 1);
+            BuildableMask = new HashSet<GridCoord>();
+            OccupiedLocalTiles = new HashSet<GridCoord>();
         }
 
         /// <summary>
@@ -77,29 +114,78 @@ namespace SBGames.Dungeon.Core.Pieces
         }
 
         /// <summary>
+        /// Returns the piece's freeform openings rotated by k quarter turns clockwise.
+        /// Swaps dimensions on odd quarter-turns.
+        /// </summary>
+        public List<PieceOpening> GetRotatedOpeningsList(int quarterTurns, int cellW = 0, int cellH = 0)
+        {
+            if (OpeningsList == null || OpeningsList.Count == 0) return new List<PieceOpening>();
+            int k = ((quarterTurns % 4) + 4) % 4;
+            if (!IsRotatable || k == 0) return new List<PieceOpening>(OpeningsList);
+
+            int w = cellW > 0 ? cellW : (CellWidth > 0 ? CellWidth : 16);
+            int h = cellH > 0 ? cellH : (CellHeight > 0 ? CellHeight : 16);
+
+            var rotated = new List<PieceOpening>(OpeningsList.Count);
+            foreach (var o in OpeningsList)
+            {
+                rotated.Add(o.RotateClockwise(w, h, k));
+            }
+            return rotated;
+        }
+
+        /// <summary>
+        /// Returns the piece's occupied local tiles rotated by k quarter turns clockwise.
+        /// Swaps dimensions on odd quarter-turns.
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedOccupiedTiles(int quarterTurns, int cellW = 0, int cellH = 0)
+        {
+            if (OccupiedLocalTiles == null || OccupiedLocalTiles.Count == 0) return new HashSet<GridCoord>();
+            int k = ((quarterTurns % 4) + 4) % 4;
+            if (!IsRotatable || k == 0) return new HashSet<GridCoord>(OccupiedLocalTiles);
+
+            int w = cellW > 0 ? cellW : (CellWidth > 0 ? CellWidth : 16);
+            int h = cellH > 0 ? cellH : (CellHeight > 0 ? CellHeight : 16);
+
+            var rotated = new HashSet<GridCoord>(OccupiedLocalTiles.Count);
+            foreach (var c in OccupiedLocalTiles)
+            {
+                rotated.Add(OpeningGeometry.RotateCoord(c, k, w, h));
+            }
+            return rotated;
+        }
+
+        /// <summary>
         /// Rotates a local coordinate within a square cell of size S clockwise by k quarter turns.
         /// </summary>
         public static GridCoord RotateLocalCoord(GridCoord coord, int quarterTurns, int cellSize)
         {
-            int k = ((quarterTurns % 4) + 4) % 4;
-            int x = coord.X;
-            int y = coord.Y;
-            int sMinus1 = cellSize - 1;
+            return OpeningGeometry.RotateCoord(coord, quarterTurns, cellSize, cellSize);
+        }
 
-            switch (k)
-            {
-                case 1:  return new GridCoord(y, sMinus1 - x);
-                case 2:  return new GridCoord(sMinus1 - x, sMinus1 - y);
-                case 3:  return new GridCoord(sMinus1 - y, x);
-                default: return new GridCoord(x, y);
-            }
+        /// <summary>
+        /// Rotates a local coordinate within a rectangle of dimensions (cellW, cellH) clockwise by k quarter turns.
+        /// </summary>
+        public static GridCoord RotateLocalCoord(GridCoord coord, int quarterTurns, int cellW, int cellH)
+        {
+            return OpeningGeometry.RotateCoord(coord, quarterTurns, cellW, cellH);
         }
 
         /// <summary>
         /// Computes the piece-local buildable mask rotated by k quarter turns.
-        /// Requires square cell (cellSize = roomWidth == roomHeight).
+        /// Uses descriptor CellWidth and CellHeight (fallback 16).
         /// </summary>
-        public HashSet<GridCoord> GetRotatedBuildableMask(int quarterTurns, int cellSize)
+        public HashSet<GridCoord> GetRotatedBuildableMask(int quarterTurns)
+        {
+            int w = CellWidth > 0 ? CellWidth : 16;
+            int h = CellHeight > 0 ? CellHeight : 16;
+            return GetRotatedBuildableMask(quarterTurns, w, h);
+        }
+
+        /// <summary>
+        /// Computes the piece-local buildable mask rotated by k quarter turns.
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedBuildableMask(int quarterTurns, int cellW, int cellH)
         {
             if (BuildableMask == null || BuildableMask.Count == 0)
             {
@@ -112,19 +198,38 @@ namespace SBGames.Dungeon.Core.Pieces
                 return new HashSet<GridCoord>(BuildableMask);
             }
 
-            var rotated = new HashSet<GridCoord>();
+            var rotated = new HashSet<GridCoord>(BuildableMask.Count);
             foreach (var coord in BuildableMask)
             {
-                rotated.Add(RotateLocalCoord(coord, k, cellSize));
+                rotated.Add(OpeningGeometry.RotateCoord(coord, k, cellW, cellH));
             }
             return rotated;
         }
 
         /// <summary>
-        /// Computes the piece-local ground cells rotated by k quarter turns clockwise.
+        /// Computes the piece-local buildable mask rotated by k quarter turns.
         /// Requires square cell (cellSize = roomWidth == roomHeight).
         /// </summary>
-        public HashSet<GridCoord> GetRotatedGroundCells(int quarterTurns, int cellSize)
+        public HashSet<GridCoord> GetRotatedBuildableMask(int quarterTurns, int cellSize)
+        {
+            return GetRotatedBuildableMask(quarterTurns, cellSize, cellSize);
+        }
+
+        /// <summary>
+        /// Computes the piece-local ground cells rotated by k quarter turns clockwise.
+        /// Uses descriptor CellWidth and CellHeight (fallback 16).
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedGroundCells(int quarterTurns)
+        {
+            int w = CellWidth > 0 ? CellWidth : 16;
+            int h = CellHeight > 0 ? CellHeight : 16;
+            return GetRotatedGroundCells(quarterTurns, w, h);
+        }
+
+        /// <summary>
+        /// Computes the piece-local ground cells rotated by k quarter turns clockwise.
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedGroundCells(int quarterTurns, int cellW, int cellH)
         {
             if (GroundCells == null || GroundCells.Count == 0)
             {
@@ -140,9 +245,18 @@ namespace SBGames.Dungeon.Core.Pieces
             var rotated = new HashSet<GridCoord>(GroundCells.Count);
             foreach (var coord in GroundCells)
             {
-                rotated.Add(RotateLocalCoord(coord, k, cellSize));
+                rotated.Add(OpeningGeometry.RotateCoord(coord, k, cellW, cellH));
             }
             return rotated;
+        }
+
+        /// <summary>
+        /// Computes the piece-local ground cells rotated by k quarter turns clockwise.
+        /// Requires square cell (cellSize = roomWidth == roomHeight).
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedGroundCells(int quarterTurns, int cellSize)
+        {
+            return GetRotatedGroundCells(quarterTurns, cellSize, cellSize);
         }
     }
 }

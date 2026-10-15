@@ -56,18 +56,24 @@ namespace SBGames.Dungeon.Core.Pieces
 
             string id = piece.PieceId ?? "<Unnamed>";
 
-            // 1. Error: Opening width parity cannot center symmetrically on cell dimensions
-            if (!OpeningGeometry.CanCenterOpening(cellWidth, cellHeight, openingWidth))
+            int effCellW = piece.CellWidth > 0 ? piece.CellWidth : cellWidth;
+            int effCellH = piece.CellHeight > 0 ? piece.CellHeight : cellHeight;
+
+            bool hasFreeformOpenings = piece.OpeningsList != null && piece.OpeningsList.Count > 0;
+
+            // 1. Error: Opening width parity cannot center symmetrically on cell dimensions (legacy centered mode only)
+            if (!hasFreeformOpenings && !OpeningGeometry.CanCenterOpening(effCellW, effCellH, openingWidth))
             {
                 badges.Add(new PieceValidationBadge(
                     PieceValidationSeverity.Error,
-                    $"Opening width ({openingWidth}) parity cannot center symmetrically on cell dimensions ({cellWidth}x{cellHeight}).",
+                    $"Opening width ({openingWidth}) parity cannot center symmetrically on cell dimensions ({effCellW}x{effCellH}).",
                     id
                 ));
             }
 
             // 2. Error: No Openings
-            if (piece.Openings == OpeningFlags.None)
+            bool hasOpenings = hasFreeformOpenings || piece.Openings != OpeningFlags.None;
+            if (!hasOpenings)
             {
                 badges.Add(new PieceValidationBadge(
                     PieceValidationSeverity.Error,
@@ -86,26 +92,16 @@ namespace SBGames.Dungeon.Core.Pieces
                 ));
             }
 
-            // 4. Error: Rotatable on non-square cell
-            if (piece.IsRotatable && cellWidth != cellHeight)
-            {
-                badges.Add(new PieceValidationBadge(
-                    PieceValidationSeverity.Error,
-                    $"Piece is marked rotatable, but cell dimensions ({cellWidth}x{cellHeight}) are not square.",
-                    id
-                ));
-            }
-
-            // 5. Error: Buildable Mask outside cell boundaries
+            // 4. Error: Buildable Mask outside cell boundaries
             if (piece.BuildableMask != null)
             {
                 foreach (var coord in piece.BuildableMask)
                 {
-                    if (coord.X < 0 || coord.X >= cellWidth || coord.Y < 0 || coord.Y >= cellHeight)
+                    if (coord.X < 0 || coord.X >= effCellW || coord.Y < 0 || coord.Y >= effCellH)
                     {
                         badges.Add(new PieceValidationBadge(
                             PieceValidationSeverity.Error,
-                            $"Buildable Mask coordinate {coord} is outside cell bounds (0..{cellWidth - 1}, 0..{cellHeight - 1}).",
+                            $"Buildable Mask coordinate {coord} is outside cell bounds (0..{effCellW - 1}, 0..{effCellH - 1}).",
                             id
                         ));
                         break; // Report once per piece to avoid flood
@@ -113,8 +109,8 @@ namespace SBGames.Dungeon.Core.Pieces
                 }
             }
 
-            // 6. Error: Boss piece with no Opening
-            if (piece.RoomType == DungeonRoomType.Boss && piece.Openings == OpeningFlags.None)
+            // 5. Error: Boss piece with no Opening
+            if (piece.RoomType == DungeonRoomType.Boss && !hasOpenings)
             {
                 badges.Add(new PieceValidationBadge(
                     PieceValidationSeverity.Error,
@@ -123,7 +119,7 @@ namespace SBGames.Dungeon.Core.Pieces
                 ));
             }
 
-            // 7. Error: Entrance piece must have at least one entry anchor
+            // 6. Error: Entrance piece must have at least one entry anchor
             if (piece.RoomType == DungeonRoomType.Entrance && piece.EntryAnchorCount < 1)
             {
                 badges.Add(new PieceValidationBadge(
@@ -133,7 +129,7 @@ namespace SBGames.Dungeon.Core.Pieces
                 ));
             }
 
-            // 8. Warning: Rotatable piece with directional art
+            // 7. Warning: Rotatable piece with directional art
             if (piece.IsRotatable && piece.HasDirectionalArt)
             {
                 badges.Add(new PieceValidationBadge(
@@ -143,13 +139,108 @@ namespace SBGames.Dungeon.Core.Pieces
                 ));
             }
 
-            // 9. Ground tile validation (when groundCells set is provided)
-            if (groundCells != null && OpeningGeometry.CanCenterOpening(cellWidth, cellHeight, openingWidth))
+            // 8. Freeform Openings Validation
+            if (hasFreeformOpenings)
+            {
+                // Error: Overlapping openings
+                for (int i = 0; i < piece.OpeningsList.Count; i++)
+                {
+                    for (int j = i + 1; j < piece.OpeningsList.Count; j++)
+                    {
+                        if (piece.OpeningsList[i].Overlaps(piece.OpeningsList[j]))
+                        {
+                            badges.Add(new PieceValidationBadge(
+                                PieceValidationSeverity.Error,
+                                $"Openings at index {i} ({piece.OpeningsList[i]}) and {j} ({piece.OpeningsList[j]}) overlap.",
+                                id
+                            ));
+                        }
+                    }
+                }
+
+                if (groundCells != null)
+                {
+                    var allOpeningEdgeTiles = new HashSet<GridCoord>();
+                    foreach (var opening in piece.OpeningsList)
+                    {
+                        var edgeTiles = opening.GetEdgeTiles();
+                        bool missingGround = false;
+                        for (int t = 0; t < edgeTiles.Count; t++)
+                        {
+                            allOpeningEdgeTiles.Add(edgeTiles[t]);
+                            if (!groundCells.Contains(edgeTiles[t]))
+                            {
+                                missingGround = true;
+                            }
+                        }
+
+                        if (missingGround)
+                        {
+                            badges.Add(new PieceValidationBadge(
+                                PieceValidationSeverity.Error,
+                                $"Declared opening {opening} does not have painted Ground on all {opening.Width} tiles.",
+                                id
+                            ));
+                        }
+                    }
+
+                    // Warning if Ground reaches the outer border of the piece where no PieceOpening is declared
+                    bool outerBorderUndeclaredGround = false;
+                    GridCoord firstUndeclaredCoord = default;
+
+                    for (int x = 0; x < effCellW && !outerBorderUndeclaredGround; x++)
+                    {
+                        var coordN = new GridCoord(x, effCellH - 1);
+                        if (groundCells.Contains(coordN) && !allOpeningEdgeTiles.Contains(coordN))
+                        {
+                            outerBorderUndeclaredGround = true;
+                            firstUndeclaredCoord = coordN;
+                            break;
+                        }
+                        var coordS = new GridCoord(x, 0);
+                        if (groundCells.Contains(coordS) && !allOpeningEdgeTiles.Contains(coordS))
+                        {
+                            outerBorderUndeclaredGround = true;
+                            firstUndeclaredCoord = coordS;
+                            break;
+                        }
+                    }
+
+                    for (int y = 0; y < effCellH && !outerBorderUndeclaredGround; y++)
+                    {
+                        var coordW = new GridCoord(0, y);
+                        if (groundCells.Contains(coordW) && !allOpeningEdgeTiles.Contains(coordW))
+                        {
+                            outerBorderUndeclaredGround = true;
+                            firstUndeclaredCoord = coordW;
+                            break;
+                        }
+                        var coordE = new GridCoord(effCellW - 1, y);
+                        if (groundCells.Contains(coordE) && !allOpeningEdgeTiles.Contains(coordE))
+                        {
+                            outerBorderUndeclaredGround = true;
+                            firstUndeclaredCoord = coordE;
+                            break;
+                        }
+                    }
+
+                    if (outerBorderUndeclaredGround)
+                    {
+                        badges.Add(new PieceValidationBadge(
+                            PieceValidationSeverity.Warning,
+                            $"Ground reaches the outer border of the piece (e.g. at {firstUndeclaredCoord}) where no PieceOpening is declared.",
+                            id
+                        ));
+                    }
+                }
+            }
+            // 9. Legacy Centered Opening Ground tile validation
+            else if (groundCells != null && OpeningGeometry.CanCenterOpening(effCellW, effCellH, openingWidth))
             {
                 for (int d = 0; d < 4; d++)
                 {
                     var dir = (CardinalDirection)d;
-                    var edgeCoords = OpeningGeometry.GetOpeningEdgeCoords(cellWidth, cellHeight, openingWidth, dir);
+                    var edgeCoords = OpeningGeometry.GetOpeningEdgeCoords(effCellW, effCellH, openingWidth, dir);
                     bool isDeclared = piece.Openings.ContainsDirection(dir);
 
                     if (isDeclared)

@@ -30,7 +30,7 @@ namespace SBGames.Dungeon.Unity
 
         [Header("Piece Selection & Retries")]
         [Tooltip("Maximum attempts to generate a layout and select matching pieces before falling back.")]
-        [SerializeField, Range(1, 20)] private int maxGenerationRetries = 5;
+        [SerializeField, Range(1, 20)] private int maxGenerationRetries = 15;
 
         [Header("NavMesh")]
         [Tooltip("If true, triggers 2D NavMesh surface bake after instantiating dungeon geometry.")]
@@ -109,14 +109,6 @@ namespace SBGames.Dungeon.Unity
             var generator = new DungeonLayoutGenerator();
 
             PieceSetSO pieceSet = configSO != null ? configSO.PieceSet : null;
-            if (pieceSet != null)
-            {
-                if (pieceSet.CellSize.x != coreConfig.roomWidth || pieceSet.CellSize.y != coreConfig.roomHeight)
-                {
-                    Debug.LogError($"[DungeonRuntimeBuilder] PieceSet cell size ({pieceSet.CellSize.x}x{pieceSet.CellSize.y}) does not match generator config room size ({coreConfig.roomWidth}x{coreConfig.roomHeight})! Falling back to procedural room templates.");
-                    pieceSet = null;
-                }
-            }
 
             var pieceDescriptors = pieceSet != null ? pieceSet.GetDescriptors() : null;
             if (pieceSet != null && (pieceDescriptors == null || pieceDescriptors.Count == 0))
@@ -127,7 +119,7 @@ namespace SBGames.Dungeon.Unity
 
             int usedSeed = seed;
             DungeonLayoutGraph generatedGraph = null;
-            Dictionary<int, DungeonPieceSelectionResult> selectedPieces = null;
+            DungeonSeamLayoutResult activeSeamLayout = null;
 
             // Retry loop up to maxGenerationRetries
             for (int attempt = 0; attempt < maxGenerationRetries; attempt++)
@@ -138,36 +130,24 @@ namespace SBGames.Dungeon.Unity
                 if (pieceSet != null && pieceDescriptors != null && pieceDescriptors.Count > 0)
                 {
                     var rng = new GameRngDungeonAdapter((uint)Math.Abs(usedSeed + 101));
-                    var usageCounts = new Dictionary<string, int>();
-                    var roomSelections = new Dictionary<int, DungeonPieceSelectionResult>();
-                    bool allMatched = true;
+                    var seamResult = DungeonSeamLayoutSolver.Solve(
+                        graph,
+                        pieceDescriptors,
+                        coreConfig.pathwayProbability,
+                        pieceSet.OpeningWidth,
+                        rng
+                    );
 
-                    foreach (var node in graph.Rooms.Values)
-                    {
-                        var requiredDoors = OpeningFlagsExtensions.FromDirections(node.DoorsByDirection.Keys);
-                        var result = DungeonPieceSelector.SelectPiece(node.RoomType, requiredDoors, pieceDescriptors, usageCounts, rng);
-
-                        if (!result.Success)
-                        {
-                            allMatched = false;
-                            break;
-                        }
-
-                        roomSelections[node.RoomId] = result;
-                        string pieceId = result.SelectedPiece.PieceId;
-                        usageCounts[pieceId] = usageCounts.TryGetValue(pieceId, out int cnt) ? cnt + 1 : 1;
-                    }
-
-                    if (allMatched)
+                    if (seamResult.Success)
                     {
                         generatedGraph = graph;
-                        selectedPieces = roomSelections;
-                        Debug.Log($"[DungeonRuntimeBuilder] Dungeon generated successfully using seed: {usedSeed} (attempt {attempt + 1}/{maxGenerationRetries}) with PieceSet '{pieceSet.ThemeName}'.");
+                        activeSeamLayout = seamResult;
+                        Debug.Log($"[DungeonRuntimeBuilder] Dungeon generated successfully with seam snapping using seed: {usedSeed} (attempt {attempt + 1}/{maxGenerationRetries}) with PieceSet '{pieceSet.ThemeName}'.");
                         break;
                     }
                     else
                     {
-                        Debug.LogWarning($"[DungeonRuntimeBuilder] Attempt {attempt + 1}/{maxGenerationRetries} with seed {usedSeed} failed piece selection coverage. Retrying with derived seed...");
+                        Debug.LogWarning($"[DungeonRuntimeBuilder] Attempt {attempt + 1}/{maxGenerationRetries} with seed {usedSeed} failed seam placement ({seamResult.FailureReason}). Retrying with derived seed...");
                     }
                 }
                 else
@@ -182,7 +162,7 @@ namespace SBGames.Dungeon.Unity
             {
                 Debug.LogError($"[DungeonRuntimeBuilder] All {maxGenerationRetries} generation attempts failed piece selection. Generating fallback layout without PieceSet.");
                 generatedGraph = generator.Generate(seed, coreConfig);
-                selectedPieces = null;
+                activeSeamLayout = null;
             }
 
             _currentGraph = generatedGraph;
@@ -195,41 +175,239 @@ namespace SBGames.Dungeon.Unity
 
             var roomInstances = new Dictionary<int, RoomVolume>();
 
-            // 3. Instantiate Rooms
-            foreach (var node in _currentGraph.Rooms.Values)
+            // 3. Instantiate Rooms & Pathways via Seam Layout
+            if (activeSeamLayout != null && activeSeamLayout.Success)
             {
-                Vector3 roomCenterWorld = new Vector3(
-                    node.MacroCoord.X * stepWorldX,
-                    node.MacroCoord.Y * stepWorldY,
-                    0f
-                );
+                var allPieces = new List<PlacedPiece>();
+                allPieces.AddRange(activeSeamLayout.PlacedRooms.Values);
+                allPieces.AddRange(activeSeamLayout.PlacedPathways);
 
-                GameObject roomGo = null;
-                OpeningFlags cappedSides = OpeningFlags.None;
-
-                if (pieceSet != null && selectedPieces != null && selectedPieces.TryGetValue(node.RoomId, out var selection) && selection.Success)
+                foreach (var placed in allPieces)
                 {
-                    int quarterTurns = selection.QuarterTurns;
-                    cappedSides = selection.CappedSides;
-                    GameObject piecePrefab = pieceSet.GetPrefabForPiece(selection.SelectedPiece.PieceId);
-                    Quaternion pieceRot = Quaternion.Euler(0f, 0f, -90f * quarterTurns);
+                    Vector3 roomCenterWorld = new Vector3(
+                        (placed.WorldOrigin.X + placed.CellWidth * 0.5f) * cell,
+                        (placed.WorldOrigin.Y + placed.CellHeight * 0.5f) * cell,
+                        0f
+                    );
+
+                    Quaternion pieceRot = Quaternion.Euler(0f, 0f, -90f * placed.QuarterTurns);
+                    GameObject piecePrefab = pieceSet.GetPrefabForPiece(placed.Descriptor.PieceId);
+                    GameObject roomGo = null;
 
                     if (piecePrefab != null)
                     {
                         roomGo = Instantiate(piecePrefab, roomCenterWorld, pieceRot, dungeonParent);
                     }
+                    else
+                    {
+                        roomGo = new GameObject($"Piece_{placed.RoomId}_{placed.Descriptor.PieceId}");
+                        roomGo.transform.SetParent(dungeonParent);
+                        roomGo.transform.position = roomCenterWorld;
+
+                        var boxCol = roomGo.AddComponent<BoxCollider2D>();
+                        boxCol.size = new Vector2(placed.CellWidth * cell, placed.CellHeight * cell);
+                        boxCol.isTrigger = true;
+                    }
+
+                    _spawnedObjects.Add(roomGo);
+
+                    var roomVolume = roomGo.GetComponent<RoomVolume>() ?? roomGo.AddComponent<RoomVolume>();
+                    roomVolume.RoomId = placed.RoomId;
+                    roomVolume.IsSafeRoom = (placed.Descriptor.RoomType == DungeonRoomType.SafeRoom);
+                    roomVolume.IsBossRoom = (placed.Descriptor.RoomType == DungeonRoomType.Boss);
+                    roomVolume.SetBounds(new Bounds(
+                        roomCenterWorld,
+                        new Vector3(placed.CellWidth * cell, placed.CellHeight * cell, 2f)
+                    ));
+
+                    var pieceComp = roomGo.GetComponent<DungeonPiece>();
+                    int maskCount = placed.RotatedBuildableMask != null && placed.RotatedBuildableMask.Count > 0
+                        ? placed.RotatedBuildableMask.Count
+                        : (placed.CellWidth - 2) * (placed.CellHeight - 2);
+
+                    float cellsPerSoft = configSO != null ? configSO.CellsPerSoftSlot : 49f;
+                    float maxMult = configSO != null ? configSO.MaxCapacityMultiplier : 1.5f;
+                    float normalSoftMult = configSO != null ? configSO.NormalSoftMultiplier : 1.0f;
+                    float bossSoftMult = configSO != null ? configSO.BossSoftMultiplier : 1.5f;
+                    float bossMaxMult = configSO != null ? configSO.BossMaxMultiplier : 1.67f;
+
+                    if (placed.Descriptor.Role == PieceRole.Pathway)
+                    {
+                        int pathSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * normalSoftMult);
+                        int pathMax = Mathf.CeilToInt(pathSoft * maxMult);
+                        roomVolume.SoftMonsterCapacity = pathSoft;
+                        roomVolume.MaxMonsterCapacity = pathMax;
+                    }
+                    else
+                    {
+                        switch (placed.Descriptor.RoomType)
+                        {
+                            case DungeonRoomType.Entrance:
+                                roomVolume.SoftMonsterCapacity = 0;
+                                roomVolume.MaxMonsterCapacity = 0;
+                                break;
+                            case DungeonRoomType.SafeRoom:
+                                roomVolume.SoftMonsterCapacity = 0;
+                                roomVolume.MaxMonsterCapacity = 2;
+                                break;
+                            case DungeonRoomType.Boss:
+                                int bSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * bossSoftMult);
+                                int bMax = Mathf.CeilToInt(bSoft * bossMaxMult);
+                                roomVolume.SoftMonsterCapacity = bSoft;
+                                roomVolume.MaxMonsterCapacity = bMax;
+                                break;
+                            default:
+                                int nSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * normalSoftMult);
+                                int nMax = Mathf.CeilToInt(nSoft * maxMult);
+                                roomVolume.SoftMonsterCapacity = nSoft;
+                                roomVolume.MaxMonsterCapacity = nMax;
+                                break;
+                        }
+                    }
+
+                    if (placed.Descriptor.RoomType == DungeonRoomType.SafeRoom && placed.Descriptor.Role == PieceRole.Room)
+                    {
+                        if (roomGo.GetComponent<SafeRoomMarker>() == null) roomGo.AddComponent<SafeRoomMarker>();
+                    }
+                    else if (placed.Descriptor.RoomType == DungeonRoomType.Entrance && placed.Descriptor.Role == PieceRole.Room)
+                    {
+                        if (pieceComp != null && pieceComp.EntryAnchors.Count > 0 && pieceComp.EntryAnchors[0] != null)
+                        {
+                            DungeonRoomRegistry.EntrancePosition = pieceComp.EntryAnchors[0].position;
+                        }
+                        else
+                        {
+                            DungeonRoomRegistry.EntrancePosition = roomCenterWorld;
+                        }
+                    }
+
+                    DungeonRoomRegistry.RegisterRoom(roomVolume);
+                    roomInstances[placed.RoomId] = roomVolume;
                 }
 
-                if (roomGo == null)
+                // 4. Instantiate Doors at active seams
+                int doorCounter = 0;
+                foreach (var seam in activeSeamLayout.Seams)
                 {
+                    doorCounter++;
+                    if (!roomInstances.TryGetValue(seam.PieceA.RoomId, out var roomA) ||
+                        !roomInstances.TryGetValue(seam.PieceB.RoomId, out var roomB))
+                    {
+                        continue;
+                    }
+
+                    var edgeTile = seam.PieceA.LocalToWorld(seam.OpeningA.AnchorTile);
+                    var (dx, dy) = seam.OpeningA.Direction.ToOffset();
+                    float seamX = (edgeTile.X + (seam.OpeningA.Direction == CardinalDirection.North || seam.OpeningA.Direction == CardinalDirection.South ? 1.0f : (dx > 0 ? 1.0f : 0f))) * cell;
+                    float seamY = (edgeTile.Y + (seam.OpeningA.Direction == CardinalDirection.East || seam.OpeningA.Direction == CardinalDirection.West ? 1.0f : (dy > 0 ? 1.0f : 0f))) * cell;
+                    Vector3 doorWorldPos = new Vector3(seamX, seamY, 0f);
+
+                    GameObject doorPrefab = seam.IsBossDoor
+                        ? (configSO?.BossDoorPrefab ?? configSO?.DoorPrefab)
+                        : configSO?.DoorPrefab;
+
+                    GameObject doorGo = null;
+                    if (doorPrefab != null)
+                    {
+                        doorGo = Instantiate(doorPrefab, doorWorldPos, Quaternion.identity, dungeonParent);
+                    }
+                    else
+                    {
+                        doorGo = new GameObject($"Door_{doorCounter}" + (seam.IsBossDoor ? "_Boss" : ""));
+                        doorGo.transform.SetParent(dungeonParent);
+                        doorGo.transform.position = doorWorldPos;
+                    }
+
+                    _spawnedObjects.Add(doorGo);
+
+                    var doorMarker = doorGo.GetComponent<DoorMarker>() ?? doorGo.AddComponent<DoorMarker>();
+                    doorMarker.DoorId = doorCounter;
+                    doorMarker.RoomA = roomA;
+                    doorMarker.RoomB = roomB;
+                    doorMarker.IsBossDoor = seam.IsBossDoor;
+
+                    if (seam.IsBossDoor && doorGo.GetComponent<BossDoorMarker>() == null)
+                    {
+                        doorGo.AddComponent<BossDoorMarker>();
+                    }
+
+                    roomA.AddExit(doorMarker);
+                    roomB.AddExit(doorMarker);
+                    DungeonRoomRegistry.RegisterDoor(doorMarker);
+                }
+
+                // 5. Spawn Opening Caps for unused sockets
+                SpawnSeamOpeningCaps(activeSeamLayout.UnusedSockets, cell, dungeonParent);
+
+                // 6. Configure placement grid
+                if (placementManager != null)
+                {
+                    int minX = int.MaxValue, minY = int.MaxValue;
+                    int maxX = int.MinValue, maxY = int.MinValue;
+                    var worldBuildableCells = new HashSet<GridCoord>();
+
+                    foreach (var p in allPieces)
+                    {
+                        minX = Math.Min(minX, p.WorldOrigin.X);
+                        minY = Math.Min(minY, p.WorldOrigin.Y);
+                        maxX = Math.Max(maxX, p.WorldOrigin.X + p.CellWidth);
+                        maxY = Math.Max(maxY, p.WorldOrigin.Y + p.CellHeight);
+
+                        if (p.Descriptor.Role != PieceRole.Pathway && p.Descriptor.RoomType == DungeonRoomType.Entrance)
+                        {
+                            continue; // Entrance is strictly non-buildable
+                        }
+
+                        foreach (var local in p.RotatedBuildableMask)
+                        {
+                            worldBuildableCells.Add(p.LocalToWorld(local));
+                        }
+                    }
+
+                    if (minX == int.MaxValue)
+                    {
+                        minX = 0; minY = 0; maxX = 16; maxY = 16;
+                    }
+
+                    int padding = 1;
+                    int originTileX = minX - padding;
+                    int originTileY = minY - padding;
+                    int gridTilesW = (maxX - minX + 1) + (padding * 2);
+                    int gridTilesH = (maxY - minY + 1) + (padding * 2);
+
+                    Vector3 gridOrigin = new Vector3(originTileX * cell, originTileY * cell, 0f);
+                    Vector2Int gridSize = new Vector2Int(gridTilesW, gridTilesH);
+
+                    var gridBuildableCells = new HashSet<Vector2Int>();
+                    foreach (var c in worldBuildableCells)
+                    {
+                        gridBuildableCells.Add(new Vector2Int(c.X - originTileX, c.Y - originTileY));
+                    }
+
+                    var validator = new SetBasedBuildableCellValidator(gridBuildableCells);
+                    placementManager.ConfigurePlacementGrid(gridSize, gridOrigin, cell, validator);
+                }
+            }
+            else
+            {
+                // Procedural box-room fallback (when no PieceSet configured)
+                foreach (var node in _currentGraph.Rooms.Values)
+                {
+                    Vector3 roomCenterWorld = new Vector3(
+                        node.MacroCoord.X * stepWorldX,
+                        node.MacroCoord.Y * stepWorldY,
+                        0f
+                    );
+
                     GameObject prefab = GetRoomPrefab(node.RoomType);
+                    GameObject roomGo = null;
+
                     if (prefab != null)
                     {
                         roomGo = Instantiate(prefab, roomCenterWorld, Quaternion.identity, dungeonParent);
                     }
                     else
                     {
-                        // Fallback procedural room GameObject
                         roomGo = new GameObject($"Room_{node.RoomId}_{node.RoomType}");
                         roomGo.transform.SetParent(dungeonParent);
                         roomGo.transform.position = roomCenterWorld;
@@ -238,141 +416,96 @@ namespace SBGames.Dungeon.Unity
                         boxCol.size = new Vector2(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell);
                         boxCol.isTrigger = true;
                     }
-                }
 
-                _spawnedObjects.Add(roomGo);
+                    _spawnedObjects.Add(roomGo);
 
-                var roomVolume = roomGo.GetComponent<RoomVolume>();
-                if (roomVolume == null)
-                {
-                    roomVolume = roomGo.AddComponent<RoomVolume>();
-                }
+                    var roomVolume = roomGo.GetComponent<RoomVolume>() ?? roomGo.AddComponent<RoomVolume>();
+                    roomVolume.RoomId = node.RoomId;
+                    roomVolume.IsSafeRoom = (node.RoomType == DungeonRoomType.SafeRoom);
+                    roomVolume.IsBossRoom = (node.RoomType == DungeonRoomType.Boss);
+                    roomVolume.SetBounds(new Bounds(
+                        roomCenterWorld,
+                        new Vector3(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell, 2f)
+                    ));
 
-                roomVolume.RoomId = node.RoomId;
-                roomVolume.IsSafeRoom = (node.RoomType == DungeonRoomType.SafeRoom);
-                roomVolume.IsBossRoom = (node.RoomType == DungeonRoomType.Boss);
-                roomVolume.SetBounds(new Bounds(
-                    roomCenterWorld,
-                    new Vector3(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell, 2f)
-                ));
+                    int maskCount = (coreConfig.roomWidth - 2) * (coreConfig.roomHeight - 2);
+                    float cellsPerSoft = configSO != null ? configSO.CellsPerSoftSlot : 49f;
+                    float maxMult = configSO != null ? configSO.MaxCapacityMultiplier : 1.5f;
 
-                var pieceComp = roomGo.GetComponent<DungeonPiece>();
-                int maskCount = pieceComp != null && pieceComp.BuildableCells.Count > 0
-                    ? pieceComp.BuildableCells.Count
-                    : (coreConfig.roomWidth - 2) * (coreConfig.roomHeight - 2);
+                    switch (node.RoomType)
+                    {
+                        case DungeonRoomType.Entrance:
+                            roomVolume.SoftMonsterCapacity = 0;
+                            roomVolume.MaxMonsterCapacity = 0;
+                            break;
+                        case DungeonRoomType.SafeRoom:
+                            roomVolume.SoftMonsterCapacity = 0;
+                            roomVolume.MaxMonsterCapacity = 2;
+                            break;
+                        case DungeonRoomType.Boss:
+                            int bSoft = Mathf.FloorToInt(maskCount / cellsPerSoft * 1.5f);
+                            roomVolume.SoftMonsterCapacity = bSoft;
+                            roomVolume.MaxMonsterCapacity = Mathf.CeilToInt(bSoft * 1.67f);
+                            break;
+                        default:
+                            int nSoft = Mathf.FloorToInt(maskCount / cellsPerSoft);
+                            roomVolume.SoftMonsterCapacity = nSoft;
+                            roomVolume.MaxMonsterCapacity = Mathf.CeilToInt(nSoft * maxMult);
+                            break;
+                    }
 
-                float cellsPerSoft = configSO != null ? configSO.CellsPerSoftSlot : 49f;
-                float maxMult = configSO != null ? configSO.MaxCapacityMultiplier : 1.5f;
-                float normalSoftMult = configSO != null ? configSO.NormalSoftMultiplier : 1.0f;
-                float bossSoftMult = configSO != null ? configSO.BossSoftMultiplier : 1.5f;
-                float bossMaxMult = configSO != null ? configSO.BossMaxMultiplier : 1.67f;
-
-                switch (node.RoomType)
-                {
-                    case DungeonRoomType.Entrance:
-                        roomVolume.SoftMonsterCapacity = 0;
-                        roomVolume.MaxMonsterCapacity = 0;
-                        break;
-
-                    case DungeonRoomType.SafeRoom:
-                        roomVolume.SoftMonsterCapacity = 0;
-                        roomVolume.MaxMonsterCapacity = 2;
-                        break;
-
-                    case DungeonRoomType.Boss:
-                        int bossSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * bossSoftMult);
-                        int bossMax = Mathf.CeilToInt(bossSoft * bossMaxMult);
-                        roomVolume.SoftMonsterCapacity = bossSoft;
-                        roomVolume.MaxMonsterCapacity = bossMax;
-                        break;
-
-                    default: // Normal
-                        int normSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * normalSoftMult);
-                        int normMax = Mathf.CeilToInt(normSoft * maxMult);
-                        roomVolume.SoftMonsterCapacity = normSoft;
-                        roomVolume.MaxMonsterCapacity = normMax;
-                        break;
-                }
-
-                if (node.RoomType == DungeonRoomType.SafeRoom)
-                {
-                    if (roomGo.GetComponent<SafeRoomMarker>() == null)
+                    if (node.RoomType == DungeonRoomType.SafeRoom && roomGo.GetComponent<SafeRoomMarker>() == null)
                     {
                         roomGo.AddComponent<SafeRoomMarker>();
                     }
-                }
-                else if (node.RoomType == DungeonRoomType.Entrance)
-                {
-                    DungeonRoomRegistry.EntrancePosition = roomCenterWorld;
+                    else if (node.RoomType == DungeonRoomType.Entrance)
+                    {
+                        DungeonRoomRegistry.EntrancePosition = roomCenterWorld;
+                    }
+
+                    DungeonRoomRegistry.RegisterRoom(roomVolume);
+                    roomInstances[node.RoomId] = roomVolume;
                 }
 
-                DungeonRoomRegistry.RegisterRoom(roomVolume);
-                roomInstances[node.RoomId] = roomVolume;
-
-                // Instantiate Opening Caps for sides with an Opening but no door
-                if (cappedSides != OpeningFlags.None)
+                // Fallback doors
+                for (int i = 0; i < _currentGraph.Doors.Count; i++)
                 {
-                    SpawnOpeningCaps(node, roomCenterWorld, cappedSides, coreConfig, cell, dungeonParent);
+                    var door = _currentGraph.Doors[i];
+                    if (!roomInstances.TryGetValue(door.RoomAId, out var roomA) ||
+                        !roomInstances.TryGetValue(door.RoomBId, out var roomB))
+                    {
+                        continue;
+                    }
+
+                    _currentGraph.TryGetDoorTilePosition(door, coreConfig, out float doorTileX, out float doorTileY);
+                    Vector3 doorWorldPos = new Vector3(doorTileX * cell, doorTileY * cell, 0f);
+
+                    GameObject doorPrefab = door.IsBossDoor ? (configSO?.BossDoorPrefab ?? configSO?.DoorPrefab) : configSO?.DoorPrefab;
+                    GameObject doorGo = doorPrefab != null
+                        ? Instantiate(doorPrefab, doorWorldPos, Quaternion.identity, dungeonParent)
+                        : new GameObject($"Door_{door.DoorId}");
+
+                    _spawnedObjects.Add(doorGo);
+
+                    var doorMarker = doorGo.GetComponent<DoorMarker>() ?? doorGo.AddComponent<DoorMarker>();
+                    doorMarker.DoorId = door.DoorId;
+                    doorMarker.RoomA = roomA;
+                    doorMarker.RoomB = roomB;
+                    doorMarker.IsBossDoor = door.IsBossDoor;
+
+                    if (door.IsBossDoor && doorGo.GetComponent<BossDoorMarker>() == null)
+                    {
+                        doorGo.AddComponent<BossDoorMarker>();
+                    }
+
+                    roomA.AddExit(doorMarker);
+                    roomB.AddExit(doorMarker);
+                    DungeonRoomRegistry.RegisterDoor(doorMarker);
                 }
+
+                // 6. Integrate with DungeonPlacementManager
+                ConfigurePlacementGrid(_currentGraph, null, coreConfig, cell);
             }
-
-            // 4. Instantiate Doors & Connecting Corridors
-            for (int i = 0; i < _currentGraph.Doors.Count; i++)
-            {
-                var door = _currentGraph.Doors[i];
-                if (!roomInstances.TryGetValue(door.RoomAId, out var roomA) ||
-                    !roomInstances.TryGetValue(door.RoomBId, out var roomB))
-                {
-                    continue;
-                }
-
-                _currentGraph.TryGetDoorTilePosition(door, coreConfig, out float doorTileX, out float doorTileY);
-                Vector3 doorWorldPos = new Vector3(doorTileX * cell, doorTileY * cell, 0f);
-
-                GameObject doorGo = null;
-                GameObject doorPrefab = door.IsBossDoor
-                    ? (configSO?.BossDoorPrefab ?? configSO?.DoorPrefab)
-                    : configSO?.DoorPrefab;
-
-                if (doorPrefab != null)
-                {
-                    doorGo = Instantiate(doorPrefab, doorWorldPos, Quaternion.identity, dungeonParent);
-                }
-                else
-                {
-                    doorGo = new GameObject($"Door_{door.DoorId}" + (door.IsBossDoor ? "_Boss" : ""));
-                    doorGo.transform.SetParent(dungeonParent);
-                    doorGo.transform.position = doorWorldPos;
-                }
-
-                _spawnedObjects.Add(doorGo);
-
-                var doorMarker = doorGo.GetComponent<DoorMarker>();
-                if (doorMarker == null)
-                {
-                    doorMarker = doorGo.AddComponent<DoorMarker>();
-                }
-
-                doorMarker.DoorId = door.DoorId;
-                doorMarker.RoomA = roomA;
-                doorMarker.RoomB = roomB;
-                doorMarker.IsBossDoor = door.IsBossDoor;
-
-                if (door.IsBossDoor && doorGo.GetComponent<BossDoorMarker>() == null)
-                {
-                    doorGo.AddComponent<BossDoorMarker>();
-                }
-
-                roomA.AddExit(doorMarker);
-                roomB.AddExit(doorMarker);
-                DungeonRoomRegistry.RegisterDoor(doorMarker);
-            }
-
-            // 5. Seal unused doorway sockets with wall colliders
-            SpawnWallColliders(_currentGraph, selectedPieces, coreConfig, cell, dungeonParent);
-
-            // 6. Integrate with DungeonPlacementManager
-            ConfigurePlacementGrid(_currentGraph, selectedPieces, coreConfig, cell);
 
             // 7. Rebuild NavMesh if surface is present
             if (rebuildNavMesh)
@@ -448,6 +581,67 @@ namespace SBGames.Dungeon.Unity
 
                     var col = capGo.AddComponent<BoxCollider2D>();
                     if (dir == CardinalDirection.North || dir == CardinalDirection.South)
+                    {
+                        col.size = new Vector2(capLength, wallThickness);
+                    }
+                    else
+                    {
+                        col.size = new Vector2(wallThickness, capLength);
+                    }
+                }
+
+                _spawnedObjects.Add(capGo);
+            }
+        }
+
+        private void SpawnSeamOpeningCaps(List<UnusedSocket> unusedSockets, float cell, Transform parent)
+        {
+            if (unusedSockets == null || unusedSockets.Count == 0) return;
+
+            GameObject capPrefab = configSO?.PieceSet?.OpeningCapPrefab != null
+                ? configSO.PieceSet.OpeningCapPrefab
+                : configSO?.WallPrefab;
+
+            if (capPrefab == null)
+            {
+                Debug.LogWarning($"[DungeonRuntimeBuilder] OpeningCapPrefab is null on PieceSet '{(configSO?.PieceSet != null ? configSO.PieceSet.ThemeName : "None")}'. Using invisible-collider fallback.");
+            }
+
+            int capIndex = 0;
+            foreach (var socket in unusedSockets)
+            {
+                capIndex++;
+                var p = socket.Piece;
+                var op = socket.Opening;
+                var edgeWorld = p.LocalToWorld(op.AnchorTile);
+
+                float capX = (edgeWorld.X + (op.Direction == CardinalDirection.North || op.Direction == CardinalDirection.South ? op.Width * 0.5f : (op.Direction == CardinalDirection.East ? 1.0f : 0f))) * cell;
+                float capY = (edgeWorld.Y + (op.Direction == CardinalDirection.East || op.Direction == CardinalDirection.West ? op.Width * 0.5f : (op.Direction == CardinalDirection.North ? 1.0f : 0f))) * cell;
+                Vector3 capPos = new Vector3(capX, capY, 0f);
+
+                float angle = 0f;
+                if (op.Direction == CardinalDirection.East) angle = -90f;
+                else if (op.Direction == CardinalDirection.South) angle = 180f;
+                else if (op.Direction == CardinalDirection.West) angle = 90f;
+
+                Quaternion capRot = Quaternion.Euler(0f, 0f, angle);
+                GameObject capGo = null;
+
+                if (capPrefab != null)
+                {
+                    capGo = Instantiate(capPrefab, capPos, capRot, parent);
+                }
+                else
+                {
+                    capGo = new GameObject($"OpeningCap_{p.RoomId}_{capIndex}");
+                    capGo.transform.SetParent(parent);
+                    capGo.transform.position = capPos;
+                    capGo.transform.rotation = capRot;
+
+                    var col = capGo.AddComponent<BoxCollider2D>();
+                    float capLength = op.Width * cell;
+                    float wallThickness = 0.5f * cell;
+                    if (op.Direction == CardinalDirection.North || op.Direction == CardinalDirection.South)
                     {
                         col.size = new Vector2(capLength, wallThickness);
                     }
@@ -631,8 +825,9 @@ namespace SBGames.Dungeon.Unity
             }
         }
 
-        private void ClearSpawnedObjects()
+        public void ClearSpawnedObjects()
         {
+            DungeonRoomRegistry.Clear();
             for (int i = 0; i < _spawnedObjects.Count; i++)
             {
                 if (_spawnedObjects[i] != null)
@@ -642,6 +837,7 @@ namespace SBGames.Dungeon.Unity
                 }
             }
             _spawnedObjects.Clear();
+            _hasGenerated = false;
         }
     }
 }
