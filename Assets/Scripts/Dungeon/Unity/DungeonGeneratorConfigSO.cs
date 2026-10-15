@@ -17,10 +17,14 @@ namespace SBGames.Dungeon.Unity
         [SerializeField, Range(0f, 1f)] private float branchProbability = 0.35f;
 
         [Tooltip("Probability [0..1] of connecting adjacent non-boss rooms to create cyclical loops.")]
-        [SerializeField, Range(0f, 1f)] private float loopProbability = 0.25f;
+        [SerializeField, Range(0f, 1f)] private float loopProbability = 0f;
 
         [Tooltip("Number of safe rooms to generate (0 or 1, placed along the deeper half).")]
         [SerializeField, Range(0, 1)] private int safeRoomCount = 1;
+
+        [Header("Piece Set (Optional)")]
+        [Tooltip("Optional authored piece set. If null, per-room-type prefab slots and procedural fallbacks are used.")]
+        [SerializeField] private SBGames.Dungeon.Unity.Pieces.PieceSetSO pieceSet;
 
         [Header("Spatial Dimensions (in Grid Cells)")]
         [Tooltip("Room width in grid cells.")]
@@ -54,6 +58,7 @@ namespace SBGames.Dungeon.Unity
         public float BranchProbability => branchProbability;
         public float LoopProbability => loopProbability;
         public int SafeRoomCount => safeRoomCount;
+        public SBGames.Dungeon.Unity.Pieces.PieceSetSO PieceSet => pieceSet;
         public int RoomWidth => roomWidth;
         public int RoomHeight => roomHeight;
         public int CorridorLength => corridorLength;
@@ -82,5 +87,8 @@ namespace SBGames.Dungeon.Unity
                 corridorWidth
             );
         }
+
+        public void SetPieceSetForTesting(SBGames.Dungeon.Unity.Pieces.PieceSetSO set) => pieceSet = set;
+        public void SetCorridorLengthForTesting(int length) => corridorLength = length;
     }
 }

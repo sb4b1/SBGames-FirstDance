@@ -18,6 +18,8 @@ namespace SBGames.Placement
         public ICapacityMultiplierStrategy MultiplierStrategy { get; set; }
         public IDungeonPhaseManager PhaseManager { get; set; }
         public IBuildableCellValidator BuildableCellValidator { get; set; }
+        public IRoomCapacityTracker RoomCapacityTracker { get; set; }
+        public IRoomCrowdingPenaltyStrategy CrowdingStrategy { get; set; }
 
         public event Action<PlacedUnitInstance> OnUnitPlaced;
         public event Action<PlacedUnitInstance, bool> OnUnitRemoved; // (unit, wasRefunded)
@@ -29,7 +31,9 @@ namespace SBGames.Placement
             IGridOccupancyTracker occupancyTracker,
             ICapacityMultiplierStrategy multiplierStrategy = null,
             IDungeonPhaseManager phaseManager = null,
-            IBuildableCellValidator buildableCellValidator = null)
+            IBuildableCellValidator buildableCellValidator = null,
+            IRoomCapacityTracker roomCapacityTracker = null,
+            IRoomCrowdingPenaltyStrategy crowdingStrategy = null)
         {
             DungeonMaster = dungeonMaster ?? throw new ArgumentNullException(nameof(dungeonMaster));
             CapacityPool = capacityPool ?? throw new ArgumentNullException(nameof(capacityPool));
@@ -37,6 +41,8 @@ namespace SBGames.Placement
             MultiplierStrategy = multiplierStrategy ?? new LinearCapacityMultiplierStrategy();
             PhaseManager = phaseManager;
             BuildableCellValidator = buildableCellValidator;
+            RoomCapacityTracker = roomCapacityTracker;
+            CrowdingStrategy = crowdingStrategy ?? new LinearRoomCrowdingPenaltyStrategy();
         }
 
         /// <summary>
@@ -117,31 +123,56 @@ namespace SBGames.Placement
                 }
             }
 
-            // 4. Constraint 1: Energy Cost Check (via DungeonMaster)
-            int requiredCost = request.UnitDefinition.BaseCost;
-            if (availableEnergy < requiredCost)
-            {
-                int effectiveCapPreview = MultiplierStrategy.CalculateEffectiveCapacity(
-                    request.UnitDefinition.BaseCapacity,
-                    request.CombatPowerFactor
-                );
-
-                return PlacementValidationResult.FailureResult(
-                    PlacementStatus.InsufficientEnergy,
-                    $"Insufficient Energy. Required: {requiredCost}, Available: {availableEnergy}.",
-                    costRequired: requiredCost,
-                    capacityRequired: effectiveCapPreview,
-                    availableResources: availableEnergy,
-                    availableCapacity: CapacityPool.AvailableCapacity
-                );
-            }
-
-            // 5. Dynamic Capacity Multiplier & Capacity Limit Check
+            // 4. Room capacity & crowding constraints
             int effectiveCapacity = MultiplierStrategy.CalculateEffectiveCapacity(
                 request.UnitDefinition.BaseCapacity,
                 request.CombatPowerFactor
             );
 
+            int crowdingSurcharge = 0;
+            if (RoomCapacityTracker != null && RoomCapacityTracker.HasRoomAt(request.GridPosition))
+            {
+                int roomId = RoomCapacityTracker.GetRoomId(request.GridPosition);
+                if (!RoomCapacityTracker.CanAccommodate(roomId, effectiveCapacity))
+                {
+                    return PlacementValidationResult.FailureResult(
+                        PlacementStatus.ExceedsRoomCapacity,
+                        $"Room #{roomId} has reached its maximum monster capacity limit ({RoomCapacityTracker.GetRoomCapacityUsed(roomId)}/{RoomCapacityTracker.GetRoomMaxCapacity(roomId)}).",
+                        costRequired: request.UnitDefinition.BaseCost,
+                        capacityRequired: effectiveCapacity,
+                        availableResources: availableEnergy,
+                        availableCapacity: CapacityPool.AvailableCapacity
+                    );
+                }
+
+                if (CrowdingStrategy != null)
+                {
+                    crowdingSurcharge = CrowdingStrategy.CalculateCrowdingCostSurcharge(
+                        RoomCapacityTracker.GetRoomCapacityUsed(roomId),
+                        RoomCapacityTracker.GetRoomSoftCapacity(roomId),
+                        RoomCapacityTracker.GetRoomMaxCapacity(roomId),
+                        request.UnitDefinition.BaseCost
+                    );
+                }
+            }
+
+            // 5. Energy Cost Check (via DungeonMaster, including crowding surcharge)
+            int requiredCost = request.UnitDefinition.BaseCost + crowdingSurcharge;
+            if (availableEnergy < requiredCost)
+            {
+                return PlacementValidationResult.FailureResult(
+                    PlacementStatus.InsufficientEnergy,
+                    crowdingSurcharge > 0
+                        ? $"Insufficient Energy. Required: {requiredCost} (Base: {request.UnitDefinition.BaseCost} + Crowding Surcharge: {crowdingSurcharge}), Available: {availableEnergy}."
+                        : $"Insufficient Energy. Required: {requiredCost}, Available: {availableEnergy}.",
+                    costRequired: requiredCost,
+                    capacityRequired: effectiveCapacity,
+                    availableResources: availableEnergy,
+                    availableCapacity: CapacityPool.AvailableCapacity
+                );
+            }
+
+            // 6. Global Dungeon Capacity Limit Check
             if (!CapacityPool.CanAccommodate(effectiveCapacity))
             {
                 return PlacementValidationResult.FailureResult(
@@ -239,6 +270,13 @@ namespace SBGames.Placement
                 return false;
             }
 
+            // Register unit with room capacity tracker if inside a room
+            if (RoomCapacityTracker != null && RoomCapacityTracker.HasRoomAt(request.GridPosition))
+            {
+                int roomId = RoomCapacityTracker.GetRoomId(request.GridPosition);
+                RoomCapacityTracker.RegisterUnit(roomId, placedUnit);
+            }
+
             OnUnitPlaced?.Invoke(placedUnit);
             return true;
         }
@@ -268,6 +306,13 @@ namespace SBGames.Placement
 
             // Release exact capacity consumed by this unit instance
             CapacityPool.Release(removedUnit.CapacityConsumed);
+
+            // Unregister unit from room capacity tracker if inside a room
+            if (RoomCapacityTracker != null && RoomCapacityTracker.HasRoomAt(gridPosition))
+            {
+                int roomId = RoomCapacityTracker.GetRoomId(gridPosition);
+                RoomCapacityTracker.UnregisterUnit(roomId, removedUnit);
+            }
 
             // Process optional energy refund directly to DungeonMaster
             bool isRefunded = false;

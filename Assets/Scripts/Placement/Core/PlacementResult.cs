@@ -28,7 +28,10 @@ namespace SBGames.Placement
         PhaseLocked = 6,
 
         /// <summary>Target cell is in a non-buildable zone (e.g. Entrance room or void).</summary>
-        NonBuildableCell = 7
+        NonBuildableCell = 7,
+
+        /// <summary>Target room has reached its maximum monster capacity limit.</summary>
+        ExceedsRoomCapacity = 8
     }
 
     /// <summary>

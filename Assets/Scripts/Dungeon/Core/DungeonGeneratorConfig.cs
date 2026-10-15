@@ -12,7 +12,7 @@ namespace SBGames.Dungeon.Core
         public int minNormalRooms = 5;
         public int maxNormalRooms = 8;
         public float branchProbability = 0.35f;
-        public float loopProbability = 0.25f;
+        public float loopProbability = 0f;
         public int safeRoomCount = 1;
 
         // Spatial metrics for tile placement and world positioning
@@ -27,7 +27,7 @@ namespace SBGames.Dungeon.Core
             int minNormalRooms,
             int maxNormalRooms,
             float branchProbability = 0.35f,
-            float loopProbability = 0.25f,
+            float loopProbability = 0f,
             int safeRoomCount = 1,
             int roomWidth = 10,
             int roomHeight = 10,

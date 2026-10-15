@@ -116,7 +116,7 @@ namespace SBGames.Placement
 
         private void OnDestroy()
         {
-            if (placementManager != null)
+            if (placementManager != null && placementManager.onPhaseChanged != null)
             {
                 placementManager.onPhaseChanged.RemoveListener(HandlePhaseChanged);
             }

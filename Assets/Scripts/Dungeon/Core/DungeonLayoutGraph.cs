@@ -185,9 +185,11 @@ namespace SBGames.Dungeon.Core
             out GridCoord maxTile)
         {
             if (!_roomsById.TryGetValue(door.RoomAId, out var roomA) ||
-                !_roomsById.TryGetValue(door.RoomBId, out var roomB))
+                !_roomsById.TryGetValue(door.RoomBId, out var roomB) ||
+                config.corridorLength <= 0)
             {
-                minTile = maxTile = new GridCoord(0, 0);
+                minTile = new GridCoord(0, 0);
+                maxTile = new GridCoord(-1, -1);
                 return;
             }
 
@@ -227,6 +229,46 @@ namespace SBGames.Dungeon.Core
                 int midX = (minA.X + maxA.X) / 2;
                 minTile = new GridCoord(midX - halfCorridor, startY);
                 maxTile = new GridCoord(minTile.X + config.corridorWidth - 1, endY);
+            }
+        }
+
+        /// <summary>
+        /// Calculates the continuous tile-space coordinate of a doorway.
+        /// If corridorLength > 0, returns the center of the corridor.
+        /// If corridorLength == 0, returns the exact seam between the two adjacent touching rooms.
+        /// Zero UnityEngine references.
+        /// </summary>
+        public bool TryGetDoorTilePosition(
+            DungeonDoorConnection door,
+            DungeonGeneratorConfig config,
+            out float posX,
+            out float posY)
+        {
+            if (!_roomsById.TryGetValue(door.RoomAId, out var roomA) ||
+                !_roomsById.TryGetValue(door.RoomBId, out var roomB))
+            {
+                posX = posY = 0f;
+                return false;
+            }
+
+            if (config.corridorLength == 0)
+            {
+                int stepX = config.roomWidth;
+                int stepY = config.roomHeight;
+                float centerAX = roomA.MacroCoord.X * stepX;
+                float centerAY = roomA.MacroCoord.Y * stepY;
+                float centerBX = roomB.MacroCoord.X * stepX;
+                float centerBY = roomB.MacroCoord.Y * stepY;
+                posX = (centerAX + centerBX) * 0.5f;
+                posY = (centerAY + centerBY) * 0.5f;
+                return true;
+            }
+            else
+            {
+                GetCorridorTileBounds(door, config, out var cMin, out var cMax);
+                posX = (cMin.X + cMax.X) * 0.5f;
+                posY = (cMin.Y + cMax.Y) * 0.5f;
+                return true;
             }
         }
 
@@ -283,12 +325,15 @@ namespace SBGames.Dungeon.Core
             }
 
             // 3. Check if inside any corridor -> buildable
-            for (int i = 0; i < _doors.Count; i++)
+            if (config.corridorLength > 0)
             {
-                GetCorridorTileBounds(_doors[i], config, out var cMin, out var cMax);
-                if (cellX >= cMin.X && cellX <= cMax.X && cellY >= cMin.Y && cellY <= cMax.Y)
+                for (int i = 0; i < _doors.Count; i++)
                 {
-                    return true;
+                    GetCorridorTileBounds(_doors[i], config, out var cMin, out var cMax);
+                    if (cellX >= cMin.X && cellX <= cMax.X && cellY >= cMin.Y && cellY <= cMax.Y)
+                    {
+                        return true;
+                    }
                 }
             }
 

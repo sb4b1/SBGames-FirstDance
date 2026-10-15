@@ -12,6 +12,8 @@ namespace SBGames.Dungeon.Markers
         [SerializeField] private bool isSafeRoom;
         [SerializeField] private bool isBossRoom;
         [SerializeField] private bool isHazardous;
+        [SerializeField, Min(1)] private int maxMonsterCapacity = 6;
+        [SerializeField, Min(0)] private int softMonsterCapacity = 4;
         [SerializeField] private List<DoorMarker> exits = new List<DoorMarker>();
 
         public int RoomId
@@ -38,6 +40,18 @@ namespace SBGames.Dungeon.Markers
         {
             get => isHazardous;
             set => isHazardous = value;
+        }
+
+        public int MaxMonsterCapacity
+        {
+            get => maxMonsterCapacity;
+            set => maxMonsterCapacity = Mathf.Max(1, value);
+        }
+
+        public int SoftMonsterCapacity
+        {
+            get => softMonsterCapacity;
+            set => softMonsterCapacity = Mathf.Max(0, value);
         }
 
         public IReadOnlyList<DoorMarker> Exits => exits;

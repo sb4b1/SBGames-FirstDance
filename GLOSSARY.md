@@ -40,3 +40,32 @@ _Avoid_: Fear trigger, pack scatter
 A ScriptableObject configuration defining normalized scoring weights (proximity, health deficit, damage intake, cluster density) used to rank target priority for AI perception.
 _Avoid_: Aggro table, threat list
 
+**Dungeon Piece**:
+One authored map chunk filling exactly one macro cell (roomWidth x roomHeight placement cells).
+_Avoid_: Tile, room prefab, map block
+
+**Piece Set**:
+A themed collection of Dungeon Pieces that author a cohesive dungeon environment.
+_Avoid_: Tileset, palette, theme pack
+
+**Opening**:
+A doorway side of a Dungeon Piece aligned with a CardinalDirection where an exit or corridor connects.
+_Avoid_: Door slot, socket, entrance port
+
+**Opening Cap**:
+A static barrier or wall chunk placed to seal an unused Opening on a placed Dungeon Piece.
+_Avoid_: Wall plug, blocker, door seal
+
+**Footprint**:
+The macro cell dimensions of a Dungeon Piece on the layout grid (strictly 1x1 in v1).
+_Avoid_: Size, area, span
+
+**Buildable Mask**:
+A piece-local binary grid defining the specific interior cells where the Dungeon Master is permitted to place defenders and traps.
+_Avoid_: Placement layer, spawn zone, build zone
+
+**Layout Graph**:
+The mathematical macro graph (DungeonLayoutGraph) representing room nodes, cardinal connections, and reachability.
+_Avoid_: Dungeon map, floor plan, grid tree
+
+

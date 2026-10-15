@@ -2,8 +2,10 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using SBGames.Dungeon.Core;
+using SBGames.Dungeon.Core.Pieces;
 using SBGames.Dungeon.Markers;
 using SBGames.Dungeon.Unity;
+using SBGames.Dungeon.Unity.Pieces;
 using SBGames.Placement;
 using SBGames.Loop;
 
@@ -12,12 +14,12 @@ namespace SBGames.Tests
     [TestFixture]
     public class DungeonGeneratorTests
     {
-        private List<GameObject> _spawnedObjects;
+        private List<Object> _spawnedObjects;
 
         [SetUp]
         public void SetUp()
         {
-            _spawnedObjects = new List<GameObject>();
+            _spawnedObjects = new List<Object>();
             DungeonRoomRegistry.Clear();
         }
 
@@ -38,10 +40,10 @@ namespace SBGames.Tests
             }
         }
 
-        private GameObject Track(GameObject go)
+        private T Track<T>(T obj) where T : Object
         {
-            _spawnedObjects.Add(go);
-            return go;
+            _spawnedObjects.Add(obj);
+            return obj;
         }
 
         private class MockUnitDefinition : IUnitPlacementDefinition
@@ -255,6 +257,94 @@ namespace SBGames.Tests
                 }
             }
             Assert.IsTrue(foundSafeRoom, "At least one room must be registered as SafeRoomMarker.");
+        }
+
+        [Test]
+        public void DungeonLayoutGraph_CorridorLengthZero_ProducesEmptyCorridorAndExactSeamDoorPosition()
+        {
+            var graph = new DungeonLayoutGraph();
+            var nodeA = new DungeonLayoutNode(1, DungeonRoomType.Entrance, new GridCoord(0, 0), depth: 0);
+            var nodeB = new DungeonLayoutNode(2, DungeonRoomType.Normal, new GridCoord(1, 0), depth: 1);
+            graph.AddRoom(nodeA);
+            graph.AddRoom(nodeB);
+
+            var door = new DungeonDoorConnection(1, 1, 2, CardinalDirection.East, isBossDoor: false);
+            graph.AddDoor(door);
+
+            // Test corridorLength == 0 (Touching pieces)
+            var config0 = new DungeonGeneratorConfig(1, 1, roomWidth: 10, roomHeight: 10, corridorLength: 0);
+            graph.GetCorridorTileBounds(door, config0, out var min0, out var max0);
+            Assert.IsTrue(min0.X > max0.X, "Corridor tile bounds must be empty when corridorLength == 0.");
+
+            bool hasDoorPos0 = graph.TryGetDoorTilePosition(door, config0, out float doorX0, out float doorY0);
+            Assert.IsTrue(hasDoorPos0);
+            Assert.AreEqual(5.0f, doorX0, 0.001f, "Door on East seam between rooms at (0, 0) and (1, 0) of width 10 must be at X = 5.0.");
+            Assert.AreEqual(0.0f, doorY0, 0.001f, "Door on East seam must be at Y = 0.0.");
+
+            // Test corridorLength > 0 (Standard corridor)
+            var config4 = new DungeonGeneratorConfig(1, 1, roomWidth: 10, roomHeight: 10, corridorLength: 4);
+            graph.GetCorridorTileBounds(door, config4, out var min4, out var max4);
+            Assert.AreEqual(5, min4.X, "Corridor startX should be maxA.X + 1 = 5.");
+            Assert.AreEqual(8, max4.X, "Corridor endX should be minB.X - 1 = 8.");
+
+            bool hasDoorPos4 = graph.TryGetDoorTilePosition(door, config4, out float doorX4, out float doorY4);
+            Assert.IsTrue(hasDoorPos4);
+            Assert.AreEqual((min4.X + max4.X) * 0.5f, doorX4, 0.001f, "Door must be at center of corridor.");
+        }
+
+        [Test]
+        public void DungeonRuntimeBuilder_WithPieceSet_SelectsPiecesRotatesAndCapsOpenings()
+        {
+            var pieceSet = Track(ScriptableObject.CreateInstance<PieceSetSO>());
+
+            // Create piece prefabs covering all 4 room types with 4-way openings
+            var entrancePrefab = Track(new GameObject("Piece_Entrance"));
+            var pEntrance = entrancePrefab.AddComponent<DungeonPiece>();
+            pEntrance.RoomType = DungeonRoomType.Entrance;
+            pEntrance.Openings = OpeningFlags.All;
+            pEntrance.IsRotatable = false;
+            pEntrance.FillBuildableBox(10, 10, margin: 1);
+            pieceSet.AddPiecePrefab(entrancePrefab);
+
+            var normalPrefab = Track(new GameObject("Piece_Normal"));
+            var pNormal = normalPrefab.AddComponent<DungeonPiece>();
+            pNormal.RoomType = DungeonRoomType.Normal;
+            pNormal.Openings = OpeningFlags.All;
+            pNormal.IsRotatable = true;
+            pNormal.FillBuildableBox(10, 10, margin: 1);
+            pieceSet.AddPiecePrefab(normalPrefab);
+
+            var safePrefab = Track(new GameObject("Piece_SafeRoom"));
+            var pSafe = safePrefab.AddComponent<DungeonPiece>();
+            pSafe.RoomType = DungeonRoomType.SafeRoom;
+            pSafe.Openings = OpeningFlags.All;
+            pSafe.IsRotatable = true;
+            pSafe.FillBuildableBox(10, 10, margin: 1);
+            pieceSet.AddPiecePrefab(safePrefab);
+
+            var bossPrefab = Track(new GameObject("Piece_Boss"));
+            var pBoss = bossPrefab.AddComponent<DungeonPiece>();
+            pBoss.RoomType = DungeonRoomType.Boss;
+            pBoss.Openings = OpeningFlags.All;
+            pBoss.IsRotatable = true;
+            pBoss.FillBuildableBox(10, 10, margin: 1);
+            pieceSet.AddPiecePrefab(bossPrefab);
+
+            var configSO = Track(ScriptableObject.CreateInstance<DungeonGeneratorConfigSO>());
+            configSO.SetPieceSetForTesting(pieceSet);
+            configSO.SetCorridorLengthForTesting(0);
+
+            var builderGo = Track(new GameObject("DungeonBuilder_PieceSet"));
+            var builder = builderGo.AddComponent<DungeonRuntimeBuilder>();
+            builder.SetConfigSOForTesting(configSO);
+
+            var graph = builder.GenerateDungeonForRun(555);
+
+            Assert.IsNotNull(graph);
+            Assert.IsTrue(builder.HasGenerated);
+            Assert.AreEqual(graph.Rooms.Count, DungeonRoomRegistry.Rooms.Count);
+            Assert.AreEqual(graph.Doors.Count, DungeonRoomRegistry.Doors.Count);
+            Assert.IsTrue(DungeonRoomRegistry.HasEntrance);
         }
     }
 }

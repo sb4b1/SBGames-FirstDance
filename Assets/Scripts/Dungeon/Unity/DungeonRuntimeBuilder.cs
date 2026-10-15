@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using NavMeshPlus.Components;
 using SBGames.Dungeon.Core;
+using SBGames.Dungeon.Core.Pieces;
 using SBGames.Dungeon.Markers;
+using SBGames.Dungeon.Unity.Pieces;
 using SBGames.Placement;
 using SBGames.Loop;
 using SB4b1.GameMath;
@@ -14,6 +16,7 @@ namespace SBGames.Dungeon.Unity
     /// Runtime MonoBehaviour coordinator for procedural dungeon instantiation.
     /// Wires pure C# DungeonLayoutGraph to Unity GameObjects, RoomVolume/DoorMarker markers,
     /// DungeonRoomRegistry, DungeonPlacementManager buildable grids, and 2D NavMesh rebuilding.
+    /// Supports authored PieceSet selection, rotation, opening caps, and seed retries.
     /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("SBGames/Dungeon/Dungeon Runtime Builder")]
@@ -24,6 +27,10 @@ namespace SBGames.Dungeon.Unity
         [SerializeField] private int initialSeed = 12345;
         [SerializeField] private bool useRandomSeed = true;
         [SerializeField] private bool autoGenerateOnStart = true;
+
+        [Header("Piece Selection & Retries")]
+        [Tooltip("Maximum attempts to generate a layout and select matching pieces before falling back.")]
+        [SerializeField, Range(1, 20)] private int maxGenerationRetries = 5;
 
         [Header("NavMesh")]
         [Tooltip("If true, triggers 2D NavMesh surface bake after instantiating dungeon geometry.")]
@@ -43,6 +50,8 @@ namespace SBGames.Dungeon.Unity
 
         public DungeonLayoutGraph CurrentGraph => _currentGraph;
         public bool HasGenerated => _hasGenerated;
+
+        public void SetConfigSOForTesting(DungeonGeneratorConfigSO config) => configSO = config;
 
         private void Awake()
         {
@@ -87,6 +96,7 @@ namespace SBGames.Dungeon.Unity
         /// <summary>
         /// Generates the dungeon layout, instantiates rooms and doors, configures registry,
         /// builds placement validation rules, and bakes NavMesh.
+        /// Retries with a derived seed if piece selection coverage fails.
         /// </summary>
         public DungeonLayoutGraph GenerateDungeonForRun(int seed)
         {
@@ -97,7 +107,85 @@ namespace SBGames.Dungeon.Unity
             // 2. Prepare Pure C# configuration and generator
             var coreConfig = configSO != null ? configSO.ToCoreConfig() : new DungeonGeneratorConfig();
             var generator = new DungeonLayoutGenerator();
-            _currentGraph = generator.Generate(seed, coreConfig);
+
+            PieceSetSO pieceSet = configSO != null ? configSO.PieceSet : null;
+            if (pieceSet != null)
+            {
+                if (pieceSet.CellSize.x != coreConfig.roomWidth || pieceSet.CellSize.y != coreConfig.roomHeight)
+                {
+                    Debug.LogError($"[DungeonRuntimeBuilder] PieceSet cell size ({pieceSet.CellSize.x}x{pieceSet.CellSize.y}) does not match generator config room size ({coreConfig.roomWidth}x{coreConfig.roomHeight})! Falling back to procedural room templates.");
+                    pieceSet = null;
+                }
+            }
+
+            var pieceDescriptors = pieceSet != null ? pieceSet.GetDescriptors() : null;
+            if (pieceSet != null && (pieceDescriptors == null || pieceDescriptors.Count == 0))
+            {
+                Debug.LogWarning($"[DungeonRuntimeBuilder] PieceSet '{pieceSet.ThemeName}' has no piece prefabs. Falling back to procedural room templates.");
+                pieceSet = null;
+            }
+
+            int usedSeed = seed;
+            DungeonLayoutGraph generatedGraph = null;
+            Dictionary<int, DungeonPieceSelectionResult> selectedPieces = null;
+
+            // Retry loop up to maxGenerationRetries
+            for (int attempt = 0; attempt < maxGenerationRetries; attempt++)
+            {
+                usedSeed = (attempt == 0) ? seed : unchecked(seed * 397 ^ (attempt * 10007 + 54321));
+                var graph = generator.Generate(usedSeed, coreConfig);
+
+                if (pieceSet != null && pieceDescriptors != null && pieceDescriptors.Count > 0)
+                {
+                    var rng = new GameRngDungeonAdapter((uint)Math.Abs(usedSeed + 101));
+                    var usageCounts = new Dictionary<string, int>();
+                    var roomSelections = new Dictionary<int, DungeonPieceSelectionResult>();
+                    bool allMatched = true;
+
+                    foreach (var node in graph.Rooms.Values)
+                    {
+                        var requiredDoors = OpeningFlagsExtensions.FromDirections(node.DoorsByDirection.Keys);
+                        var result = DungeonPieceSelector.SelectPiece(node.RoomType, requiredDoors, pieceDescriptors, usageCounts, rng);
+
+                        if (!result.Success)
+                        {
+                            allMatched = false;
+                            break;
+                        }
+
+                        roomSelections[node.RoomId] = result;
+                        string pieceId = result.SelectedPiece.PieceId;
+                        usageCounts[pieceId] = usageCounts.TryGetValue(pieceId, out int cnt) ? cnt + 1 : 1;
+                    }
+
+                    if (allMatched)
+                    {
+                        generatedGraph = graph;
+                        selectedPieces = roomSelections;
+                        Debug.Log($"[DungeonRuntimeBuilder] Dungeon generated successfully using seed: {usedSeed} (attempt {attempt + 1}/{maxGenerationRetries}) with PieceSet '{pieceSet.ThemeName}'.");
+                        break;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[DungeonRuntimeBuilder] Attempt {attempt + 1}/{maxGenerationRetries} with seed {usedSeed} failed piece selection coverage. Retrying with derived seed...");
+                    }
+                }
+                else
+                {
+                    generatedGraph = graph;
+                    Debug.Log($"[DungeonRuntimeBuilder] Dungeon generated successfully using seed: {usedSeed} (attempt {attempt + 1}/{maxGenerationRetries}).");
+                    break;
+                }
+            }
+
+            if (generatedGraph == null)
+            {
+                Debug.LogError($"[DungeonRuntimeBuilder] All {maxGenerationRetries} generation attempts failed piece selection. Generating fallback layout without PieceSet.");
+                generatedGraph = generator.Generate(seed, coreConfig);
+                selectedPieces = null;
+            }
+
+            _currentGraph = generatedGraph;
 
             float cell = configSO != null ? configSO.CellSize : 1.0f;
             int stepTileX = coreConfig.roomWidth + coreConfig.corridorLength;
@@ -117,22 +205,39 @@ namespace SBGames.Dungeon.Unity
                 );
 
                 GameObject roomGo = null;
-                GameObject prefab = GetRoomPrefab(node.RoomType);
+                OpeningFlags cappedSides = OpeningFlags.None;
 
-                if (prefab != null)
+                if (pieceSet != null && selectedPieces != null && selectedPieces.TryGetValue(node.RoomId, out var selection) && selection.Success)
                 {
-                    roomGo = Instantiate(prefab, roomCenterWorld, Quaternion.identity, dungeonParent);
+                    int quarterTurns = selection.QuarterTurns;
+                    cappedSides = selection.CappedSides;
+                    GameObject piecePrefab = pieceSet.GetPrefabForPiece(selection.SelectedPiece.PieceId);
+                    Quaternion pieceRot = Quaternion.Euler(0f, 0f, -90f * quarterTurns);
+
+                    if (piecePrefab != null)
+                    {
+                        roomGo = Instantiate(piecePrefab, roomCenterWorld, pieceRot, dungeonParent);
+                    }
                 }
-                else
-                {
-                    // Fallback procedural room GameObject
-                    roomGo = new GameObject($"Room_{node.RoomId}_{node.RoomType}");
-                    roomGo.transform.SetParent(dungeonParent);
-                    roomGo.transform.position = roomCenterWorld;
 
-                    var boxCol = roomGo.AddComponent<BoxCollider2D>();
-                    boxCol.size = new Vector2(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell);
-                    boxCol.isTrigger = true;
+                if (roomGo == null)
+                {
+                    GameObject prefab = GetRoomPrefab(node.RoomType);
+                    if (prefab != null)
+                    {
+                        roomGo = Instantiate(prefab, roomCenterWorld, Quaternion.identity, dungeonParent);
+                    }
+                    else
+                    {
+                        // Fallback procedural room GameObject
+                        roomGo = new GameObject($"Room_{node.RoomId}_{node.RoomType}");
+                        roomGo.transform.SetParent(dungeonParent);
+                        roomGo.transform.position = roomCenterWorld;
+
+                        var boxCol = roomGo.AddComponent<BoxCollider2D>();
+                        boxCol.size = new Vector2(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell);
+                        boxCol.isTrigger = true;
+                    }
                 }
 
                 _spawnedObjects.Add(roomGo);
@@ -151,6 +256,26 @@ namespace SBGames.Dungeon.Unity
                     new Vector3(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell, 2f)
                 ));
 
+                switch (node.RoomType)
+                {
+                    case DungeonRoomType.Boss:
+                        roomVolume.SoftMonsterCapacity = 6;
+                        roomVolume.MaxMonsterCapacity = 10;
+                        break;
+                    case DungeonRoomType.SafeRoom:
+                        roomVolume.SoftMonsterCapacity = 0;
+                        roomVolume.MaxMonsterCapacity = 2;
+                        break;
+                    case DungeonRoomType.Entrance:
+                        roomVolume.SoftMonsterCapacity = 0;
+                        roomVolume.MaxMonsterCapacity = 0;
+                        break;
+                    default: // Normal
+                        roomVolume.SoftMonsterCapacity = 4;
+                        roomVolume.MaxMonsterCapacity = 6;
+                        break;
+                }
+
                 if (node.RoomType == DungeonRoomType.SafeRoom)
                 {
                     if (roomGo.GetComponent<SafeRoomMarker>() == null)
@@ -165,6 +290,12 @@ namespace SBGames.Dungeon.Unity
 
                 DungeonRoomRegistry.RegisterRoom(roomVolume);
                 roomInstances[node.RoomId] = roomVolume;
+
+                // Instantiate Opening Caps for sides with an Opening but no door
+                if (cappedSides != OpeningFlags.None)
+                {
+                    SpawnOpeningCaps(node, roomCenterWorld, cappedSides, coreConfig, cell, dungeonParent);
+                }
             }
 
             // 4. Instantiate Doors & Connecting Corridors
@@ -177,12 +308,8 @@ namespace SBGames.Dungeon.Unity
                     continue;
                 }
 
-                _currentGraph.GetCorridorTileBounds(door, coreConfig, out var cMinTile, out var cMaxTile);
-                Vector3 corridorCenterWorld = new Vector3(
-                    ((cMinTile.X + cMaxTile.X) * 0.5f) * cell,
-                    ((cMinTile.Y + cMaxTile.Y) * 0.5f) * cell,
-                    0f
-                );
+                _currentGraph.TryGetDoorTilePosition(door, coreConfig, out float doorTileX, out float doorTileY);
+                Vector3 doorWorldPos = new Vector3(doorTileX * cell, doorTileY * cell, 0f);
 
                 GameObject doorGo = null;
                 GameObject doorPrefab = door.IsBossDoor
@@ -191,13 +318,13 @@ namespace SBGames.Dungeon.Unity
 
                 if (doorPrefab != null)
                 {
-                    doorGo = Instantiate(doorPrefab, corridorCenterWorld, Quaternion.identity, dungeonParent);
+                    doorGo = Instantiate(doorPrefab, doorWorldPos, Quaternion.identity, dungeonParent);
                 }
                 else
                 {
                     doorGo = new GameObject($"Door_{door.DoorId}" + (door.IsBossDoor ? "_Boss" : ""));
                     doorGo.transform.SetParent(dungeonParent);
-                    doorGo.transform.position = corridorCenterWorld;
+                    doorGo.transform.position = doorWorldPos;
                 }
 
                 _spawnedObjects.Add(doorGo);
@@ -224,10 +351,10 @@ namespace SBGames.Dungeon.Unity
             }
 
             // 5. Seal unused doorway sockets with wall colliders
-            SpawnWallColliders(_currentGraph, coreConfig, cell, dungeonParent);
+            SpawnWallColliders(_currentGraph, selectedPieces, coreConfig, cell, dungeonParent);
 
             // 6. Integrate with DungeonPlacementManager
-            ConfigurePlacementGrid(_currentGraph, coreConfig, cell);
+            ConfigurePlacementGrid(_currentGraph, selectedPieces, coreConfig, cell);
 
             // 7. Rebuild NavMesh if surface is present
             if (rebuildNavMesh)
@@ -252,13 +379,69 @@ namespace SBGames.Dungeon.Unity
             }
         }
 
-        private void SpawnWallColliders(
-            DungeonLayoutGraph graph,
+        private void SpawnOpeningCaps(
+            DungeonLayoutNode node,
+            Vector3 roomCenterWorld,
+            OpeningFlags cappedSides,
             DungeonGeneratorConfig config,
             float cell,
             Transform parent)
         {
-            // Seal perimeter for every room where no doorway exists
+            float halfW = (config.roomWidth * 0.5f) * cell;
+            float halfH = (config.roomHeight * 0.5f) * cell;
+            float wallThickness = 0.5f * cell;
+            GameObject capPrefab = configSO?.PieceSet?.OpeningCapPrefab != null
+                ? configSO.PieceSet.OpeningCapPrefab
+                : configSO?.WallPrefab;
+
+            var directions = cappedSides.ToDirections();
+            for (int i = 0; i < directions.Count; i++)
+            {
+                var dir = directions[i];
+                var (dx, dy) = dir.ToOffset();
+                Vector3 capPos = roomCenterWorld + new Vector3(dx * halfW, dy * halfH, 0f);
+
+                float angle = 0f;
+                if (dir == CardinalDirection.East) angle = -90f;
+                else if (dir == CardinalDirection.South) angle = 180f;
+                else if (dir == CardinalDirection.West) angle = 90f;
+
+                Quaternion capRot = Quaternion.Euler(0f, 0f, angle);
+                GameObject capGo = null;
+
+                if (capPrefab != null)
+                {
+                    capGo = Instantiate(capPrefab, capPos, capRot, parent);
+                }
+                else
+                {
+                    capGo = new GameObject($"OpeningCap_{node.RoomId}_{dir}");
+                    capGo.transform.SetParent(parent);
+                    capGo.transform.position = capPos;
+                    capGo.transform.rotation = capRot;
+
+                    var col = capGo.AddComponent<BoxCollider2D>();
+                    if (dir == CardinalDirection.North || dir == CardinalDirection.South)
+                    {
+                        col.size = new Vector2(config.corridorWidth * cell, wallThickness);
+                    }
+                    else
+                    {
+                        col.size = new Vector2(wallThickness, config.corridorWidth * cell);
+                    }
+                }
+
+                _spawnedObjects.Add(capGo);
+            }
+        }
+
+        private void SpawnWallColliders(
+            DungeonLayoutGraph graph,
+            Dictionary<int, DungeonPieceSelectionResult> selectedPieces,
+            DungeonGeneratorConfig config,
+            float cell,
+            Transform parent)
+        {
             float halfW = (config.roomWidth * 0.5f) * cell;
             float halfH = (config.roomHeight * 0.5f) * cell;
             float wallThickness = 0.5f * cell;
@@ -269,12 +452,25 @@ namespace SBGames.Dungeon.Unity
                 int stepY = config.roomHeight + config.corridorLength;
                 Vector3 roomCenter = new Vector3(node.MacroCoord.X * stepX * cell, node.MacroCoord.Y * stepY * cell, 0f);
 
+                OpeningFlags pieceOpenings = OpeningFlags.None;
+                bool hasPiece = false;
+                if (selectedPieces != null && selectedPieces.TryGetValue(node.RoomId, out var sel) && sel.Success)
+                {
+                    hasPiece = true;
+                    pieceOpenings = sel.SelectedPiece.GetRotatedOpenings(sel.QuarterTurns);
+                }
+
                 for (int d = 0; d < CardinalDirectionExtensions.All.Length; d++)
                 {
                     var dir = CardinalDirectionExtensions.All[d];
                     if (!node.HasDoor(dir))
                     {
-                        // No door in this direction -> seal with wall collider
+                        // If a piece is placed and has an opening in this direction, it was already sealed by SpawnOpeningCaps
+                        if (hasPiece && pieceOpenings.ContainsDirection(dir))
+                        {
+                            continue;
+                        }
+
                         var wallGo = new GameObject($"Wall_{node.RoomId}_{dir}");
                         wallGo.transform.SetParent(parent);
                         _spawnedObjects.Add(wallGo);
@@ -299,6 +495,7 @@ namespace SBGames.Dungeon.Unity
 
         private void ConfigurePlacementGrid(
             DungeonLayoutGraph graph,
+            Dictionary<int, DungeonPieceSelectionResult> selectedPieces,
             DungeonGeneratorConfig config,
             float cell)
         {
@@ -311,7 +508,6 @@ namespace SBGames.Dungeon.Unity
 
             graph.GetTotalTileBounds(config, out var minTile, out var maxTile);
 
-            // Compute grid bounds with 1-tile outer padding
             int padding = 1;
             int originTileX = minTile.X - padding;
             int originTileY = minTile.Y - padding;
@@ -321,11 +517,68 @@ namespace SBGames.Dungeon.Unity
             Vector3 gridOrigin = new Vector3(originTileX * cell, originTileY * cell, 0f);
             Vector2Int gridSize = new Vector2Int(gridTilesW, gridTilesH);
 
-            // Collect all buildable cells (Normal, Safe, Boss rooms & corridors) in grid coordinates
-            var coreBuildable = graph.GetBuildableCells(config);
-            var gridBuildableCells = new HashSet<Vector2Int>();
+            var buildableTiles = new HashSet<GridCoord>();
 
-            foreach (var c in coreBuildable)
+            // 1. Process rooms (Entrance is strictly NON-buildable)
+            foreach (var node in graph.Rooms.Values)
+            {
+                if (node.RoomType == DungeonRoomType.Entrance) continue;
+
+                graph.GetRoomTileBounds(node, config, out var rMin, out var rMax);
+
+                if (selectedPieces != null && selectedPieces.TryGetValue(node.RoomId, out var sel) && sel.Success)
+                {
+                    var rotatedMask = sel.SelectedPiece.GetRotatedBuildableMask(sel.QuarterTurns, config.roomWidth);
+                    if (rotatedMask != null && rotatedMask.Count > 0)
+                    {
+                        foreach (var localCoord in rotatedMask)
+                        {
+                            buildableTiles.Add(new GridCoord(rMin.X + localCoord.X, rMin.Y + localCoord.Y));
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: all room cells if mask is empty
+                        for (int x = rMin.X; x <= rMax.X; x++)
+                        {
+                            for (int y = rMin.Y; y <= rMax.Y; y++)
+                            {
+                                buildableTiles.Add(new GridCoord(x, y));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    for (int x = rMin.X; x <= rMax.X; x++)
+                    {
+                        for (int y = rMin.Y; y <= rMax.Y; y++)
+                        {
+                            buildableTiles.Add(new GridCoord(x, y));
+                        }
+                    }
+                }
+            }
+
+            // 2. Process connecting corridors (when corridorLength > 0)
+            if (config.corridorLength > 0)
+            {
+                for (int i = 0; i < graph.Doors.Count; i++)
+                {
+                    graph.GetCorridorTileBounds(graph.Doors[i], config, out var cMin, out var cMax);
+                    for (int x = cMin.X; x <= cMax.X; x++)
+                    {
+                        for (int y = cMin.Y; y <= cMax.Y; y++)
+                        {
+                            buildableTiles.Add(new GridCoord(x, y));
+                        }
+                    }
+                }
+            }
+
+            // 3. Convert to grid space
+            var gridBuildableCells = new HashSet<Vector2Int>();
+            foreach (var c in buildableTiles)
             {
                 int gx = c.X - originTileX;
                 int gy = c.Y - originTileY;

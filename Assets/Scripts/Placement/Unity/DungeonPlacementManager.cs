@@ -55,12 +55,12 @@ namespace SBGames.Placement
         [SerializeField] private Transform unitsParent;
 
         [Header("Unity Events for UI Hooks")]
-        public UnityEvent<int, int> onResourcesChanged; // (current, delta)
-        public UnityEvent<int, int> onCapacityChanged;  // (used, max)
-        public UnityEvent<DungeonPhase> onPhaseChanged;
-        public UnityEvent<PlacedUnitInstance> onUnitPlaced;
-        public UnityEvent<PlacedUnitInstance> onUnitRemoved;
-        public UnityEvent<string> onPlacementFailed;
+        public UnityEvent<int, int> onResourcesChanged = new UnityEvent<int, int>(); // (current, delta)
+        public UnityEvent<int, int> onCapacityChanged = new UnityEvent<int, int>();  // (used, max)
+        public UnityEvent<DungeonPhase> onPhaseChanged = new UnityEvent<DungeonPhase>();
+        public UnityEvent<PlacedUnitInstance> onUnitPlaced = new UnityEvent<PlacedUnitInstance>();
+        public UnityEvent<PlacedUnitInstance> onUnitRemoved = new UnityEvent<PlacedUnitInstance>();
+        public UnityEvent<string> onPlacementFailed = new UnityEvent<string>();
 
         // Core system instances
         private DungeonPlacementSystem _system;
@@ -88,6 +88,7 @@ namespace SBGames.Placement
                 if (System != null) System.BuildableCellValidator = value;
             }
         }
+        public DungeonRoomCapacityTracker RoomCapacityTracker { get; private set; }
 
         /// <summary>
         /// Reconfigures placement grid dimensions, origin, and cell validator to match generated dungeon bounds.
@@ -119,7 +120,9 @@ namespace SBGames.Placement
                     newTracker,
                     _system.MultiplierStrategy,
                     PhaseManager,
-                    cellValidator ?? _system.BuildableCellValidator
+                    cellValidator ?? _system.BuildableCellValidator,
+                    RoomCapacityTracker ?? _system.RoomCapacityTracker,
+                    _system.CrowdingStrategy
                 );
 
                 System.OnUnitPlaced += HandleUnitPlaced;
@@ -178,13 +181,16 @@ namespace SBGames.Placement
             var multiplierStrategy = new LinearCapacityMultiplierStrategy();
             PhaseManager = new SimpleDungeonPhaseManager(initialPhase);
             CombatPowerProvider = new DefaultCombatPowerProvider();
+            RoomCapacityTracker = new DungeonRoomCapacityTracker(this);
 
             System = new DungeonPlacementSystem(
                 dungeonMaster,
                 capacityPool,
                 occupancyTracker,
                 multiplierStrategy,
-                PhaseManager
+                PhaseManager,
+                null,
+                RoomCapacityTracker
             );
 
             // Wire internal events to UnityEvents for UI responsiveness
@@ -388,6 +394,14 @@ namespace SBGames.Placement
                 if (OccupancyTracker.UnregisterUnit(unit.GridPosition, out _))
                 {
                     CapacityPool?.Release(unit.CapacityConsumed);
+                    if (RoomCapacityTracker != null)
+                    {
+                        RoomCapacityTracker.UnregisterUnitFromAnyRoom(unit);
+                    }
+                    else if (System?.RoomCapacityTracker != null && System.RoomCapacityTracker.HasRoomAt(unit.GridPosition))
+                    {
+                        System.RoomCapacityTracker.UnregisterUnit(System.RoomCapacityTracker.GetRoomId(unit.GridPosition), unit);
+                    }
                     count++;
                 }
             }
