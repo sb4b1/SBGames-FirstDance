@@ -11,7 +11,8 @@ namespace SBGames.Editor.Dungeon
     public class DungeonPieceEditor : UnityEditor.Editor
     {
         private bool _showBuildableGrid = true;
-        private const int DefaultGridDim = 10;
+        private const int DefaultGridDim = 16;
+        private List<PieceValidationBadge> _manualValidationBadges = null;
 
         public override void OnInspectorGUI()
         {
@@ -21,7 +22,13 @@ namespace SBGames.Editor.Dungeon
             EditorGUILayout.Space(4);
 
             // Validation Badges Header
-            var badges = PieceValidator.ValidatePiece(piece.ToDescriptor(), DefaultGridDim, DefaultGridDim);
+            var badges = _manualValidationBadges ?? PieceValidator.ValidatePiece(
+                piece.ToDescriptor(),
+                DefaultGridDim,
+                DefaultGridDim,
+                openingWidth: 2,
+                piece.GetGroundCellCoords(DefaultGridDim, DefaultGridDim));
+
             if (badges.Count > 0)
             {
                 for (int i = 0; i < badges.Count; i++)
@@ -38,10 +45,77 @@ namespace SBGames.Editor.Dungeon
                 EditorGUILayout.Space(2);
             }
 
+            // Tile Pixel Size validation
+            int targetPpu = 16;
+            var ppuIssues = TilePixelSizeValidator.ValidatePieceTilePixelSize(piece, targetPpu);
+            if (ppuIssues.Count > 0)
+            {
+                for (int i = 0; i < ppuIssues.Count; i++)
+                {
+                    var issue = ppuIssues[i];
+                    using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+                    {
+                        EditorGUILayout.LabelField(issue.Description, EditorStyles.wordWrappedMiniLabel);
+                        if (GUILayout.Button($"Fix PPU ({issue.ExpectedPpu})", EditorStyles.miniButton, GUILayout.Width(90)))
+                        {
+                            TilePixelSizeValidator.FixTexturePpu(issue.AssetPath, issue.ExpectedPpu);
+                        }
+                    }
+                }
+                EditorGUILayout.Space(2);
+            }
+
+            // Quick Actions: Generate Mask & Validate
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Generate Buildable Mask from Ground", GUILayout.Height(28)))
+                {
+                    Undo.RecordObject(piece, "Generate Buildable Mask from Ground");
+                    piece.GenerateBuildableMaskFromGround(margin: 1, openingClearance: 2, cellWidth: DefaultGridDim, cellHeight: DefaultGridDim, openingWidth: 2);
+                    EditorUtility.SetDirty(piece);
+                    _manualValidationBadges = PieceValidator.ValidatePiece(
+                        piece.ToDescriptor(),
+                        DefaultGridDim,
+                        DefaultGridDim,
+                        openingWidth: 2,
+                        piece.GetGroundCellCoords(DefaultGridDim, DefaultGridDim));
+                }
+
+                if (GUILayout.Button("Validate", GUILayout.Height(28), GUILayout.Width(80)))
+                {
+                    _manualValidationBadges = PieceValidator.ValidatePiece(
+                        piece.ToDescriptor(),
+                        DefaultGridDim,
+                        DefaultGridDim,
+                        openingWidth: 2,
+                        piece.GetGroundCellCoords(DefaultGridDim, DefaultGridDim));
+                }
+            }
+
+            EditorGUILayout.Space(6);
+
             // Core Identity
             EditorGUILayout.LabelField("Identity & Room Type", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("pieceId"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("roomType"));
+
+            EditorGUILayout.Space(6);
+
+            // Tilemaps
+            EditorGUILayout.LabelField("Tilemaps (Ground, Walls, Decoration)", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("groundTilemap"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("wallsTilemap"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("decorationTilemap"));
+
+            if (piece.GroundTilemap == null || piece.WallsTilemap == null)
+            {
+                if (GUILayout.Button("Auto-Find Child Tilemaps", EditorStyles.miniButton))
+                {
+                    Undo.RecordObject(piece, "Auto-Find Child Tilemaps");
+                    piece.AutoFindTilemaps();
+                    EditorUtility.SetDirty(piece);
+                }
+            }
 
             EditorGUILayout.Space(6);
 
@@ -121,7 +195,7 @@ namespace SBGames.Editor.Dungeon
             {
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    EditorGUILayout.HelpBox("Click cells to toggle buildable status (green = buildable by DM).", MessageType.None);
+                    EditorGUILayout.HelpBox("Click cells to toggle buildable status (green = buildable by DM). Or paint in Scene View (click-drag, Shift to erase).", MessageType.None);
 
                     using (new EditorGUILayout.HorizontalScope())
                     {
@@ -210,45 +284,27 @@ namespace SBGames.Editor.Dungeon
             float size = DefaultGridDim;
             float half = size * 0.5f;
 
-            // Draw outer cell boundary
-            Handles.color = new Color(0.2f, 0.8f, 1f, 0.7f);
+            // 1. Draw outer 16x16 cell boundary
+            Handles.color = new Color(0.2f, 0.8f, 1f, 0.8f);
             Vector3 p0 = center + new Vector3(-half, -half, 0f);
             Vector3 p1 = center + new Vector3(half, -half, 0f);
             Vector3 p2 = center + new Vector3(half, half, 0f);
             Vector3 p3 = center + new Vector3(-half, half, 0f);
             Handles.DrawPolyLine(p0, p1, p2, p3, p0);
 
-            // Draw Opening indicators along edges
-            var openings = piece.Openings;
+            // 2. Draw 2-tile Opening markers and interactive toggle handles
             float openingWidth = 2.0f;
-            Handles.color = Color.green;
+            DrawOpeningHandle(piece, CardinalDirection.North, center + new Vector3(0f, half, 0f), new Vector3(openingWidth, 0.4f, 0.1f));
+            DrawOpeningHandle(piece, CardinalDirection.South, center + new Vector3(0f, -half, 0f), new Vector3(openingWidth, 0.4f, 0.1f));
+            DrawOpeningHandle(piece, CardinalDirection.East, center + new Vector3(half, 0f, 0f), new Vector3(0.4f, openingWidth, 0.1f));
+            DrawOpeningHandle(piece, CardinalDirection.West, center + new Vector3(-half, 0f, 0f), new Vector3(0.4f, openingWidth, 0.1f));
 
-            if (openings.ContainsDirection(CardinalDirection.North))
-            {
-                Vector3 nMid = center + new Vector3(0f, half, 0f);
-                Handles.DrawLine(nMid - new Vector3(openingWidth * 0.5f, 0f, 0f), nMid + new Vector3(openingWidth * 0.5f, 0f, 0f), 4f);
-            }
-            if (openings.ContainsDirection(CardinalDirection.South))
-            {
-                Vector3 sMid = center + new Vector3(0f, -half, 0f);
-                Handles.DrawLine(sMid - new Vector3(openingWidth * 0.5f, 0f, 0f), sMid + new Vector3(openingWidth * 0.5f, 0f, 0f), 4f);
-            }
-            if (openings.ContainsDirection(CardinalDirection.East))
-            {
-                Vector3 eMid = center + new Vector3(half, 0f, 0f);
-                Handles.DrawLine(eMid - new Vector3(0f, openingWidth * 0.5f, 0f), eMid + new Vector3(0f, openingWidth * 0.5f, 0f), 4f);
-            }
-            if (openings.ContainsDirection(CardinalDirection.West))
-            {
-                Vector3 wMid = center + new Vector3(-half, 0f, 0f);
-                Handles.DrawLine(wMid - new Vector3(0f, openingWidth * 0.5f, 0f), wMid + new Vector3(0f, openingWidth * 0.5f, 0f), 4f);
-            }
-
-            // Draw buildable cells overlay
-            Handles.color = new Color(0.2f, 0.9f, 0.3f, 0.25f);
+            // 3. Draw buildable mask overlay
             Vector3 origin = center - new Vector3(half, half, 0f);
-            foreach (var cell in piece.BuildableCells)
+            var buildableCells = piece.BuildableCells;
+            for (int i = 0; i < buildableCells.Count; i++)
             {
+                var cell = buildableCells[i];
                 Vector3 cellPos = origin + new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f);
                 Handles.DrawSolidRectangleWithOutline(
                     new[]
@@ -261,6 +317,72 @@ namespace SBGames.Editor.Dungeon
                     new Color(0.2f, 0.9f, 0.3f, 0.25f),
                     new Color(0.2f, 0.9f, 0.3f, 0.6f)
                 );
+            }
+
+            // 4. Interactive Scene View Mask Painting (Click-Drag to paint, Shift+Click-Drag to erase)
+            Event e = Event.current;
+            if (e != null && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag) && e.button == 0 && !e.alt)
+            {
+                Ray ray = HandleUtility.GUIPointToWorldRay(e.mousePosition);
+                var plane = new Plane(Vector3.forward, piece.transform.position);
+                if (plane.Raycast(ray, out float enter))
+                {
+                    Vector3 hit = ray.GetPoint(enter);
+                    int cx = Mathf.FloorToInt(hit.x - origin.x);
+                    int cy = Mathf.FloorToInt(hit.y - origin.y);
+
+                    if (cx >= 0 && cx < DefaultGridDim && cy >= 0 && cy < DefaultGridDim)
+                    {
+                        var cellCoord = new Vector2Int(cx, cy);
+                        bool erase = e.shift;
+
+                        if (erase)
+                        {
+                            if (piece.IsCellBuildable(cellCoord))
+                            {
+                                Undo.RecordObject(piece, "Erase Buildable Mask Cell");
+                                piece.RemoveBuildableCell(cellCoord);
+                                EditorUtility.SetDirty(piece);
+                                e.Use();
+                            }
+                        }
+                        else
+                        {
+                            if (!piece.IsCellBuildable(cellCoord))
+                            {
+                                Undo.RecordObject(piece, "Paint Buildable Mask Cell");
+                                piece.AddBuildableCell(cellCoord);
+                                EditorUtility.SetDirty(piece);
+                                e.Use();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void DrawOpeningHandle(DungeonPiece piece, CardinalDirection dir, Vector3 pos, Vector3 size)
+        {
+            bool hasOpening = piece.Openings.ContainsDirection(dir);
+            Handles.color = hasOpening ? new Color(0.2f, 0.95f, 0.2f, 0.9f) : new Color(0.6f, 0.6f, 0.6f, 0.35f);
+
+            float handleSize = HandleUtility.GetHandleSize(pos) * 0.15f;
+            if (Handles.Button(pos, Quaternion.identity, handleSize, handleSize * 1.5f, Handles.RectangleHandleCap))
+            {
+                Undo.RecordObject(piece, "Toggle Opening Direction");
+                piece.Openings = piece.Openings ^ dir.ToOpeningFlag();
+                EditorUtility.SetDirty(piece);
+            }
+
+            // Draw line indicator for opening width
+            Handles.color = hasOpening ? Color.green : new Color(0.4f, 0.4f, 0.4f, 0.6f);
+            if (dir == CardinalDirection.North || dir == CardinalDirection.South)
+            {
+                Handles.DrawLine(pos - new Vector3(size.x * 0.5f, 0f, 0f), pos + new Vector3(size.x * 0.5f, 0f, 0f), hasOpening ? 4f : 2f);
+            }
+            else
+            {
+                Handles.DrawLine(pos - new Vector3(0f, size.y * 0.5f, 0f), pos + new Vector3(0f, size.y * 0.5f, 0f), hasOpening ? 4f : 2f);
             }
         }
     }

@@ -15,8 +15,14 @@ namespace SBGames.Dungeon.Unity.Pieces
         [Header("Theme Configuration")]
         [SerializeField] private string themeName = "StoneDungeon";
 
-        [Tooltip("Macro-cell dimensions in placement cells (default 10x10).")]
-        [SerializeField] private Vector2Int cellSize = new Vector2Int(10, 10);
+        [Tooltip("Macro-cell dimensions in placement cells (default 16x16).")]
+        [SerializeField] private Vector2Int cellSize = new Vector2Int(16, 16);
+
+        [Tooltip("Pixel resolution per tile (16, 32, or 48). All tileset sprites in this set must match.")]
+        [SerializeField] private int tilePixelSize = 16;
+
+        [Tooltip("Standard opening doorway width in tiles (default 2). Must be even if cell size is even.")]
+        [SerializeField, Min(1)] private int openingWidth = 2;
 
         [Header("Opening Cap Prefab")]
         [Tooltip("Prefab instantiated to close/seal an unused Opening on a placed Dungeon Piece.")]
@@ -28,8 +34,19 @@ namespace SBGames.Dungeon.Unity.Pieces
 
         public string ThemeName => themeName;
         public Vector2Int CellSize => cellSize;
+        public int TilePixelSize => tilePixelSize;
+        public int OpeningWidth => openingWidth;
         public GameObject OpeningCapPrefab => openingCapPrefab;
         public IReadOnlyList<GameObject> PiecePrefabs => piecePrefabs;
+
+        public void SetThemeName(string name) => themeName = name;
+        public void SetTilePixelSize(int size) => tilePixelSize = size;
+        public void SetOpeningWidth(int width) => openingWidth = width;
+        public void SetCellSize(Vector2Int size) => cellSize = size;
+        public void SetTilePixelSizeForTesting(int size) => tilePixelSize = size;
+        public void SetOpeningWidthForTesting(int width) => openingWidth = width;
+        public void SetCellSizeForTesting(Vector2Int size) => cellSize = size;
+        public void SetOpeningCapPrefab(GameObject prefab) => openingCapPrefab = prefab;
 
         public void AddPiecePrefab(GameObject prefab)
         {
@@ -94,7 +111,7 @@ namespace SBGames.Dungeon.Unity.Pieces
         /// </summary>
         public List<PieceValidationBadge> ValidateSet()
         {
-            return PieceValidator.ValidatePieceSet(GetDescriptors(), cellSize.x, cellSize.y);
+            return PieceValidator.ValidatePieceSet(GetDescriptors(), cellSize.x, cellSize.y, openingWidth);
         }
 
         /// <summary>

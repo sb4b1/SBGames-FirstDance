@@ -16,8 +16,8 @@ namespace SBGames.Dungeon.Core
         public int safeRoomCount = 1;
 
         // Spatial metrics for tile placement and world positioning
-        public int roomWidth = 10;
-        public int roomHeight = 10;
+        public int roomWidth = 16;
+        public int roomHeight = 16;
         public int corridorLength = 4;
         public int corridorWidth = 2;
 
@@ -29,8 +29,8 @@ namespace SBGames.Dungeon.Core
             float branchProbability = 0.35f,
             float loopProbability = 0f,
             int safeRoomCount = 1,
-            int roomWidth = 10,
-            int roomHeight = 10,
+            int roomWidth = 16,
+            int roomHeight = 16,
             int corridorLength = 4,
             int corridorWidth = 2)
         {

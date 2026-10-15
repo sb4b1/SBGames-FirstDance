@@ -34,6 +34,16 @@ namespace SBGames.Dungeon.Core.Pieces
         /// </summary>
         public bool HasDirectionalArt { get; set; } = false;
 
+        /// <summary>
+        /// Number of authored entry anchors (required >= 1 for Entrance pieces).
+        /// </summary>
+        public int EntryAnchorCount { get; set; } = 0;
+
+        /// <summary>
+        /// Piece-local coordinates containing Ground tiles.
+        /// </summary>
+        public HashSet<GridCoord> GroundCells { get; set; } = new HashSet<GridCoord>();
+
         public DungeonPieceDescriptor() { }
 
         public DungeonPieceDescriptor(
@@ -104,6 +114,31 @@ namespace SBGames.Dungeon.Core.Pieces
 
             var rotated = new HashSet<GridCoord>();
             foreach (var coord in BuildableMask)
+            {
+                rotated.Add(RotateLocalCoord(coord, k, cellSize));
+            }
+            return rotated;
+        }
+
+        /// <summary>
+        /// Computes the piece-local ground cells rotated by k quarter turns clockwise.
+        /// Requires square cell (cellSize = roomWidth == roomHeight).
+        /// </summary>
+        public HashSet<GridCoord> GetRotatedGroundCells(int quarterTurns, int cellSize)
+        {
+            if (GroundCells == null || GroundCells.Count == 0)
+            {
+                return new HashSet<GridCoord>();
+            }
+
+            int k = ((quarterTurns % 4) + 4) % 4;
+            if (!IsRotatable || k == 0)
+            {
+                return new HashSet<GridCoord>(GroundCells);
+            }
+
+            var rotated = new HashSet<GridCoord>(GroundCells.Count);
+            foreach (var coord in GroundCells)
             {
                 rotated.Add(RotateLocalCoord(coord, k, cellSize));
             }

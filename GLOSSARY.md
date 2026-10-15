@@ -68,4 +68,12 @@ _Avoid_: Placement layer, spawn zone, build zone
 The mathematical macro graph (DungeonLayoutGraph) representing room nodes, cardinal connections, and reachability.
 _Avoid_: Dungeon map, floor plan, grid tree
 
+**Opening Width**:
+The width of a standard doorway opening in placement cells/tiles (default 2), symmetrically centered along the macro-cell edge. Must share even parity with cell dimensions.
+_Avoid_: Door width, exit size, corridor thickness
+
+**Tile Pixel Size**:
+The uniform pixel resolution per tile (16, 32, or 48) enforced across all tileset sprites within a Piece Set, requiring texture Pixels Per Unit (PPU) to equal Tile Pixel Size so that each tile maps 1:1 to a 1-unit world cell.
+_Avoid_: Sprite size, tile resolution, pixel scale
+
 

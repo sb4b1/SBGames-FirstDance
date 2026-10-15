@@ -18,3 +18,34 @@ We implement a modular **Dungeon Piece & Piece Set** pipeline that plugs into th
 - The generator's graph structure remains completely intact; pieces are chosen to fit the layout rather than dictating the layout.
 - For seamless adjacent piece alignment, zero-corridor layouts (`corridorLength = 0`) are supported with doors placed on cell borders.
 - Missing piece topologies in a theme are detected ahead of time via the coverage report rather than failing unpredictably during runtime generation.
+
+## Amendment: 16x16 Grid Standardization, Opening Geometry, and Prefab Mode Authoring
+
+Date: 2026-10-15
+
+### Settled Design Specifications
+1. **16x16 Grid Standardization**: Standard piece size is fixed to 16x16 tiles, where 1 tilemap cell = 1 placement grid cell = 1 world unit (1:1 scale). `DungeonGeneratorConfigSO` defaults updated to `roomWidth = 16`, `roomHeight = 16`, and `corridorLength = 0` for direct adjacent abutting piece layouts.
+2. **Standard Opening Geometry**:
+   - Opening Width is configured per Piece Set (default 2 tiles, centered on edge: tiles 7-8 on a 16-tile edge).
+   - Parity requirement: `(cellSize - openingWidth)` must be non-negative and even to ensure symmetric edge centering.
+   - Pure C# `OpeningGeometry` computes edge tile coordinates and quarter-turn rotations.
+   - Openings remain manually authored on the piece; `PieceValidator` validates declared Openings against the painted Ground tilemap (raising errors for missing Ground and warnings for undeclared Ground reach).
+3. **Tile Pixel Size & PPU Consistency**:
+   - `PieceSetSO` specifies uniform `tilePixelSize` (16, 32, or 48).
+   - Sprites across all tilemaps in a piece must match `PPU == tilePixelSize` so each tile fills exactly one 1-unit cell.
+   - Validation badge flags mismatches with one-click fix utility in editor tooling without mutating tileset assets unexpectedly.
+4. **Prefab Mode Authoring Pipeline**:
+   - Standard prefab hierarchy: root (`DungeonPiece`, `RoomVolume`, 16x16 trigger `BoxCollider2D`), child `Grid` (cellSize 1) containing `Ground` (NavMesh Walkable, order 1), `Walls` (TilemapCollider2D, NavMesh Not Walkable, order 2), and `Decoration` (NavMesh ignore, order 3) tilemaps.
+   - Interactive scene GUI handles allow clicking edges to toggle Openings and painting/erasing buildable cells.
+   - Automatic buildable mask generation from Ground: interior Ground minus Walls, edge margins, and Opening clearance.
+   - Opening Cap prefabs are authored at `openingWidth x 1` tile dimensions to seamlessly seal unused doorways.
+5. **Anchors & Entry Spawning Guarantee**:
+   - Entrance pieces require $\ge 1$ authored entry anchor (raising an error badge if missing).
+6. **Capacity Derived from Buildable Mask**:
+   - Replaces hardcoded capacities with dynamic derivations based on rotated buildable cell count:
+     $\text{Soft} = \lfloor \text{maskCount} / \text{cellsPerSoftSlot} \times \text{mult}_{\text{soft}} \rfloor$,
+     $\text{Max} = \lceil \text{Soft} \times \text{mult}_{\text{max}} \rceil$.
+   - Tunable on `DungeonGeneratorConfigSO` with defaults reproducing 4 soft / 6 max for standard 14x14 Normal interiors, 6 soft / 10 max for Boss, 0/0 for Entrance, and 0/2 for SafeRoom.
+7. **Batch Simulation Seam & NavMesh Verification**:
+   - Pure C# Seam Check verifies Ground tile continuity across all adjacent abutting doorway openings for every generated seed.
+   - Post-build 2D NavMesh path check validates complete unobstructed connectivity from Entrance to Boss room.

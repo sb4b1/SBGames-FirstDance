@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8ccc58150ab9724f96b7d3e8a8ea0f9, type: 3}
+  m_Name: StarterPieceSet
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Dungeon.Unity.Pieces.PieceSetSO
+  themeName: StoneDungeon
+  cellSize: {x: 16, y: 16}
+  tilePixelSize: 16
+  openingWidth: 2
+  openingCapPrefab: {fileID: 6907591860753984008, guid: 1dbb1470405b1774abff6a0438c4fa6d, type: 3}
+  piecePrefabs:
+  - {fileID: 4731489076370211736, guid: db6d7375e2d52b84696c1cad1903e35f, type: 3}
+  - {fileID: 6164604793014281126, guid: a869ee3d0c20def4f9684aca33ca206f, type: 3}
+  - {fileID: 4555341353424093493, guid: 24780ef5b9dedbc459d2269cf03ee103, type: 3}
+  - {fileID: 1185199694694129949, guid: e7b4afe1a4028154f9c049945fe4b0c1, type: 3}
+  - {fileID: 3116773388011831676, guid: 6519451e51f6c9941aabe0140c0ab36f, type: 3}
+  - {fileID: 7907054064052750532, guid: 2013a2a2333d04d4f831b1a09aa062a6, type: 3}
+  - {fileID: 7010013476193023354, guid: 32ee7311f56397c4da12ccd3a685732e, type: 3}
+  - {fileID: 7902523063499896698, guid: 066be6d92c4e05842942d075b2516623, type: 3}
+  - {fileID: 2294519748904006045, guid: 3116765a969ad754882fce6f98af4ea8, type: 3}
+  - {fileID: 708715855138152346, guid: 1e40d59eb542f0d45a34ac39efe69c7f, type: 3}
+  - {fileID: 5650672764547865073, guid: e80748c10fe8c044b96c151275081389, type: 3}
+  - {fileID: 1407462587151436959, guid: dc0595c9ca605d047a76ded39295d912, type: 3}
+  - {fileID: 7874596845382089750, guid: 4b92d84b1de939942b70cec11d491909, type: 3}
+  - {fileID: 2773579531790646187, guid: 4c935509311b3a6408ef79beb5da20f4, type: 3}
+  - {fileID: 671735424811646485, guid: 547113657b1f30d48905a7006a2f52a1, type: 3}
+  - {fileID: 266942556146007723, guid: cc82c99624cbbff44aaec1e123ed86f5, type: 3}
+  - {fileID: 6217618213870056264, guid: 538a9613ac23b3049b1cc784972bfea1, type: 3}
+  - {fileID: 4690110853406860782, guid: b698f8f0e9dac8747ba586262ff45437, type: 3}
+  - {fileID: 8623553041276902319, guid: dac4789dfc18d944eb6223f5f2910830, type: 3}
+  - {fileID: 1822558302015753460, guid: 269212ed75e44e948b5032a03edcfbcc, type: 3}

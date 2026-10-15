@@ -262,5 +262,297 @@ namespace SBGames.Tests
             // Verify unused piece detection (coverage gap)
             Assert.Contains("piece_unused_restricted", report.NeverSelectedPieceIds, "Unused piece with 0 openings must be detected as a coverage gap.");
         }
+
+        [Test]
+        public void OpeningGeometry_CenteredCoordinates_Matches16x16EdgeTiles()
+        {
+            int cellW = 16;
+            int cellH = 16;
+            int openingW = 2;
+
+            // North: tiles 7-8 along y=15
+            var north = OpeningGeometry.GetOpeningEdgeCoords(cellW, cellH, openingW, CardinalDirection.North);
+            Assert.AreEqual(2, north.Count);
+            Assert.AreEqual(new GridCoord(7, 15), north[0]);
+            Assert.AreEqual(new GridCoord(8, 15), north[1]);
+
+            // South: tiles 7-8 along y=0
+            var south = OpeningGeometry.GetOpeningEdgeCoords(cellW, cellH, openingW, CardinalDirection.South);
+            Assert.AreEqual(2, south.Count);
+            Assert.AreEqual(new GridCoord(7, 0), south[0]);
+            Assert.AreEqual(new GridCoord(8, 0), south[1]);
+
+            // West: tiles 7-8 along x=0
+            var west = OpeningGeometry.GetOpeningEdgeCoords(cellW, cellH, openingW, CardinalDirection.West);
+            Assert.AreEqual(2, west.Count);
+            Assert.AreEqual(new GridCoord(0, 7), west[0]);
+            Assert.AreEqual(new GridCoord(0, 8), west[1]);
+
+            // East: tiles 7-8 along x=15
+            var east = OpeningGeometry.GetOpeningEdgeCoords(cellW, cellH, openingW, CardinalDirection.East);
+            Assert.AreEqual(2, east.Count);
+            Assert.AreEqual(new GridCoord(15, 7), east[0]);
+            Assert.AreEqual(new GridCoord(15, 8), east[1]);
+        }
+
+        [Test]
+        public void OpeningGeometry_Rotation_IsConsistentWithOpeningFlags()
+        {
+            int size = 16;
+            int openingW = 2;
+            var northCoords = OpeningGeometry.GetOpeningEdgeCoords(size, size, openingW, CardinalDirection.North);
+
+            // 1 turn clockwise: North -> East
+            var rotated1 = OpeningGeometry.RotateCoords(northCoords, 1, size);
+            var eastCoords = OpeningGeometry.GetOpeningEdgeCoords(size, size, openingW, CardinalDirection.East);
+            CollectionAssert.AreEquivalent(eastCoords, rotated1);
+
+            // 2 turns clockwise: North -> South
+            var rotated2 = OpeningGeometry.RotateCoords(northCoords, 2, size);
+            var southCoords = OpeningGeometry.GetOpeningEdgeCoords(size, size, openingW, CardinalDirection.South);
+            CollectionAssert.AreEquivalent(southCoords, rotated2);
+
+            // 3 turns clockwise: North -> West
+            var rotated3 = OpeningGeometry.RotateCoords(northCoords, 3, size);
+            var westCoords = OpeningGeometry.GetOpeningEdgeCoords(size, size, openingW, CardinalDirection.West);
+            CollectionAssert.AreEquivalent(westCoords, rotated3);
+
+            // 4 turns: back to North
+            var rotated4 = OpeningGeometry.RotateCoords(northCoords, 4, size);
+            CollectionAssert.AreEquivalent(northCoords, rotated4);
+
+            // Direction rotation helper
+            Assert.AreEqual(CardinalDirection.East, OpeningGeometry.RotateDirection(CardinalDirection.North, 1));
+            Assert.AreEqual(CardinalDirection.South, OpeningGeometry.RotateDirection(CardinalDirection.North, 2));
+            Assert.AreEqual(CardinalDirection.West, OpeningGeometry.RotateDirection(CardinalDirection.North, 3));
+        }
+
+        [Test]
+        public void PieceValidator_OpeningParityAndGroundPresence_BadgesAccurately()
+        {
+            int cellW = 16;
+            int cellH = 16;
+            var pNormal = new DungeonPieceDescriptor("p_test", DungeonRoomType.Normal, OpeningFlags.North);
+
+            // 1. Error: Parity mismatch (openingWidth 3 on 16x16 cell)
+            var parityBadges = PieceValidator.ValidatePiece(pNormal, cellW, cellH, openingWidth: 3);
+            Assert.IsTrue(PieceValidator.HasErrors(parityBadges));
+            Assert.IsTrue(parityBadges.Exists(b => b.Message.Contains("parity")));
+
+            // 2. Error: Declared North opening missing Ground
+            var emptyGround = new HashSet<GridCoord>();
+            var missingGroundBadges = PieceValidator.ValidatePiece(pNormal, cellW, cellH, openingWidth: 2, emptyGround);
+            Assert.IsTrue(PieceValidator.HasErrors(missingGroundBadges));
+            Assert.IsTrue(missingGroundBadges.Exists(b => b.Message.Contains("Declared North Opening has no Ground")));
+
+            // 3. Valid: North opening has Ground
+            var validGround = new HashSet<GridCoord>
+            {
+                new GridCoord(7, 15),
+                new GridCoord(8, 15)
+            };
+            var validBadges = PieceValidator.ValidatePiece(pNormal, cellW, cellH, openingWidth: 2, validGround);
+            Assert.IsFalse(PieceValidator.HasErrors(validBadges));
+
+            // 4. Warning: Ground reaches undeclared East edge tiles
+            validGround.Add(new GridCoord(15, 7)); // Undeclared East edge tile
+            var undeclaredBadges = PieceValidator.ValidatePiece(pNormal, cellW, cellH, openingWidth: 2, validGround);
+            Assert.IsFalse(PieceValidator.HasErrors(undeclaredBadges));
+            Assert.IsTrue(undeclaredBadges.Exists(b => b.IsWarning && b.Message.Contains("Ground reaches undeclared East")));
+
+            // 5. Error: Entrance piece missing entry anchor
+            var pEntrance = new DungeonPieceDescriptor("p_ent", DungeonRoomType.Entrance, OpeningFlags.North)
+            {
+                EntryAnchorCount = 0
+            };
+            var entranceBadges = PieceValidator.ValidatePiece(pEntrance, cellW, cellH);
+            Assert.IsTrue(PieceValidator.HasErrors(entranceBadges));
+            Assert.IsTrue(entranceBadges.Exists(b => b.Message.Contains("entry anchor")));
+
+            pEntrance.EntryAnchorCount = 1;
+            var entranceValidBadges = PieceValidator.ValidatePiece(pEntrance, cellW, cellH);
+            Assert.IsFalse(PieceValidator.HasErrors(entranceValidBadges));
+        }
+
+        [Test]
+        public void DungeonPieceDescriptor_GetRotatedGroundCells_TransformsCoordinatesClockwise()
+        {
+            var desc = new DungeonPieceDescriptor("p1", DungeonRoomType.Normal, OpeningFlags.North, isRotatable: true)
+            {
+                GroundCells = new HashSet<GridCoord>
+                {
+                    new GridCoord(7, 15),
+                    new GridCoord(8, 15)
+                }
+            };
+
+            // 1 turn clockwise: North edge (y=15) rotates to East edge (x=15)
+            // (7, 15) -> (y, 15-x) = (15, 8)
+            // (8, 15) -> (y, 15-x) = (15, 7)
+            var rot1 = desc.GetRotatedGroundCells(1, 16);
+            Assert.IsTrue(rot1.Contains(new GridCoord(15, 7)));
+            Assert.IsTrue(rot1.Contains(new GridCoord(15, 8)));
+        }
+
+        [Test]
+        public void DungeonBatchSimulator_SeamCheck_PassesWhenEdgeTilesHaveGround()
+        {
+            // Build a piece set with all required topologies and ground filled
+            var pieces = new List<DungeonPieceDescriptor>();
+            var allGround = new HashSet<GridCoord>();
+            for (int x = 0; x < 16; x++)
+            {
+                for (int y = 0; y < 16; y++)
+                {
+                    allGround.Add(new GridCoord(x, y));
+                }
+            }
+
+            // Normal piece with all 4 openings
+            pieces.Add(new DungeonPieceDescriptor("cross", DungeonRoomType.Normal, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = allGround
+            });
+            // Entrance with all 4 openings
+            pieces.Add(new DungeonPieceDescriptor("ent", DungeonRoomType.Entrance, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = allGround,
+                EntryAnchorCount = 1
+            });
+            // Boss with all 4 openings
+            pieces.Add(new DungeonPieceDescriptor("boss", DungeonRoomType.Boss, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = allGround
+            });
+            // SafeRoom with all 4 openings
+            pieces.Add(new DungeonPieceDescriptor("safe", DungeonRoomType.SafeRoom, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = allGround
+            });
+
+            var genConfig = new DungeonGeneratorConfig(
+                minNormalRooms: 5,
+                maxNormalRooms: 6,
+                branchProbability: 0.35f,
+                loopProbability: 0f,
+                safeRoomCount: 1,
+                roomWidth: 16,
+                roomHeight: 16,
+                corridorLength: 0,
+                corridorWidth: 2
+            );
+
+            var batchConfig = new DungeonBatchConfig(
+                seedCount: 5,
+                startSeed: 2000,
+                maxRetriesPerSeed: 3,
+                openingWidth: 2,
+                generatorConfig: genConfig
+            );
+
+            var report = DungeonBatchSimulator.RunSimulation(batchConfig, pieces);
+            Assert.Greater(report.SuccessfulSeeds, 0);
+            Assert.AreEqual(0, report.SeamCheckFailedSeeds, "All successful seeds should pass seam check when pieces have ground.");
+            Assert.AreEqual(report.SuccessfulSeeds, report.SeamCheckPassedSeeds);
+        }
+
+        [Test]
+        public void DungeonBatchSimulator_SeamCheck_FailsWhenPieceMissingGroundAtSeam()
+        {
+            // Create pieces where Normal piece has NO ground at its edges
+            var pieces = new List<DungeonPieceDescriptor>();
+            var emptyGround = new HashSet<GridCoord>(); // no ground!
+
+            pieces.Add(new DungeonPieceDescriptor("cross_noground", DungeonRoomType.Normal, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = emptyGround
+            });
+            // But let's create a piece with partial ground that doesn't include the opening tiles
+            var interiorOnlyGround = new HashSet<GridCoord> { new GridCoord(5, 5) };
+            pieces[0].GroundCells = interiorOnlyGround;
+
+            pieces.Add(new DungeonPieceDescriptor("ent", DungeonRoomType.Entrance, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = interiorOnlyGround,
+                EntryAnchorCount = 1
+            });
+            pieces.Add(new DungeonPieceDescriptor("boss", DungeonRoomType.Boss, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = interiorOnlyGround
+            });
+            pieces.Add(new DungeonPieceDescriptor("safe", DungeonRoomType.SafeRoom, OpeningFlags.All, isRotatable: true)
+            {
+                GroundCells = interiorOnlyGround
+            });
+
+            var genConfig = new DungeonGeneratorConfig(
+                minNormalRooms: 5,
+                maxNormalRooms: 6,
+                roomWidth: 16,
+                roomHeight: 16
+            );
+
+            var batchConfig = new DungeonBatchConfig(
+                seedCount: 2,
+                startSeed: 2000,
+                maxRetriesPerSeed: 2,
+                openingWidth: 2,
+                generatorConfig: genConfig
+            );
+
+            var report = DungeonBatchSimulator.RunSimulation(batchConfig, pieces);
+            if (report.SuccessfulSeeds > 0)
+            {
+                Assert.Greater(report.SeamCheckFailedSeeds, 0, "Pieces lacking ground at edge tiles must fail seam check.");
+                Assert.Greater(report.AllSeamFailures.Count, 0);
+            }
+        }
+
+#if UNITY_EDITOR
+        [Test]
+        public void DungeonPiece_RealPieceSet_SeamCheckAcrossAdjacentPlacedRooms_Passes()
+        {
+            var pieceSet = UnityEditor.AssetDatabase.LoadAssetAtPath<SBGames.Dungeon.Unity.Pieces.PieceSetSO>(
+                "Assets/DungeonPiece/StarterSet/StarterPieceSet.asset"
+            );
+            Assert.IsNotNull(pieceSet, "StarterPieceSet.asset should exist.");
+            Assert.AreEqual(20, pieceSet.PiecePrefabs.Count);
+
+            var descriptors = pieceSet.GetDescriptors();
+            Assert.AreEqual(20, descriptors.Count);
+
+            // Verify each piece has ground populated
+            foreach (var desc in descriptors)
+            {
+                Assert.IsNotNull(desc.GroundCells);
+                Assert.Greater(desc.GroundCells.Count, 0, $"Piece {desc.PieceId} must have GroundCells populated.");
+            }
+
+            var genConfig = new DungeonGeneratorConfig(
+                minNormalRooms: 5,
+                maxNormalRooms: 8,
+                branchProbability: 0.35f,
+                loopProbability: 0f,
+                safeRoomCount: 1,
+                roomWidth: 16,
+                roomHeight: 16,
+                corridorLength: 0,
+                corridorWidth: 2
+            );
+
+            var batchConfig = new DungeonBatchConfig(
+                seedCount: 5,
+                startSeed: 3000,
+                maxRetriesPerSeed: 5,
+                openingWidth: pieceSet.OpeningWidth,
+                generatorConfig: genConfig
+            );
+
+            var report = DungeonBatchSimulator.RunSimulation(batchConfig, descriptors);
+            Assert.AreEqual(5, report.SuccessfulSeeds, "All 5 seeds should successfully find matching pieces.");
+            Assert.AreEqual(0, report.SeamCheckFailedSeeds, $"Seam check failures detected: {string.Join("; ", report.AllSeamFailures)}");
+            Assert.AreEqual(5, report.SeamCheckPassedSeeds);
+        }
+#endif
     }
 }

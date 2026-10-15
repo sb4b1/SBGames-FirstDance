@@ -17,10 +17,11 @@ MonoBehaviour:
   branchProbability: 0.35
   loopProbability: 0.25
   safeRoomCount: 1
-  roomWidth: 10
-  roomHeight: 10
-  corridorLength: 4
+  roomWidth: 16
+  roomHeight: 16
+  corridorLength: 0
   corridorWidth: 2
+  pieceSet: {fileID: 11400000, guid: 351bdcb319d528349aa8f9275931f90c, type: 2}
   cellSize: 1
   entranceRoomPrefab: {fileID: 0}
   normalRoomPrefab: {fileID: 0}

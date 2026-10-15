@@ -12,25 +12,28 @@ namespace SBGames.Dungeon.Core.Pieces
         public int SeedCount { get; set; } = 20;
         public int StartSeed { get; set; } = 1000;
         public int MaxRetriesPerSeed { get; set; } = 5;
+        public int OpeningWidth { get; set; } = 2;
         public DungeonGeneratorConfig GeneratorConfig { get; set; }
 
         public DungeonBatchConfig(
             int seedCount = 20,
             int startSeed = 1000,
             int maxRetriesPerSeed = 5,
+            int openingWidth = 2,
             DungeonGeneratorConfig generatorConfig = null)
         {
             SeedCount = Math.Max(1, seedCount);
             StartSeed = startSeed;
             MaxRetriesPerSeed = Math.Max(1, maxRetriesPerSeed);
+            OpeningWidth = Math.Max(1, openingWidth);
             GeneratorConfig = generatorConfig ?? new DungeonGeneratorConfig(
                 minNormalRooms: 5,
                 maxNormalRooms: 8,
                 branchProbability: 0.35f,
                 loopProbability: 0f,
                 safeRoomCount: 1,
-                roomWidth: 10,
-                roomHeight: 10,
+                roomWidth: 16,
+                roomHeight: 16,
                 corridorLength: 0,
                 corridorWidth: 2
             );
@@ -51,6 +54,8 @@ namespace SBGames.Dungeon.Core.Pieces
         public OpeningFlags TotalCappedSides { get; set; }
         public List<string> SelectedPieceIds { get; set; } = new List<string>();
         public string FailureMessage { get; set; } = string.Empty;
+        public bool SeamCheckPassed { get; set; } = true;
+        public List<string> SeamCheckFailures { get; set; } = new List<string>();
     }
 
     /// <summary>
@@ -68,6 +73,13 @@ namespace SBGames.Dungeon.Core.Pieces
         public Dictionary<string, int> PieceSelectionCounts { get; set; } = new Dictionary<string, int>();
         public List<string> NeverSelectedPieceIds { get; set; } = new List<string>();
         public List<DungeonBatchSeedResult> SeedResults { get; set; } = new List<DungeonBatchSeedResult>();
+
+        // Seam Check & NavMesh verification
+        public int SeamCheckPassedSeeds { get; set; }
+        public int SeamCheckFailedSeeds { get; set; }
+        public List<string> AllSeamFailures { get; set; } = new List<string>();
+        public bool? NavMeshConnectivityPassed { get; set; }
+        public string NavMeshConnectivityMessage { get; set; }
     }
 
     /// <summary>
@@ -131,6 +143,7 @@ namespace SBGames.Dungeon.Core.Pieces
                     var rng = new GameRngDungeonAdapter((uint)Math.Abs(usedSeed + 101));
                     var usageCounts = new Dictionary<string, int>();
                     var chosenPieces = new List<string>();
+                    var roomSelections = new Dictionary<int, DungeonPieceSelectionResult>();
                     OpeningFlags cumulativeCaps = OpeningFlags.None;
                     int capsCount = 0;
                     bool allRoomsMatched = true;
@@ -147,6 +160,7 @@ namespace SBGames.Dungeon.Core.Pieces
                             break;
                         }
 
+                        roomSelections[node.RoomId] = selection;
                         string pieceId = selection.SelectedPiece.PieceId;
                         chosenPieces.Add(pieceId);
                         usageCounts[pieceId] = usageCounts.TryGetValue(pieceId, out int cnt) ? cnt + 1 : 1;
@@ -175,6 +189,60 @@ namespace SBGames.Dungeon.Core.Pieces
                                 report.PieceSelectionCounts[pid]++;
                             }
                         }
+
+                        // Seam Check: for every adjacent placed pair, both pieces' Opening edge tiles contain Ground
+                        bool seedSeamPassed = true;
+                        var seedSeamFailures = new List<string>();
+
+                        for (int d = 0; d < graph.Doors.Count; d++)
+                        {
+                            var door = graph.Doors[d];
+                            if (!graph.Rooms.TryGetValue(door.RoomAId, out var nodeA) ||
+                                !graph.Rooms.TryGetValue(door.RoomBId, out var nodeB))
+                            {
+                                continue;
+                            }
+
+                            if (roomSelections.TryGetValue(nodeA.RoomId, out var selA) &&
+                                roomSelections.TryGetValue(nodeB.RoomId, out var selB))
+                            {
+                                var dirA = door.DirectionFromA;
+                                var dirB = dirA.GetOpposite();
+                                var pieceA = selA.SelectedPiece;
+                                var pieceB = selB.SelectedPiece;
+
+                                if (pieceA.GroundCells != null && pieceA.GroundCells.Count > 0)
+                                {
+                                    var rotGroundA = pieceA.GetRotatedGroundCells(selA.QuarterTurns, config.GeneratorConfig.roomWidth);
+                                    var edgesA = OpeningGeometry.GetOpeningEdgeCoords(config.GeneratorConfig.roomWidth, config.GeneratorConfig.roomHeight, config.OpeningWidth, dirA);
+                                    for (int e = 0; e < edgesA.Count; e++)
+                                    {
+                                        if (!rotGroundA.Contains(edgesA[e]))
+                                        {
+                                            seedSeamPassed = false;
+                                            seedSeamFailures.Add($"Seed {usedSeed}: Room {nodeA.RoomId} ({pieceA.PieceId}) missing Ground at seam edge {edgesA[e]} (dir {dirA}) connecting to Room {nodeB.RoomId}");
+                                        }
+                                    }
+                                }
+
+                                if (pieceB.GroundCells != null && pieceB.GroundCells.Count > 0)
+                                {
+                                    var rotGroundB = pieceB.GetRotatedGroundCells(selB.QuarterTurns, config.GeneratorConfig.roomWidth);
+                                    var edgesB = OpeningGeometry.GetOpeningEdgeCoords(config.GeneratorConfig.roomWidth, config.GeneratorConfig.roomHeight, config.OpeningWidth, dirB);
+                                    for (int e = 0; e < edgesB.Count; e++)
+                                    {
+                                        if (!rotGroundB.Contains(edgesB[e]))
+                                        {
+                                            seedSeamPassed = false;
+                                            seedSeamFailures.Add($"Seed {usedSeed}: Room {nodeB.RoomId} ({pieceB.PieceId}) missing Ground at seam edge {edgesB[e]} (dir {dirB}) connecting to Room {nodeA.RoomId}");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        seedResult.SeamCheckPassed = seedSeamPassed;
+                        seedResult.SeamCheckFailures = seedSeamFailures;
                         break;
                     }
                 }
@@ -190,6 +258,15 @@ namespace SBGames.Dungeon.Core.Pieces
                     if (seedResult.CappedSidesCount > 0)
                     {
                         report.SeedsRequiringCaps.Add(usedSeed);
+                    }
+                    if (seedResult.SeamCheckPassed)
+                    {
+                        report.SeamCheckPassedSeeds++;
+                    }
+                    else
+                    {
+                        report.SeamCheckFailedSeeds++;
+                        report.AllSeamFailures.AddRange(seedResult.SeamCheckFailures);
                     }
                 }
                 else

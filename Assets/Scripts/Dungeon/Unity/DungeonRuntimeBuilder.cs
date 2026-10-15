@@ -256,23 +256,41 @@ namespace SBGames.Dungeon.Unity
                     new Vector3(coreConfig.roomWidth * cell, coreConfig.roomHeight * cell, 2f)
                 ));
 
+                var pieceComp = roomGo.GetComponent<DungeonPiece>();
+                int maskCount = pieceComp != null && pieceComp.BuildableCells.Count > 0
+                    ? pieceComp.BuildableCells.Count
+                    : (coreConfig.roomWidth - 2) * (coreConfig.roomHeight - 2);
+
+                float cellsPerSoft = configSO != null ? configSO.CellsPerSoftSlot : 49f;
+                float maxMult = configSO != null ? configSO.MaxCapacityMultiplier : 1.5f;
+                float normalSoftMult = configSO != null ? configSO.NormalSoftMultiplier : 1.0f;
+                float bossSoftMult = configSO != null ? configSO.BossSoftMultiplier : 1.5f;
+                float bossMaxMult = configSO != null ? configSO.BossMaxMultiplier : 1.67f;
+
                 switch (node.RoomType)
                 {
-                    case DungeonRoomType.Boss:
-                        roomVolume.SoftMonsterCapacity = 6;
-                        roomVolume.MaxMonsterCapacity = 10;
-                        break;
-                    case DungeonRoomType.SafeRoom:
-                        roomVolume.SoftMonsterCapacity = 0;
-                        roomVolume.MaxMonsterCapacity = 2;
-                        break;
                     case DungeonRoomType.Entrance:
                         roomVolume.SoftMonsterCapacity = 0;
                         roomVolume.MaxMonsterCapacity = 0;
                         break;
+
+                    case DungeonRoomType.SafeRoom:
+                        roomVolume.SoftMonsterCapacity = 0;
+                        roomVolume.MaxMonsterCapacity = 2;
+                        break;
+
+                    case DungeonRoomType.Boss:
+                        int bossSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * bossSoftMult);
+                        int bossMax = Mathf.CeilToInt(bossSoft * bossMaxMult);
+                        roomVolume.SoftMonsterCapacity = bossSoft;
+                        roomVolume.MaxMonsterCapacity = bossMax;
+                        break;
+
                     default: // Normal
-                        roomVolume.SoftMonsterCapacity = 4;
-                        roomVolume.MaxMonsterCapacity = 6;
+                        int normSoft = Mathf.FloorToInt((maskCount / cellsPerSoft) * normalSoftMult);
+                        int normMax = Mathf.CeilToInt(normSoft * maxMult);
+                        roomVolume.SoftMonsterCapacity = normSoft;
+                        roomVolume.MaxMonsterCapacity = normMax;
                         break;
                 }
 
@@ -390,9 +408,17 @@ namespace SBGames.Dungeon.Unity
             float halfW = (config.roomWidth * 0.5f) * cell;
             float halfH = (config.roomHeight * 0.5f) * cell;
             float wallThickness = 0.5f * cell;
+            int openingWidth = configSO?.PieceSet != null ? configSO.PieceSet.OpeningWidth : config.corridorWidth;
+            float capLength = openingWidth * cell;
+
             GameObject capPrefab = configSO?.PieceSet?.OpeningCapPrefab != null
                 ? configSO.PieceSet.OpeningCapPrefab
                 : configSO?.WallPrefab;
+
+            if (capPrefab == null)
+            {
+                Debug.LogWarning($"[DungeonRuntimeBuilder] OpeningCapPrefab is null on PieceSet '{(configSO?.PieceSet != null ? configSO.PieceSet.ThemeName : "None")}'. Using invisible-collider fallback.");
+            }
 
             var directions = cappedSides.ToDirections();
             for (int i = 0; i < directions.Count; i++)
@@ -423,11 +449,11 @@ namespace SBGames.Dungeon.Unity
                     var col = capGo.AddComponent<BoxCollider2D>();
                     if (dir == CardinalDirection.North || dir == CardinalDirection.South)
                     {
-                        col.size = new Vector2(config.corridorWidth * cell, wallThickness);
+                        col.size = new Vector2(capLength, wallThickness);
                     }
                     else
                     {
-                        col.size = new Vector2(wallThickness, config.corridorWidth * cell);
+                        col.size = new Vector2(wallThickness, capLength);
                     }
                 }
 

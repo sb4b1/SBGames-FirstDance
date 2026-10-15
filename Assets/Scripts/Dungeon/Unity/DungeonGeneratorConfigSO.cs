@@ -28,10 +28,10 @@ namespace SBGames.Dungeon.Unity
 
         [Header("Spatial Dimensions (in Grid Cells)")]
         [Tooltip("Room width in grid cells.")]
-        [SerializeField, Min(4)] private int roomWidth = 10;
+        [SerializeField, Min(4)] private int roomWidth = 16;
 
         [Tooltip("Room height in grid cells.")]
-        [SerializeField, Min(4)] private int roomHeight = 10;
+        [SerializeField, Min(4)] private int roomHeight = 16;
 
         [Tooltip("Corridor length between adjacent rooms in grid cells.")]
         [SerializeField, Min(0)] private int corridorLength = 4;
@@ -41,6 +41,22 @@ namespace SBGames.Dungeon.Unity
 
         [Tooltip("Size in Unity world units per grid cell.")]
         [SerializeField, Min(0.1f)] private float cellSize = 1.0f;
+
+        [Header("Room Capacity from Buildable Mask")]
+        [Tooltip("Number of buildable mask cells per soft capacity slot (default 49).")]
+        [SerializeField, Min(1f)] private float cellsPerSoftSlot = 49f;
+
+        [Tooltip("Ratio of max capacity relative to soft capacity (default 1.5).")]
+        [SerializeField, Min(1f)] private float maxCapacityMultiplier = 1.5f;
+
+        [Tooltip("Soft capacity multiplier for Normal rooms (default 1.0).")]
+        [SerializeField, Range(0.1f, 5f)] private float normalSoftMultiplier = 1.0f;
+
+        [Tooltip("Soft capacity multiplier for Boss rooms (default 1.5).")]
+        [SerializeField, Range(0.1f, 5f)] private float bossSoftMultiplier = 1.5f;
+
+        [Tooltip("Max capacity multiplier for Boss rooms relative to soft capacity (default 1.67).")]
+        [SerializeField, Range(0.1f, 5f)] private float bossMaxMultiplier = 1.67f;
 
         [Header("Room Prefab Templates (Optional - Fallbacks to procedural generation if null)")]
         [SerializeField] private GameObject entranceRoomPrefab;
@@ -58,6 +74,11 @@ namespace SBGames.Dungeon.Unity
         public float BranchProbability => branchProbability;
         public float LoopProbability => loopProbability;
         public int SafeRoomCount => safeRoomCount;
+        public float CellsPerSoftSlot => cellsPerSoftSlot;
+        public float MaxCapacityMultiplier => maxCapacityMultiplier;
+        public float NormalSoftMultiplier => normalSoftMultiplier;
+        public float BossSoftMultiplier => bossSoftMultiplier;
+        public float BossMaxMultiplier => bossMaxMultiplier;
         public SBGames.Dungeon.Unity.Pieces.PieceSetSO PieceSet => pieceSet;
         public int RoomWidth => roomWidth;
         public int RoomHeight => roomHeight;

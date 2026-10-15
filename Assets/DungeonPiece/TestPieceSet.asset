@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: TestPieceSet
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Dungeon.Unity.Pieces.PieceSetSO
   themeName: StoneDungeon
-  cellSize: {x: 10, y: 10}
+  cellSize: {x: 16, y: 16}
+  tilePixelSize: 16
+  openingWidth: 2
   openingCapPrefab: {fileID: 0}
   piecePrefabs: []

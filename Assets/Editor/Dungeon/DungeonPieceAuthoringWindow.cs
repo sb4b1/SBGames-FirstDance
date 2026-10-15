@@ -6,6 +6,7 @@ using SBGames.Dungeon.Core;
 using SBGames.Dungeon.Core.Pieces;
 using SBGames.Dungeon.Unity;
 using SBGames.Dungeon.Unity.Pieces;
+using SBGames.Dungeon.Markers;
 
 namespace SBGames.Editor.Dungeon
 {
@@ -182,11 +183,19 @@ namespace SBGames.Editor.Dungeon
 
                 GUILayout.FlexibleSpace();
 
-                if (GUILayout.Button("+ Add Prefab", EditorStyles.toolbarButton, GUILayout.Width(90)))
+                if (GUILayout.Button("+ New Piece", EditorStyles.toolbarButton, GUILayout.Width(95)))
                 {
                     GenericMenu menu = new GenericMenu();
-                    menu.AddItem(new GUIContent("Add New Empty Piece"), false, AddEmptyPieceToSet);
+                    menu.AddItem(new GUIContent("Normal Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Normal, OpeningFlags.North, true));
+                    menu.AddItem(new GUIContent("Entrance Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Entrance, OpeningFlags.North, true));
+                    menu.AddItem(new GUIContent("Boss Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.Boss, OpeningFlags.North, true));
+                    menu.AddItem(new GUIContent("Safe Room Piece"), false, () => CreatePieceFromTemplate(null, DungeonRoomType.SafeRoom, OpeningFlags.North, true));
                     menu.ShowAsContext();
+                }
+
+                if (GUILayout.Button("+ New Opening Cap", EditorStyles.toolbarButton, GUILayout.Width(130)))
+                {
+                    CreateAndAssignOpeningCapPrefab();
                 }
             }
 
@@ -568,6 +577,51 @@ namespace SBGames.Editor.Dungeon
         private void DrawCoverageTab()
         {
             var report = activePieceSet.GetCoverageReport();
+            var setBadges = activePieceSet.ValidateSet();
+
+            if (setBadges.Count > 0)
+            {
+                EditorGUILayout.LabelField($"Piece Set Validation Badges ({setBadges.Count})", EditorStyles.boldLabel);
+                for (int i = 0; i < setBadges.Count; i++)
+                {
+                    var b = setBadges[i];
+                    var boxType = b.IsError ? MessageType.Error : MessageType.Warning;
+                    EditorGUILayout.HelpBox(b.Message, boxType);
+                }
+                EditorGUILayout.Space(4);
+            }
+
+            // Tile Pixel Size validation
+            int targetPpu = activePieceSet.TilePixelSize;
+            var ppuIssues = new List<TilePixelSizeIssue>();
+            for (int i = 0; i < activePieceSet.PiecePrefabs.Count; i++)
+            {
+                var p = activePieceSet.PiecePrefabs[i];
+                if (p == null) continue;
+                var pieceComp = p.GetComponent<DungeonPiece>();
+                if (pieceComp != null)
+                {
+                    ppuIssues.AddRange(TilePixelSizeValidator.ValidatePieceTilePixelSize(pieceComp, targetPpu));
+                }
+            }
+
+            if (ppuIssues.Count > 0)
+            {
+                EditorGUILayout.LabelField($"Tile Pixel Size Issues ({ppuIssues.Count}) - Expected PPU: {targetPpu}", EditorStyles.boldLabel);
+                for (int i = 0; i < ppuIssues.Count; i++)
+                {
+                    var issue = ppuIssues[i];
+                    using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+                    {
+                        EditorGUILayout.LabelField(issue.Description, EditorStyles.wordWrappedMiniLabel);
+                        if (GUILayout.Button($"Fix PPU ({issue.ExpectedPpu})", EditorStyles.miniButton, GUILayout.Width(90)))
+                        {
+                            TilePixelSizeValidator.FixTexturePpu(issue.AssetPath, issue.ExpectedPpu);
+                        }
+                    }
+                }
+                EditorGUILayout.Space(4);
+            }
 
             // Summary Cards
             using (new EditorGUILayout.HorizontalScope("box"))
@@ -713,27 +767,209 @@ namespace SBGames.Editor.Dungeon
             }
         }
 
-        private void AddEmptyPieceToSet()
+        public GameObject CreatePieceFromTemplate(
+            string pieceName = null,
+            DungeonRoomType roomType = DungeonRoomType.Normal,
+            OpeningFlags openings = OpeningFlags.North,
+            bool openInPrefabMode = true)
         {
-            string targetFolder = "Assets/Prefabs/Dungeon/Pieces";
-            string pieceName = $"piece_{activePieceSet.PiecePrefabs.Count + 1:D2}";
-            var prefab = DungeonSheetImporter.CreatePiecePrefab(
-                null,
-                pieceName,
-                DungeonRoomType.Normal,
-                OpeningFlags.North,
-                isRotatable: true,
-                targetFolder,
-                activePieceSet.CellSize.x,
-                activePieceSet.CellSize.y
-            );
+            if (activePieceSet == null)
+            {
+                EditorUtility.DisplayDialog("Error", "Please select or create an active Piece Set first.", "OK");
+                return null;
+            }
+
+            string setPath = AssetDatabase.GetAssetPath(activePieceSet);
+            string folder = string.IsNullOrEmpty(setPath)
+                ? "Assets/Prefabs/Dungeon/Pieces"
+                : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(setPath), "Pieces").Replace("\\", "/");
+
+            if (!System.IO.Directory.Exists(folder))
+            {
+                System.IO.Directory.CreateDirectory(folder);
+                AssetDatabase.Refresh();
+            }
+
+            if (string.IsNullOrEmpty(pieceName))
+            {
+                string typePrefix = roomType == DungeonRoomType.Normal ? "piece" : roomType.ToString().ToLowerInvariant();
+                pieceName = $"{typePrefix}_{activePieceSet.PiecePrefabs.Count + 1:D2}";
+            }
+
+            int cellW = activePieceSet.CellSize.x;
+            int cellH = activePieceSet.CellSize.y;
+
+            // 1. Root GameObject
+            var rootGo = new GameObject(pieceName);
+
+            // BoxCollider2D trigger
+            var col = rootGo.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(cellW, cellH);
+            col.isTrigger = true;
+            col.offset = Vector2.zero;
+
+            // RoomVolume
+            var roomVol = rootGo.AddComponent<SBGames.Dungeon.Markers.RoomVolume>();
+            roomVol.SetBounds(new Bounds(Vector3.zero, new Vector3(cellW, cellH, 2f)));
+            roomVol.IsSafeRoom = (roomType == DungeonRoomType.SafeRoom);
+            roomVol.IsBossRoom = (roomType == DungeonRoomType.Boss);
+
+            // DungeonPiece component
+            var pieceComp = rootGo.AddComponent<DungeonPiece>();
+            pieceComp.PieceId = pieceName;
+            pieceComp.RoomType = roomType;
+            pieceComp.Openings = openings;
+            pieceComp.IsRotatable = true;
+            pieceComp.Footprint = Vector2Int.one;
+
+            // 2. Child Grid
+            var gridGo = new GameObject("Grid");
+            gridGo.transform.SetParent(rootGo.transform);
+            gridGo.transform.localPosition = new Vector3(-cellW * 0.5f, -cellH * 0.5f, 0f);
+            var grid = gridGo.AddComponent<Grid>();
+            grid.cellSize = new Vector3(1f, 1f, 0f);
+
+            // Child Ground
+            var groundGo = new GameObject("Ground");
+            groundGo.transform.SetParent(gridGo.transform);
+            groundGo.transform.localPosition = Vector3.zero;
+            var groundTm = groundGo.AddComponent<UnityEngine.Tilemaps.Tilemap>();
+            var groundTr = groundGo.AddComponent<UnityEngine.Tilemaps.TilemapRenderer>();
+            groundTr.sortingLayerName = "Ground";
+            groundTr.sortingOrder = 1;
+            var gMod = groundGo.AddComponent<NavMeshPlus.Components.NavMeshModifier>();
+            gMod.overrideArea = true;
+            gMod.area = 0; // Walkable
+            gMod.ignoreFromBuild = false;
+
+            // Child Walls
+            var wallsGo = new GameObject("Walls");
+            wallsGo.transform.SetParent(gridGo.transform);
+            wallsGo.transform.localPosition = Vector3.zero;
+            var wallsTm = wallsGo.AddComponent<UnityEngine.Tilemaps.Tilemap>();
+            var wallsTr = wallsGo.AddComponent<UnityEngine.Tilemaps.TilemapRenderer>();
+            wallsTr.sortingLayerName = "Ground";
+            wallsTr.sortingOrder = 2;
+            var wallsCol = wallsGo.AddComponent<UnityEngine.Tilemaps.TilemapCollider2D>();
+            var wMod = wallsGo.AddComponent<NavMeshPlus.Components.NavMeshModifier>();
+            wMod.overrideArea = true;
+            wMod.area = 1; // Not Walkable
+            wMod.ignoreFromBuild = false;
+
+            // Child Decoration
+            var decGo = new GameObject("Decoration");
+            decGo.transform.SetParent(gridGo.transform);
+            decGo.transform.localPosition = Vector3.zero;
+            var decTm = decGo.AddComponent<UnityEngine.Tilemaps.Tilemap>();
+            var decTr = decGo.AddComponent<UnityEngine.Tilemaps.TilemapRenderer>();
+            decTr.sortingLayerName = "Ground";
+            decTr.sortingOrder = 3;
+            var dMod = decGo.AddComponent<NavMeshPlus.Components.NavMeshModifier>();
+            dMod.ignoreFromBuild = true;
+
+            // Connect references
+            pieceComp.GroundTilemap = groundTm;
+            pieceComp.WallsTilemap = wallsTm;
+            pieceComp.DecorationTilemap = decTm;
+
+            // If Entrance, create EntryAnchor child
+            if (roomType == DungeonRoomType.Entrance)
+            {
+                var anchorGo = new GameObject("EntryAnchor");
+                anchorGo.transform.SetParent(rootGo.transform);
+                anchorGo.transform.localPosition = Vector3.zero;
+                var anchorField = typeof(DungeonPiece).GetField("entryAnchors", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (anchorField != null && anchorField.GetValue(pieceComp) is List<Transform> list)
+                {
+                    list.Add(anchorGo.transform);
+                }
+            }
+
+            // Save Prefab Asset
+            string assetPath = System.IO.Path.Combine(folder, $"{pieceName}.prefab").Replace("\\", "/");
+            assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+            var prefab = PrefabUtility.SaveAsPrefabAsset(rootGo, assetPath);
+            DestroyImmediate(rootGo);
 
             if (prefab != null)
             {
                 activePieceSet.AddPiecePrefab(prefab);
                 EditorUtility.SetDirty(activePieceSet);
                 AssetDatabase.SaveAssets();
+
+                if (openInPrefabMode)
+                {
+                    AssetDatabase.OpenAsset(prefab);
+                }
             }
+
+            return prefab;
+        }
+
+        public GameObject CreateAndAssignOpeningCapPrefab(bool openInPrefabMode = true)
+        {
+            if (activePieceSet == null)
+            {
+                EditorUtility.DisplayDialog("Error", "Please select or create an active Piece Set first.", "OK");
+                return null;
+            }
+
+            string setPath = AssetDatabase.GetAssetPath(activePieceSet);
+            string folder = string.IsNullOrEmpty(setPath)
+                ? "Assets/Prefabs/Dungeon/Pieces"
+                : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(setPath), "Pieces").Replace("\\", "/");
+
+            if (!System.IO.Directory.Exists(folder))
+            {
+                System.IO.Directory.CreateDirectory(folder);
+                AssetDatabase.Refresh();
+            }
+
+            string capName = $"OpeningCap_{activePieceSet.ThemeName}";
+            int openW = activePieceSet.OpeningWidth;
+
+            var rootGo = new GameObject(capName);
+            var col = rootGo.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(openW, 1f);
+            col.offset = Vector2.zero;
+            col.isTrigger = false;
+
+            var gridGo = new GameObject("Grid");
+            gridGo.transform.SetParent(rootGo.transform);
+            gridGo.transform.localPosition = new Vector3(-openW * 0.5f, -0.5f, 0f);
+            var grid = gridGo.AddComponent<Grid>();
+            grid.cellSize = new Vector3(1f, 1f, 0f);
+
+            var wallsGo = new GameObject("Walls");
+            wallsGo.transform.SetParent(gridGo.transform);
+            wallsGo.transform.localPosition = Vector3.zero;
+            var wallsTm = wallsGo.AddComponent<UnityEngine.Tilemaps.Tilemap>();
+            var wallsTr = wallsGo.AddComponent<UnityEngine.Tilemaps.TilemapRenderer>();
+            wallsTr.sortingLayerName = "Ground";
+            wallsTr.sortingOrder = 2;
+            var wMod = wallsGo.AddComponent<NavMeshPlus.Components.NavMeshModifier>();
+            wMod.overrideArea = true;
+            wMod.area = 1; // Not Walkable
+            wMod.ignoreFromBuild = false;
+
+            string assetPath = System.IO.Path.Combine(folder, $"{capName}.prefab").Replace("\\", "/");
+            assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+            var prefab = PrefabUtility.SaveAsPrefabAsset(rootGo, assetPath);
+            DestroyImmediate(rootGo);
+
+            if (prefab != null)
+            {
+                activePieceSet.SetOpeningCapPrefab(prefab);
+                EditorUtility.SetDirty(activePieceSet);
+                AssetDatabase.SaveAssets();
+
+                if (openInPrefabMode)
+                {
+                    AssetDatabase.OpenAsset(prefab);
+                }
+            }
+
+            return prefab;
         }
 
         private void DrawBatchSimulationTab()
@@ -769,9 +1005,20 @@ namespace SBGames.Editor.Dungeon
                     }
                     GUI.backgroundColor = Color.white;
 
-                    if (GUILayout.Button("🎮 Test in Combat_Sandbox Scene", GUILayout.Height(30), GUILayout.Width(230)))
+                    if (GUILayout.Button("🎮 Test in Combat_Sandbox Scene", GUILayout.Height(30), GUILayout.Width(220)))
                     {
                         TestInCombatSandboxScene();
+                    }
+
+                    if (GUILayout.Button("🧭 Verify NavMesh Connectivity", GUILayout.Height(30), GUILayout.Width(200)))
+                    {
+                        bool navPassed = VerifyNavMeshConnectivity(out string navMsg);
+                        if (_lastBatchReport != null)
+                        {
+                            _lastBatchReport.NavMeshConnectivityPassed = navPassed;
+                            _lastBatchReport.NavMeshConnectivityMessage = navMsg;
+                        }
+                        EditorUtility.DisplayDialog("NavMesh Connectivity", navMsg, "OK");
                     }
                 }
             }
@@ -790,29 +1037,66 @@ namespace SBGames.Editor.Dungeon
 
         private void DrawBatchReportSummary(DungeonBatchReport report)
         {
-            // 4 KPI Summary Cards
+            // Row 1: KPI Cards (Success Rate, Attempts, Opening Caps)
             using (new EditorGUILayout.HorizontalScope())
             {
-                // 1. Success Rate
                 Color successColor = report.SuccessRate >= 95f ? new Color(0.2f, 0.7f, 0.2f) : (report.SuccessRate >= 75f ? Color.yellow : Color.red);
                 DrawKpiCard("Success Rate", $"{report.SuccessRate:F1}%", $"{report.SuccessfulSeeds}/{report.TotalSeeds} passed", successColor);
 
-                // 2. Average Retries
                 Color retryColor = report.AverageAttempts <= 1.2f ? new Color(0.2f, 0.7f, 0.2f) : Color.yellow;
                 DrawKpiCard("Avg Attempts", $"{report.AverageAttempts:F2}", $"{report.MaxRetriesPerSeed} max allowed", retryColor);
 
-                // 3. Opening Caps
                 int cappedSeedsCount = report.SeedsRequiringCaps.Count;
                 Color capColor = cappedSeedsCount == 0 ? new Color(0.2f, 0.7f, 0.2f) : Color.cyan;
                 DrawKpiCard("Seeds with Caps", $"{cappedSeedsCount}", $"{cappedSeedsCount * 100f / report.TotalSeeds:F0}% of seeds", capColor);
+            }
 
-                // 4. Coverage Gaps
+            EditorGUILayout.Space(4);
+
+            // Row 2: KPI Cards (Seam Check, NavMesh Connectivity, Coverage Gaps)
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                // Seam Check Card
+                Color seamColor = report.SeamCheckFailedSeeds == 0 ? new Color(0.2f, 0.7f, 0.2f) : Color.red;
+                string seamVal = report.SeamCheckFailedSeeds == 0 ? "100% Valid" : $"{report.SeamCheckFailedSeeds} Failed";
+                string seamSub = $"{report.SeamCheckPassedSeeds}/{report.SuccessfulSeeds} passed seam check";
+                DrawKpiCard("Seam Check", seamVal, seamSub, seamColor);
+
+                // NavMesh Connectivity Card
+                Color navColor = report.NavMeshConnectivityPassed == true
+                    ? new Color(0.2f, 0.7f, 0.2f)
+                    : (report.NavMeshConnectivityPassed == false ? Color.red : Color.gray);
+                string navVal = report.NavMeshConnectivityPassed == true
+                    ? "Pass"
+                    : (report.NavMeshConnectivityPassed == false ? "Failed" : "Not Run");
+                string navSub = report.NavMeshConnectivityPassed.HasValue
+                    ? (report.NavMeshConnectivityPassed.Value ? "Entrance -> Boss connected" : "Path disconnected")
+                    : "Run scene build test";
+                DrawKpiCard("NavMesh Path", navVal, navSub, navColor);
+
+                // Coverage Gaps Card
                 int gapCount = report.NeverSelectedPieceIds.Count;
                 Color gapColor = gapCount == 0 ? new Color(0.2f, 0.7f, 0.2f) : Color.yellow;
                 DrawKpiCard("Unused Pieces", $"{gapCount}", gapCount == 0 ? "Full coverage" : "Coverage gaps", gapColor);
             }
 
             EditorGUILayout.Space(6);
+
+            // NavMesh Connectivity Message
+            if (!string.IsNullOrEmpty(report.NavMeshConnectivityMessage))
+            {
+                var boxType = report.NavMeshConnectivityPassed == true ? MessageType.Info : MessageType.Error;
+                EditorGUILayout.HelpBox($"NavMesh Connectivity: {report.NavMeshConnectivityMessage}", boxType);
+            }
+
+            // Seam Failures Warning
+            if (report.AllSeamFailures.Count > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    $"❌ Seam Check Failures ({report.AllSeamFailures.Count}):\n" + string.Join("\n", report.AllSeamFailures),
+                    MessageType.Error
+                );
+            }
 
             // Coverage Gaps Warning
             if (report.NeverSelectedPieceIds.Count > 0)
@@ -846,10 +1130,11 @@ namespace SBGames.Editor.Dungeon
                 {
                     GUILayout.Label("Initial Seed", EditorStyles.miniBoldLabel, GUILayout.Width(80));
                     GUILayout.Label("Used Seed", EditorStyles.miniBoldLabel, GUILayout.Width(80));
-                    GUILayout.Label("Attempts", EditorStyles.miniBoldLabel, GUILayout.Width(70));
-                    GUILayout.Label("Rooms", EditorStyles.miniBoldLabel, GUILayout.Width(60));
-                    GUILayout.Label("Caps", EditorStyles.miniBoldLabel, GUILayout.Width(60));
-                    GUILayout.Label("Status", EditorStyles.miniBoldLabel, GUILayout.Width(100));
+                    GUILayout.Label("Attempts", EditorStyles.miniBoldLabel, GUILayout.Width(65));
+                    GUILayout.Label("Rooms", EditorStyles.miniBoldLabel, GUILayout.Width(55));
+                    GUILayout.Label("Caps", EditorStyles.miniBoldLabel, GUILayout.Width(50));
+                    GUILayout.Label("Seam", EditorStyles.miniBoldLabel, GUILayout.Width(65));
+                    GUILayout.Label("Status", EditorStyles.miniBoldLabel, GUILayout.Width(95));
                     GUILayout.Label("Selected Pieces", EditorStyles.miniBoldLabel);
                 }
 
@@ -862,19 +1147,34 @@ namespace SBGames.Editor.Dungeon
                     {
                         GUILayout.Label(res.InitialSeed.ToString(), EditorStyles.miniLabel, GUILayout.Width(80));
                         GUILayout.Label(res.UsedSeed.ToString(), EditorStyles.miniLabel, GUILayout.Width(80));
-                        GUILayout.Label(res.Attempts.ToString(), EditorStyles.miniLabel, GUILayout.Width(70));
-                        GUILayout.Label(res.RoomCount.ToString(), EditorStyles.miniLabel, GUILayout.Width(60));
-                        GUILayout.Label(res.CappedSidesCount.ToString(), EditorStyles.miniLabel, GUILayout.Width(60));
+                        GUILayout.Label(res.Attempts.ToString(), EditorStyles.miniLabel, GUILayout.Width(65));
+                        GUILayout.Label(res.RoomCount.ToString(), EditorStyles.miniLabel, GUILayout.Width(55));
+                        GUILayout.Label(res.CappedSidesCount.ToString(), EditorStyles.miniLabel, GUILayout.Width(50));
+
+                        if (!res.Success)
+                        {
+                            GUILayout.Label("-", EditorStyles.miniLabel, GUILayout.Width(65));
+                        }
+                        else if (res.SeamCheckPassed)
+                        {
+                            var seamPass = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = new Color(0.2f, 0.7f, 0.2f) } };
+                            GUILayout.Label("✓ Valid", seamPass, GUILayout.Width(65));
+                        }
+                        else
+                        {
+                            var seamFail = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = Color.red } };
+                            GUILayout.Label("❌ Fail", seamFail, GUILayout.Width(65));
+                        }
 
                         if (res.Success)
                         {
                             var passStyle = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = new Color(0.2f, 0.7f, 0.2f) } };
-                            GUILayout.Label(res.Attempts > 1 ? $"✓ (retry #{res.Attempts})" : "✓ Passed", passStyle, GUILayout.Width(100));
+                            GUILayout.Label(res.Attempts > 1 ? $"✓ (retry #{res.Attempts})" : "✓ Passed", passStyle, GUILayout.Width(95));
                         }
                         else
                         {
                             var failStyle = new GUIStyle(EditorStyles.miniBoldLabel) { normal = { textColor = Color.red } };
-                            GUILayout.Label("❌ Failed", failStyle, GUILayout.Width(100));
+                            GUILayout.Label("❌ Failed", failStyle, GUILayout.Width(95));
                         }
 
                         string piecesStr = res.SelectedPieceIds.Count > 0 ? string.Join(", ", res.SelectedPieceIds) : res.FailureMessage;
@@ -921,11 +1221,79 @@ namespace SBGames.Editor.Dungeon
                 seedCount: _batchSeedCount,
                 startSeed: _batchStartSeed,
                 maxRetriesPerSeed: _batchMaxRetries,
+                openingWidth: activePieceSet.OpeningWidth,
                 generatorConfig: genConfig
             );
 
             _lastBatchReport = DungeonBatchSimulator.RunSimulation(batchConfig, descriptors);
-            Debug.Log($"[DungeonBatchSimulation] Completed {_batchSeedCount} seeds. Success: {_lastBatchReport.SuccessRate:F1}%, Avg attempts: {_lastBatchReport.AverageAttempts:F2}, Capped seeds: {_lastBatchReport.SeedsRequiringCaps.Count}");
+            Debug.Log($"[DungeonBatchSimulation] Completed {_batchSeedCount} seeds. Success: {_lastBatchReport.SuccessRate:F1}%, Avg attempts: {_lastBatchReport.AverageAttempts:F2}, Seams valid: {_lastBatchReport.SeamCheckPassedSeeds}/{_lastBatchReport.SuccessfulSeeds}");
+        }
+
+        public static bool VerifyNavMeshConnectivity(out string message)
+        {
+            var rooms = UnityEngine.Object.FindObjectsByType<SBGames.Dungeon.Markers.RoomVolume>(FindObjectsSortMode.None);
+            Vector3? entrancePos = null;
+            Vector3? bossPos = null;
+
+            if (DungeonRoomRegistry.EntrancePosition != Vector3.zero)
+            {
+                entrancePos = DungeonRoomRegistry.EntrancePosition;
+            }
+
+            for (int i = 0; i < rooms.Length; i++)
+            {
+                var r = rooms[i];
+                var piece = r.GetComponent<DungeonPiece>();
+                if (piece != null && piece.RoomType == DungeonRoomType.Entrance)
+                {
+                    entrancePos = r.transform.position;
+                }
+                else if (r.gameObject.name.Contains("Entrance"))
+                {
+                    entrancePos = r.transform.position;
+                }
+
+                if (r.IsBossRoom || (piece != null && piece.RoomType == DungeonRoomType.Boss) || r.gameObject.name.Contains("Boss"))
+                {
+                    bossPos = r.transform.position;
+                }
+            }
+
+            if (!entrancePos.HasValue)
+            {
+                message = "No Entrance room found in scene.";
+                return false;
+            }
+
+            if (!bossPos.HasValue)
+            {
+                message = "No Boss room found in scene.";
+                return false;
+            }
+
+            var path = new UnityEngine.AI.NavMeshPath();
+            bool hasPath = UnityEngine.AI.NavMesh.CalculatePath(entrancePos.Value, bossPos.Value, UnityEngine.AI.NavMesh.AllAreas, path);
+
+            if (hasPath && path.status == UnityEngine.AI.NavMeshPathStatus.PathComplete)
+            {
+                float totalDistance = 0f;
+                for (int i = 0; i < path.corners.Length - 1; i++)
+                {
+                    totalDistance += Vector3.Distance(path.corners[i], path.corners[i + 1]);
+                }
+                message = $"✓ NavMesh path valid! Entrance to Boss is connected ({totalDistance:F1}m, {path.corners.Length} corners).";
+                return true;
+            }
+            else if (hasPath && path.status == UnityEngine.AI.NavMeshPathStatus.PathPartial)
+            {
+                message = "❌ NavMesh path partial: unreachable path from Entrance to Boss.";
+                return false;
+            }
+            else
+            {
+                message = "❌ NavMesh path invalid: no path found between Entrance and Boss.";
+                return false;
+            }
         }
 
         private void TestInCombatSandboxScene()
@@ -944,12 +1312,18 @@ namespace SBGames.Editor.Dungeon
                 }
             }
 
-            var builder = FindAnyObjectByType<DungeonRuntimeBuilder>();
+            var builder = UnityEngine.Object.FindAnyObjectByType<DungeonRuntimeBuilder>();
             if (builder != null)
             {
                 var graph = builder.GenerateDungeonForRun(_batchStartSeed);
-                Debug.Log($"[DungeonBatchRunner] Generated dungeon in Combat_Sandbox with seed {_batchStartSeed}. Rooms: {graph.Rooms.Count}, Doors: {graph.Doors.Count}");
-                EditorUtility.DisplayDialog("Dungeon Test Complete", $"Dungeon generated in Combat_Sandbox for seed {_batchStartSeed}!\nRooms: {graph.Rooms.Count}\nDoors: {graph.Doors.Count}", "OK");
+                bool navPassed = VerifyNavMeshConnectivity(out string navMsg);
+                if (_lastBatchReport != null)
+                {
+                    _lastBatchReport.NavMeshConnectivityPassed = navPassed;
+                    _lastBatchReport.NavMeshConnectivityMessage = navMsg;
+                }
+                Debug.Log($"[DungeonBatchRunner] Generated dungeon in Combat_Sandbox with seed {_batchStartSeed}. Rooms: {graph.Rooms.Count}, Doors: {graph.Doors.Count}. NavMesh: {navMsg}");
+                EditorUtility.DisplayDialog("Dungeon Test Complete", $"Dungeon generated in Combat_Sandbox for seed {_batchStartSeed}!\nRooms: {graph.Rooms.Count}\nDoors: {graph.Doors.Count}\n\nNavMesh Connectivity:\n{navMsg}", "OK");
             }
             else
             {

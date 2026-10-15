@@ -77,7 +77,7 @@ namespace SBGames.Editor.Dungeon
             pieceComp.Openings = openings;
             pieceComp.IsRotatable = isRotatable;
             pieceComp.Footprint = Vector2Int.one;
-            pieceComp.FillBuildableBox(cellWidth, cellHeight, margin: 1);
+            pieceComp.GenerateBuildableMaskFromGround(margin: 1, openingClearance: 2, cellWidth: cellWidth, cellHeight: cellHeight);
 
             // Save as Prefab Asset
             string assetPath = Path.Combine(targetFolder, $"{pieceName}.prefab").Replace("\\", "/");
