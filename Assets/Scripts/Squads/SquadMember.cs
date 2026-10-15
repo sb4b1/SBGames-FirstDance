@@ -30,7 +30,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
         {
             if (overrideIsScout) return true;
             if (StatsManager == null) return false;
-            return StatsManager.CharacterFunction == AdventurerFunction.Scout
+            return (StatsManager.CharacterFunction & AdventurerFunction.Scout) != 0
                 || StatsManager.CharacterClass == CharacterClass.Scout
                 || StatsManager.CharacterClass == CharacterClass.Rogue;
         }
@@ -51,7 +51,7 @@ public class SquadMember : MonoBehaviour, ISquadMember
             if (!HasLeader) return SquadOrderType.None;
 
             SquadOrderType order = currentLeader.Blackboard.CurrentOrder;
-            if (order == SquadOrderType.ScoutAhead && CharacterFunction != AdventurerFunction.Scout)
+            if (order == SquadOrderType.ScoutAhead && (CharacterFunction & AdventurerFunction.Scout) == 0)
             {
                 return SquadOrderType.FollowLeader;
             }

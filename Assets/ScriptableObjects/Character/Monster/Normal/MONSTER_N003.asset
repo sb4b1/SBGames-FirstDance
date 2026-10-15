@@ -14,13 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBaseStatSO
   characterLevel: 1
   characterRank: 0
-  MaxLife: 20
+  characterClass: 0
+  characterFunction: 0
+  characterWealth: 0
+  extraItemIds: []
+  MaxLife: 80
   MaxMana: 0
-  Movespeed: 3
-  Damage: 1
+  Movespeed: 4
+  Damage: 10
   AttackRange: 1
   AttackTimeInterval: 1
-  DefaultPostAttackRecovery: 1
+  DefaultPostAttackRecovery: 0.3
   DefaultPostCastRecovery: 0.3
   DecisionInterval: 0.4
   IntervalJitter: 0.05

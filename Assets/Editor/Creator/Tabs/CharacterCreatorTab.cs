@@ -5,6 +5,7 @@ using System.Linq;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
 using Micosmo.SensorToolkit;
+using SBGames.Characters.AI;
 using SBGames.Database;
 using SBGames.Editor.Animation;
 using SBGames.Inventory.Character;
@@ -69,6 +70,9 @@ namespace SBGames.Editor.Creator.Tabs
         [SerializeField] private CharacterBaseStatSO existingBaseStatsSO;
         [SerializeField] private int characterLevel = 1;
         [SerializeField] private CharacterRank characterRank = CharacterRank.D;
+        [SerializeField] private CharacterClass characterClass = CharacterClass.None;
+        [SerializeField] private AdventurerFunction characterFunction = AdventurerFunction.None;
+        [SerializeField] private AdventurerWealth characterWealth = AdventurerWealth.Average;
         [SerializeField] private float maxLife = 100f;
         [SerializeField] private float maxMana = 50f;
         [SerializeField] private float moveSpeed = 5f;
@@ -88,6 +92,10 @@ namespace SBGames.Editor.Creator.Tabs
         [SerializeField] private AgentStatus agentStatus = AgentStatus.Active;
         [SerializeField] private string agentType = "NormalAgent";
         [SerializeField] private List<UtilityGoal> defaultGoals = new();
+        [SerializeField] private AdventurerAIProfile adventurerProfile;
+        [SerializeField] private CharacterClassStyleTableSO classStyleTable;
+        [SerializeField] private ItemUseQualityTuningSO itemUseQualityTuning;
+        [SerializeField] private ItemDatabaseSO itemDatabase;
 
         // ----------------------------------------------------
         // Personality Settings
@@ -157,10 +165,26 @@ namespace SBGames.Editor.Creator.Tabs
             {
                 characterDatabase = CreatorEditorUtils.FindFirstAsset<CharacterDatabaseSO>();
             }
+            if (classStyleTable == null)
+            {
+                classStyleTable = CreatorEditorUtils.FindFirstAsset<CharacterClassStyleTableSO>();
+            }
+            if (itemUseQualityTuning == null)
+            {
+                itemUseQualityTuning = CreatorEditorUtils.FindFirstAsset<ItemUseQualityTuningSO>();
+            }
+            if (itemDatabase == null)
+            {
+                itemDatabase = CreatorEditorUtils.FindFirstAsset<ItemDatabaseSO>();
+            }
 
             if (defaultGoals.Count == 0)
             {
-                if (agentType == "MinionAgent" || archetype == CharacterArchetype.MinionMonster)
+                if (archetype == CharacterArchetype.Adventurer)
+                {
+                    SetAdventurerDefaults();
+                }
+                else if (agentType == "MinionAgent" || archetype == CharacterArchetype.MinionMonster)
                 {
                     SetMinionDefaultGoals();
                     SetMinionDefaultPersonality();
@@ -172,6 +196,71 @@ namespace SBGames.Editor.Creator.Tabs
                     if (killGoal != null) defaultGoals.Add(killGoal);
                     if (wanderGoal != null) defaultGoals.Add(wanderGoal);
                 }
+            }
+        }
+
+        public void SetAdventurerDefaults()
+        {
+            rootTag = "Adventurer";
+            rootLayer = 6;
+            controlMode = ControlMode.AI;
+            agentStatus = AgentStatus.Active;
+            hasAI = true;
+            agentType = "NormalAgent";
+            characterRank = CharacterRank.E;
+            characterClass = CharacterClass.Warrior;
+            characterFunction = AdventurerFunction.DPS;
+            characterWealth = AdventurerWealth.Average;
+            maxLife = 120f;
+            maxMana = 40f;
+            moveSpeed = 4.5f;
+            damage = 12f;
+            attackRange = 1.0f;
+            attackTimeInterval = 0.8f;
+            decisionInterval = 0.5f;
+            intervalJitter = 0.05f;
+            prefabFolderPath = "Assets/Prefabs/Character/Adventurer/Normal";
+            statsFolderPath = "Assets/ScriptableObjects/Character/Adventurer/Normal";
+
+            if (adventurerProfile == null)
+            {
+                adventurerProfile = AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>("Assets/ScriptableObjects/AIProfiles/Profile_Rank_E.asset");
+            }
+            if (classStyleTable == null)
+            {
+                classStyleTable = CreatorEditorUtils.FindFirstAsset<CharacterClassStyleTableSO>();
+            }
+            if (itemUseQualityTuning == null)
+            {
+                itemUseQualityTuning = CreatorEditorUtils.FindFirstAsset<ItemUseQualityTuningSO>();
+            }
+            if (itemDatabase == null)
+            {
+                itemDatabase = CreatorEditorUtils.FindFirstAsset<ItemDatabaseSO>();
+            }
+
+            SetAdventurerDefaultGoals();
+            SetAdventurerDefaultPersonality();
+        }
+
+        public void SetAdventurerDefaultGoals()
+        {
+            defaultGoals.Clear();
+            AddGoalAssetIfExists<UtilityKillEnemyGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultKillEnemyGoal.asset");
+            AddGoalAssetIfExists<UtilityRecoverGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultRecoverGoal.asset");
+            AddGoalAssetIfExists<UtilityWarpGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultWarpGoal.asset");
+            AddGoalAssetIfExists<UtilitySurviveGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultSurviveGoal.asset");
+            AddGoalAssetIfExists<UtilityFollowLeaderGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFollowLeaderGoal.asset");
+            AddGoalAssetIfExists<UtilityFocusFireGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFocusFireGoal.asset");
+            AddGoalAssetIfExists<UtilityFallBackGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultFallBackGoal.asset");
+            AddGoalAssetIfExists<UtilityWanderGoal>("Assets/ScriptableObjects/UtilityGoal/Default/DefaultWanderGoal.asset");
+        }
+
+        public void SetAdventurerDefaultPersonality()
+        {
+            if (activeTrait == null)
+            {
+                activeTrait = AssetDatabase.LoadAssetAtPath<CharacterTraitSO>("Assets/ScriptableObjects/Personality/Traits/Trait_Pragmatic.asset");
             }
         }
 
@@ -367,18 +456,7 @@ namespace SBGames.Editor.Creator.Tabs
                     break;
 
                 case CharacterArchetype.Adventurer:
-                    rootTag = "Adventurer";
-                    rootLayer = 6;
-                    controlMode = ControlMode.Player;
-                    agentStatus = AgentStatus.Inactive;
-                    hasAI = false;
-                    agentType = "";
-                    characterRank = CharacterRank.C;
-                    maxLife = 150f;
-                    damage = 15f;
-                    moveSpeed = 5f;
-                    prefabFolderPath = "Assets/Prefabs/Characters/Adventurers";
-                    statsFolderPath = "Assets/ScriptableObjects/Character/Adventurers";
+                    SetAdventurerDefaults();
                     break;
             }
         }
@@ -647,6 +725,12 @@ namespace SBGames.Editor.Creator.Tabs
                     characterRank = (CharacterRank)EditorGUILayout.EnumPopup("Rank", characterRank);
 
                     EditorGUILayout.Space(2);
+                    EditorGUILayout.LabelField("Class & Role Specialization", EditorStyles.miniBoldLabel);
+                    characterClass = (CharacterClass)EditorGUILayout.EnumPopup("Character Class", characterClass);
+                    characterFunction = (AdventurerFunction)EditorGUILayout.EnumFlagsField("Character Function", characterFunction);
+                    characterWealth = (AdventurerWealth)EditorGUILayout.EnumPopup("Wealth Tier", characterWealth);
+
+                    EditorGUILayout.Space(2);
                     maxLife = EditorGUILayout.FloatField("Max Life", maxLife);
                     maxMana = EditorGUILayout.FloatField("Max Mana", maxMana);
                     moveSpeed = EditorGUILayout.FloatField("Move Speed", moveSpeed);
@@ -707,6 +791,22 @@ namespace SBGames.Editor.Creator.Tabs
                         {
                             SetMinionDefaults();
                         }
+                    }
+                    else if (archetype == CharacterArchetype.Adventurer || rootTag == "Adventurer")
+                    {
+                        EditorGUILayout.Space(2);
+                        EditorGUILayout.HelpBox("Adventurers use full GOAP capabilities (Combat, Skills, Squad, Recovery, Warp). Data-driven rank profile & 8 Utility Goals are auto-assigned.", MessageType.Info);
+                        if (GUILayout.Button("↺ Reset to Adventurer Defaults (8 Goals & Profile)", EditorStyles.miniButton))
+                        {
+                            SetAdventurerDefaults();
+                        }
+
+                        EditorGUILayout.Space(4);
+                        EditorGUILayout.LabelField("Adventurer AI & Item Tuning", EditorStyles.miniBoldLabel);
+                        adventurerProfile = (AdventurerAIProfile)EditorGUILayout.ObjectField("Rank Profile", adventurerProfile, typeof(AdventurerAIProfile), false);
+                        classStyleTable = (CharacterClassStyleTableSO)EditorGUILayout.ObjectField("Class Style Table", classStyleTable, typeof(CharacterClassStyleTableSO), false);
+                        itemUseQualityTuning = (ItemUseQualityTuningSO)EditorGUILayout.ObjectField("Item Quality Tuning", itemUseQualityTuning, typeof(ItemUseQualityTuningSO), false);
+                        itemDatabase = (ItemDatabaseSO)EditorGUILayout.ObjectField("Item Database", itemDatabase, typeof(ItemDatabaseSO), false);
                     }
 
                     EditorGUILayout.Space(4);
@@ -859,6 +959,9 @@ namespace SBGames.Editor.Creator.Tabs
 
                     statAsset.characterLevel = characterLevel;
                     statAsset.characterRank = characterRank;
+                    statAsset.characterClass = characterClass;
+                    statAsset.characterFunction = characterFunction;
+                    statAsset.characterWealth = characterWealth;
                     statAsset.MaxLife = maxLife;
                     statAsset.MaxMana = maxMana;
                     statAsset.Movespeed = moveSpeed;
@@ -904,6 +1007,16 @@ namespace SBGames.Editor.Creator.Tabs
                 var identifier = CreatorEditorUtils.GetOrAddComponent<CharacterIdentifier>(rootGo);
                 var inventoryManager = CreatorEditorUtils.GetOrAddComponent<CharacterInventoryManager>(rootGo);
                 var combatPower = CreatorEditorUtils.GetOrAddComponent<CharacterCombatPower>(rootGo);
+
+                var statusMgr = CreatorEditorUtils.GetOrAddComponent<StatusEffectManager>(rootGo);
+
+                AdventurerItemKitController kit = null;
+                if (rootTag == "Adventurer" || archetype == CharacterArchetype.Adventurer)
+                {
+                    kit = CreatorEditorUtils.GetOrAddComponent<AdventurerItemKitController>(rootGo);
+                    kit.QualityTuning = itemUseQualityTuning;
+                    kit.ItemDatabase = itemDatabase;
+                }
 
                 var factionMember = rootGo.AddComponent<FactionMember>();
                 factionMember.Faction = (rootTag == "Adventurer") ? FactionId.Adventurer : FactionId.Monster;
@@ -1049,7 +1162,7 @@ namespace SBGames.Editor.Creator.Tabs
                     visionController = sensorGo.AddComponent<VisionController>();
                     CreatorEditorUtils.SetPrivateField(visionController, "sensor", losSensor);
 
-                    aiAugmentGo = new GameObject("NormalAI");
+                    aiAugmentGo = new GameObject("CoreAI");
                     aiAugmentGo.tag = "AI_Augment";
                     aiAugmentGo.transform.SetParent(rootGo.transform, false);
 
@@ -1058,6 +1171,8 @@ namespace SBGames.Editor.Creator.Tabs
                     var agentMoveBehaviour = aiAugmentGo.AddComponent<AgentMoveBehaviour>();
                     baseAI = aiAugmentGo.AddComponent<BaseAI>();
                     var throttler = aiAugmentGo.AddComponent<AIDecisionThrottler>();
+                    var memory = aiAugmentGo.AddComponent<CharacterAIMemory>();
+                    var doorway = aiAugmentGo.AddComponent<DoorwayStagingController>();
 
                     CreatorEditorUtils.SetPrivateField(agentBehaviour, "<ActionProviderBase>k__BackingField", goapProvider);
                     CreatorEditorUtils.SetPrivateField(agentMoveBehaviour, "agent", baseAI);
@@ -1073,6 +1188,14 @@ namespace SBGames.Editor.Creator.Tabs
                     CreatorEditorUtils.SetPrivateField(baseAI, "agentType", agentType);
                     CreatorEditorUtils.SetPrivateField(baseAI, "squadMember", squadMember);
                     CreatorEditorUtils.SetPrivateField(baseAI, "personality", personality);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "statusEffectManager", statusMgr);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "decisionThrottler", throttler);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "aiMemory", memory);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "doorwayStaging", doorway);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "itemKitController", kit);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "adventurerProfile", adventurerProfile);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "classStyleTable", classStyleTable);
+                    CreatorEditorUtils.SetPrivateField(baseAI, "itemUseQualityTuning", itemUseQualityTuning);
 
                     var goalsList = new List<UtilityGoal>();
                     if (defaultGoals != null)

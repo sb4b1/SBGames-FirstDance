@@ -272,6 +272,46 @@ namespace SBGames.Tests
         }
 
         [Test]
+        public void AdventurerFunction_HybridRole_SupportsFlags_AggregatesModifiers_AndRoundtripsCsv()
+        {
+            var stats = _rootGo.AddComponent<CharacterStatsManager>();
+            var baseStat = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            baseStat.characterFunction = AdventurerFunction.Tank | AdventurerFunction.DPS;
+            stats.SetBaseStats(baseStat);
+
+            Assert.AreEqual(AdventurerFunction.Tank | AdventurerFunction.DPS, stats.CharacterFunction);
+            Assert.AreEqual(AdventurerFunction.Tank | AdventurerFunction.DPS, stats.EffectiveFunction);
+            Assert.IsTrue((stats.EffectiveFunction & AdventurerFunction.Tank) != 0);
+            Assert.IsTrue((stats.EffectiveFunction & AdventurerFunction.DPS) != 0);
+            Assert.IsFalse((stats.EffectiveFunction & AdventurerFunction.Healer) != 0);
+
+            // CSV roundtrip with hybrid role
+            var entry = new SBGames.Database.CharacterEntry
+            {
+                id = "char_hybrid",
+                characterName = "Paladin",
+                baseStats = baseStat
+            };
+            var row = SBGames.Database.CSV.CsvParser.BuildCharacterCsvRow(entry);
+            var importedStat = ScriptableObject.CreateInstance<CharacterBaseStatSO>();
+            SBGames.Database.CSV.CsvParser.ApplyCharacterCsvRowToStats(row, importedStat);
+            Assert.AreEqual(AdventurerFunction.Tank | AdventurerFunction.DPS, importedStat.characterFunction);
+
+            // Item kit modifier aggregation for hybrid (Tank: +1 HP, Healer: +1 Mana)
+            var hybridKit = AdventurerFunction.Tank | AdventurerFunction.Healer;
+            var mod = ItemKitModifiers.GetFunctionModifierOrDefault(null, hybridKit);
+            Assert.AreEqual(1, mod.HpPotionDelta);
+            Assert.AreEqual(1, mod.ManaPotionDelta);
+
+            // Succession weight picks max of combined roles (Tank=0.85, DPS=0.55 -> 0.85)
+            float hybridWeight = LeaderCheckpointTuningSO.GetFunctionStepUpWeightOrDefault(null, AdventurerFunction.Tank | AdventurerFunction.DPS);
+            Assert.AreEqual(0.85f, hybridWeight, 0.001f);
+
+            UnityEngine.Object.DestroyImmediate(baseStat);
+            UnityEngine.Object.DestroyImmediate(importedStat);
+        }
+
+        [Test]
         public void CharacterClassStyleTable_ProvidesStandingDistanceAndSkillReliance_WithoutRestrictingSkills()
         {
             var stats = _rootGo.AddComponent<CharacterStatsManager>();

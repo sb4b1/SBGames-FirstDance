@@ -62,9 +62,19 @@ public class SquadFormationConfigSO : ScriptableObject
         AdventurerFunction effective = function != AdventurerFunction.None ? function : AdventurerFunction.DPS;
         if (slots != null)
         {
+            // 1. Exact match (e.g. pure role or explicit hybrid slot)
             for (int i = 0; i < slots.Count; i++)
             {
                 if (slots[i].Function == effective)
+                {
+                    return inCombat ? slots[i].CombatOffset : slots[i].TravelOffset;
+                }
+            }
+
+            // 2. Flag match (hybrid role fallback matching configured slot function)
+            for (int i = 0; i < slots.Count; i++)
+            {
+                if ((effective & slots[i].Function) != 0)
                 {
                     return inCombat ? slots[i].CombatOffset : slots[i].TravelOffset;
                 }

@@ -80,6 +80,67 @@ namespace SBGames.Placement
         public IGridOccupancyTracker OccupancyTracker => System?.OccupancyTracker;
         public IDungeonPhaseManager PhaseManager { get; private set; }
         public ICombatPowerProvider CombatPowerProvider { get; set; }
+        public IBuildableCellValidator BuildableCellValidator
+        {
+            get => System?.BuildableCellValidator;
+            set
+            {
+                if (System != null) System.BuildableCellValidator = value;
+            }
+        }
+
+        /// <summary>
+        /// Reconfigures placement grid dimensions, origin, and cell validator to match generated dungeon bounds.
+        /// </summary>
+        public void ConfigurePlacementGrid(Vector2Int newGridSize, Vector3 newGridOrigin, float newCellSize, IBuildableCellValidator cellValidator = null)
+        {
+            gridSize = new Vector2Int(Mathf.Max(1, newGridSize.x), Mathf.Max(1, newGridSize.y));
+            gridOrigin = newGridOrigin;
+            cellSize = Mathf.Max(0.1f, newCellSize);
+
+            if (_system != null)
+            {
+                var newTracker = new GridOccupancyTracker(gridSize.x, gridSize.y);
+                var existingUnits = _system.OccupancyTracker?.GetAllPlacedUnits();
+                if (existingUnits != null)
+                {
+                    foreach (var unit in existingUnits)
+                    {
+                        if (newTracker.IsWithinBounds(unit.GridPosition))
+                        {
+                            newTracker.RegisterUnit(unit);
+                        }
+                    }
+                }
+
+                System = new DungeonPlacementSystem(
+                    DungeonMaster,
+                    CapacityPool,
+                    newTracker,
+                    _system.MultiplierStrategy,
+                    PhaseManager,
+                    cellValidator ?? _system.BuildableCellValidator
+                );
+
+                System.OnUnitPlaced += HandleUnitPlaced;
+                System.OnUnitRemoved += HandleUnitRemoved;
+                System.OnPlacementRejected += HandlePlacementRejected;
+            }
+            else
+            {
+                InitializeSystem();
+                if (cellValidator != null && System != null)
+                {
+                    System.BuildableCellValidator = cellValidator;
+                }
+            }
+
+            var visualizer = GetComponent<DungeonGridVisualizer>();
+            if (visualizer != null)
+            {
+                visualizer.RebuildGridMesh();
+            }
+        }
 
         private void Awake()
         {

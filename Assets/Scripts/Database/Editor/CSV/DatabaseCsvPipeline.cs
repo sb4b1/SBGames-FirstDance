@@ -290,13 +290,16 @@ namespace SBGames.Database.Editor.CSV
             "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds"
         };
 
+        private const AdventurerFunction AllAdventurerFunctions =
+            AdventurerFunction.Tank | AdventurerFunction.DPS | AdventurerFunction.Healer | AdventurerFunction.Scout;
+
         public static AdventurerFunction ParseAdventurerFunction(IReadOnlyDictionary<string, string> row)
         {
             if (row != null &&
                 row.TryGetValue("Function", out var funcStr) &&
                 !string.IsNullOrWhiteSpace(funcStr) &&
                 Enum.TryParse<AdventurerFunction>(funcStr.Trim(), true, out var parsedFunc) &&
-                Enum.IsDefined(typeof(AdventurerFunction), parsedFunc))
+                (parsedFunc & ~AllAdventurerFunctions) == 0)
             {
                 return parsedFunc;
             }

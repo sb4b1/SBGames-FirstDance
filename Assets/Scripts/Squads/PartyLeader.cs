@@ -238,8 +238,8 @@ public class PartyLeader : MonoBehaviour
 
     public void RecordRoleIfKey(AdventurerFunction function)
     {
-        if (function == AdventurerFunction.Tank) hadTankInParty = true;
-        if (function == AdventurerFunction.Healer) hadHealerInParty = true;
+        if ((function & AdventurerFunction.Tank) != 0) hadTankInParty = true;
+        if ((function & AdventurerFunction.Healer) != 0) hadHealerInParty = true;
     }
 
     public void RegisterMember(SquadMember member)
@@ -284,7 +284,7 @@ public class PartyLeader : MonoBehaviour
         for (int i = 0; i < members.Count; i++)
         {
             var m = members[i];
-            if (m != null && m.IsAlive && m.CharacterFunction == AdventurerFunction.Scout)
+            if (m != null && m.IsAlive && (m.CharacterFunction & AdventurerFunction.Scout) != 0)
             {
                 scoutMember = m;
                 return;
@@ -316,7 +316,7 @@ public class PartyLeader : MonoBehaviour
         for (int i = 0; i < members.Count; i++)
         {
             var m = members[i];
-            if (m != null && m.IsAlive && m.EffectiveFunction == AdventurerFunction.Tank)
+            if (m != null && m.IsAlive && (m.EffectiveFunction & AdventurerFunction.Tank) != 0)
             {
                 return m;
             }
@@ -816,9 +816,19 @@ public class PartyLeader : MonoBehaviour
         AdventurerFunction effective = function != AdventurerFunction.None ? function : AdventurerFunction.DPS;
         if (formationSlots != null)
         {
+            // 1. Exact match
             for (int i = 0; i < formationSlots.Length; i++)
             {
                 if (formationSlots[i].Function == effective)
+                {
+                    return inCombat ? formationSlots[i].CombatOffset : formationSlots[i].TravelOffset;
+                }
+            }
+
+            // 2. Flag match (hybrid fallback)
+            for (int i = 0; i < formationSlots.Length; i++)
+            {
+                if ((effective & formationSlots[i].Function) != 0)
                 {
                     return inCombat ? formationSlots[i].CombatOffset : formationSlots[i].TravelOffset;
                 }
@@ -1276,8 +1286,8 @@ public class PartyLeader : MonoBehaviour
             sumManaFrac += lMana;
             if (lHp < minHpFrac) minHpFrac = lHp;
 
-            if (leaderFn == AdventurerFunction.Tank) hasLivingTank = true;
-            if (leaderFn == AdventurerFunction.Healer)
+            if ((leaderFn & AdventurerFunction.Tank) != 0) hasLivingTank = true;
+            if ((leaderFn & AdventurerFunction.Healer) != 0)
             {
                 hasLivingHealer = true;
                 if (lMana >= healerMinMana) hasLivingHealerWithMana = true;
@@ -1286,8 +1296,8 @@ public class PartyLeader : MonoBehaviour
         else
         {
             totalTrackedCount++;
-            if (leaderFn == AdventurerFunction.Tank) hasDeadTank = true;
-            if (leaderFn == AdventurerFunction.Healer) hasDeadHealer = true;
+            if ((leaderFn & AdventurerFunction.Tank) != 0) hasDeadTank = true;
+            if ((leaderFn & AdventurerFunction.Healer) != 0) hasDeadHealer = true;
         }
 
         for (int i = 0; i < members.Count; i++)
@@ -1301,8 +1311,8 @@ public class PartyLeader : MonoBehaviour
 
             if (!m.IsAlive)
             {
-                if (mFn == AdventurerFunction.Tank) hasDeadTank = true;
-                if (mFn == AdventurerFunction.Healer) hasDeadHealer = true;
+                if ((mFn & AdventurerFunction.Tank) != 0) hasDeadTank = true;
+                if ((mFn & AdventurerFunction.Healer) != 0) hasDeadHealer = true;
                 continue;
             }
 
@@ -1313,8 +1323,8 @@ public class PartyLeader : MonoBehaviour
             sumManaFrac += mMana;
             if (mHp < minHpFrac) minHpFrac = mHp;
 
-            if (mFn == AdventurerFunction.Tank) hasLivingTank = true;
-            if (mFn == AdventurerFunction.Healer)
+            if ((mFn & AdventurerFunction.Tank) != 0) hasLivingTank = true;
+            if ((mFn & AdventurerFunction.Healer) != 0)
             {
                 hasLivingHealer = true;
                 if (mMana >= healerMinMana) hasLivingHealerWithMana = true;

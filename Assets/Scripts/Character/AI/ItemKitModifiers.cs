@@ -109,14 +109,102 @@ public class ItemKitModifiers : ScriptableObject
         };
     }
 
+    private FunctionKitModifierEntry GetSingleFunctionModifier(AdventurerFunction singleFunction)
+    {
+        if (functionModifiers != null)
+        {
+            for (int i = 0; i < functionModifiers.Length; i++)
+            {
+                if (functionModifiers[i].Function == singleFunction)
+                {
+                    return functionModifiers[i];
+                }
+            }
+        }
+        for (int i = 0; i < DefaultFunctionTable.Length; i++)
+        {
+            if (DefaultFunctionTable[i].Function == singleFunction)
+            {
+                return DefaultFunctionTable[i];
+            }
+        }
+        return DefaultFunctionTable[0];
+    }
+
+    private static FunctionKitModifierEntry GetDefaultSingleModifier(AdventurerFunction singleFunction)
+    {
+        for (int i = 0; i < DefaultFunctionTable.Length; i++)
+        {
+            if (DefaultFunctionTable[i].Function == singleFunction)
+            {
+                return DefaultFunctionTable[i];
+            }
+        }
+        return DefaultFunctionTable[0];
+    }
+
     public FunctionKitModifierEntry GetFunctionModifier(AdventurerFunction function)
     {
-        int index = Mathf.Clamp((int)function, 0, FunctionCount - 1);
-        if (functionModifiers != null && index < functionModifiers.Length)
+        if (function == AdventurerFunction.None)
         {
-            return functionModifiers[index];
+            return GetSingleFunctionModifier(AdventurerFunction.None);
         }
-        return DefaultFunctionTable[index];
+
+        if (functionModifiers != null)
+        {
+            for (int i = 0; i < functionModifiers.Length; i++)
+            {
+                if (functionModifiers[i].Function == function)
+                {
+                    return functionModifiers[i];
+                }
+            }
+        }
+
+        int hpDelta = 0;
+        int manaDelta = 0;
+        int cureDelta = 0;
+        bool any = false;
+
+        if ((function & AdventurerFunction.Tank) != 0)
+        {
+            var e = GetSingleFunctionModifier(AdventurerFunction.Tank);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.DPS) != 0)
+        {
+            var e = GetSingleFunctionModifier(AdventurerFunction.DPS);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.Healer) != 0)
+        {
+            var e = GetSingleFunctionModifier(AdventurerFunction.Healer);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.Scout) != 0)
+        {
+            var e = GetSingleFunctionModifier(AdventurerFunction.Scout);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+
+        if (any)
+        {
+            return new FunctionKitModifierEntry(function, hpDelta, manaDelta, cureDelta);
+        }
+
+        return GetSingleFunctionModifier(AdventurerFunction.None);
     }
 
     public WealthKitModifierEntry GetWealthModifier(AdventurerWealth wealth)
@@ -135,8 +223,56 @@ public class ItemKitModifiers : ScriptableObject
         {
             return modifiers.GetFunctionModifier(function);
         }
-        int index = Mathf.Clamp((int)function, 0, DefaultFunctionTable.Length - 1);
-        return DefaultFunctionTable[index];
+
+        if (function == AdventurerFunction.None)
+        {
+            return GetDefaultSingleModifier(AdventurerFunction.None);
+        }
+
+        int hpDelta = 0;
+        int manaDelta = 0;
+        int cureDelta = 0;
+        bool any = false;
+
+        if ((function & AdventurerFunction.Tank) != 0)
+        {
+            var e = GetDefaultSingleModifier(AdventurerFunction.Tank);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.DPS) != 0)
+        {
+            var e = GetDefaultSingleModifier(AdventurerFunction.DPS);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.Healer) != 0)
+        {
+            var e = GetDefaultSingleModifier(AdventurerFunction.Healer);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+        if ((function & AdventurerFunction.Scout) != 0)
+        {
+            var e = GetDefaultSingleModifier(AdventurerFunction.Scout);
+            hpDelta += e.HpPotionDelta;
+            manaDelta += e.ManaPotionDelta;
+            cureDelta += e.StatusCureDelta;
+            any = true;
+        }
+
+        if (any)
+        {
+            return new FunctionKitModifierEntry(function, hpDelta, manaDelta, cureDelta);
+        }
+
+        return GetDefaultSingleModifier(AdventurerFunction.None);
     }
 
     public static WealthKitModifierEntry GetWealthModifierOrDefault(ItemKitModifiers modifiers, AdventurerWealth wealth)

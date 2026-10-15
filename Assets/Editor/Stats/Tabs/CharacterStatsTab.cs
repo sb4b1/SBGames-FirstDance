@@ -50,6 +50,7 @@ namespace SBGames.Editor.Stats.Tabs
             public CharacterBaseStatSO BaseStatsSO;
 
             // Identity
+            public string OriginalId = "";
             public string Id = "";
             public string Name = "";
             public GameObject Prefab;
@@ -143,6 +144,7 @@ namespace SBGames.Editor.Stats.Tabs
                     {
                         Entry = entry,
                         BaseStatsSO = entry.baseStats,
+                        OriginalId = entry.id ?? "",
                         Id = entry.id ?? "",
                         Name = entry.characterName ?? "",
                         Prefab = entry.GetPrefabDirect(),
@@ -187,6 +189,7 @@ namespace SBGames.Editor.Stats.Tabs
                 {
                     Entry = null,
                     BaseStatsSO = statAsset,
+                    OriginalId = assetName,
                     Id = assetName,
                     Name = assetName,
                     Level = statAsset.characterLevel,
@@ -718,6 +721,27 @@ namespace SBGames.Editor.Stats.Tabs
                         _selectedRow.MarkDirty();
                     }
 
+                    if (!string.IsNullOrEmpty(_selectedRow.Id) &&
+                        !string.IsNullOrEmpty(_selectedRow.OriginalId) &&
+                        !string.Equals(_selectedRow.Id, _selectedRow.OriginalId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        EditorGUILayout.Space(2);
+                        GUI.backgroundColor = new Color(1f, 0.85f, 0.4f);
+                        if (GUILayout.Button($"🔄 Rename Linked Assets to '{_selectedRow.Id}'", GUILayout.Height(24)))
+                        {
+                            ExecuteCascadeRename(_selectedRow);
+                        }
+                        GUI.backgroundColor = Color.white;
+                    }
+                    else if (!string.IsNullOrEmpty(_selectedRow.Id))
+                    {
+                        EditorGUILayout.Space(2);
+                        if (GUILayout.Button("🔄 Rename Linked Assets...", GUILayout.Height(22)))
+                        {
+                            ExecuteCascadeRenameManualPrompt(_selectedRow);
+                        }
+                    }
+
                     EditorGUILayout.Space(4);
                     EditorGUILayout.LabelField("Recovery Delays", EditorStyles.boldLabel);
 
@@ -782,6 +806,257 @@ namespace SBGames.Editor.Stats.Tabs
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void ExecuteCascadeRenameManualPrompt(CharacterRow row)
+        {
+            string oldId = row.OriginalId;
+            if (string.IsNullOrEmpty(oldId)) oldId = row.Id;
+
+            // Simple prompt dialog or just confirm renaming with current Id
+            if (EditorUtility.DisplayDialog(
+                "Rename Linked Assets",
+                $"Do you want to search and rename all assets linked with '{row.Id}'?",
+                "Yes, Rename",
+                "Cancel"))
+            {
+                ExecuteRenameOperation(row, oldId, row.Id);
+            }
+        }
+
+        private void ExecuteCascadeRename(CharacterRow row)
+        {
+            string oldId = row.OriginalId;
+            string newId = row.Id;
+
+            if (string.IsNullOrWhiteSpace(oldId) || string.IsNullOrWhiteSpace(newId))
+            {
+                EditorUtility.DisplayDialog("Rename Assets", "Original ID or New ID is invalid.", "OK");
+                return;
+            }
+
+            bool confirm = EditorUtility.DisplayDialog(
+                "Confirm Rename Character Assets",
+                $"Are you sure you want to rename all linked assets from '{oldId}' to '{newId}'?\n\n" +
+                "This will update:\n" +
+                "• Prefab & Root GameObject\n" +
+                "• BaseStats ScriptableObject\n" +
+                "• Animator Controller & Animation folder\n" +
+                "• Resources sprite folder (if matching)",
+                "Yes, Rename Assets",
+                "Cancel");
+
+            if (!confirm) return;
+
+            ExecuteRenameOperation(row, oldId, newId);
+        }
+
+        private void ExecuteRenameOperation(CharacterRow row, string oldId, string newId)
+        {
+            try
+            {
+                AssetDatabase.StartAssetEditing();
+
+                var renamedItems = new List<string>();
+
+                // 1. Rename Prefab Asset and root GameObject name inside
+                if (row.Prefab != null)
+                {
+                    string prefabPath = AssetDatabase.GetAssetPath(row.Prefab);
+                    if (!string.IsNullOrEmpty(prefabPath))
+                    {
+                        // Update root GameObject name inside prefab
+                        using (var editingScope = new PrefabUtility.EditPrefabContentsScope(prefabPath))
+                        {
+                            var root = editingScope.prefabContentsRoot;
+                            if (root != null)
+                            {
+                                root.name = newId;
+                                var charIdentifier = root.GetComponent<CharacterIdentifier>();
+                                if (charIdentifier != null)
+                                {
+                                    var serializedId = new SerializedObject(charIdentifier);
+                                    var nameProp = serializedId.FindProperty("characterName");
+                                    if (nameProp != null)
+                                    {
+                                        nameProp.stringValue = newId;
+                                        serializedId.ApplyModifiedPropertiesWithoutUndo();
+                                    }
+                                }
+                            }
+                        }
+
+                        // Rename prefab file
+                        string prefabDir = Path.GetDirectoryName(prefabPath)?.Replace('\\', '/');
+                        string newPrefabPath = $"{prefabDir}/{newId}.prefab";
+                        if (!string.Equals(prefabPath, newPrefabPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            string err = AssetDatabase.RenameAsset(prefabPath, newId);
+                            if (string.IsNullOrEmpty(err))
+                            {
+                                renamedItems.Add($"Prefab: {newId}.prefab");
+                                row.Prefab = AssetDatabase.LoadAssetAtPath<GameObject>(newPrefabPath);
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"[CharacterStatsTab] Could not rename prefab: {err}");
+                            }
+                        }
+                    }
+                }
+
+                // 2. Rename BaseStats ScriptableObject
+                if (row.BaseStatsSO != null)
+                {
+                    string soPath = AssetDatabase.GetAssetPath(row.BaseStatsSO);
+                    if (!string.IsNullOrEmpty(soPath))
+                    {
+                        string soDir = Path.GetDirectoryName(soPath)?.Replace('\\', '/');
+                        string currentSoName = Path.GetFileNameWithoutExtension(soPath);
+                        string targetSoName = currentSoName.Contains("_BaseStats") ? $"{newId}_BaseStats" : newId;
+                        string newSoPath = $"{soDir}/{targetSoName}.asset";
+
+                        if (!string.Equals(soPath, newSoPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            string err = AssetDatabase.RenameAsset(soPath, targetSoName);
+                            if (string.IsNullOrEmpty(err))
+                            {
+                                renamedItems.Add($"BaseStats: {targetSoName}.asset");
+                                row.BaseStatsSO = AssetDatabase.LoadAssetAtPath<CharacterBaseStatSO>(newSoPath);
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"[CharacterStatsTab] Could not rename BaseStats SO: {err}");
+                            }
+                        }
+                    }
+                }
+
+                // 3. Rename Animator Controller & Animator Folder
+                // Derive subcode (e.g., ADVENTURER_N002 -> N002)
+                string oldSubCode = ExtractSubCode(oldId);
+                string newSubCode = ExtractSubCode(newId);
+
+                RenameAnimatorAssets(oldId, newId, oldSubCode, newSubCode, renamedItems);
+
+                // 4. Rename Resources sprite folder
+                RenameResourcesFolder(oldSubCode, newSubCode, oldId, newId, renamedItems);
+
+                row.OriginalId = newId;
+                row.MarkDirty();
+
+                string report = renamedItems.Count > 0
+                    ? string.Join("\n", renamedItems.Select(item => "• " + item))
+                    : "No matching asset names or folders needed renaming.";
+
+                Debug.Log($"[CharacterStatsTab] Cascade rename completed for {oldId} -> {newId}:\n{report}");
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+        }
+
+        private static string ExtractSubCode(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return "";
+            int idx = id.LastIndexOf('_');
+            if (idx >= 0 && idx < id.Length - 1)
+            {
+                return id.Substring(idx + 1);
+            }
+            return id;
+        }
+
+        private static void RenameAnimatorAssets(string oldId, string newId, string oldSubCode, string newSubCode, List<string> renamedItems)
+        {
+            // Search inside Assets/Animators/Characters
+            const string animatorsRoot = "Assets/Animators/Characters";
+            if (!Directory.Exists(animatorsRoot)) return;
+
+            // Search directories matching oldId or oldSubCode
+            var matchingDirs = Directory.GetDirectories(animatorsRoot, "*", SearchOption.AllDirectories)
+                .Where(d =>
+                {
+                    string dirName = Path.GetFileName(d);
+                    return string.Equals(dirName, oldId, StringComparison.OrdinalIgnoreCase) ||
+                           (!string.IsNullOrEmpty(oldSubCode) && string.Equals(dirName, oldSubCode, StringComparison.OrdinalIgnoreCase));
+                })
+                .ToList();
+
+            foreach (var dir in matchingDirs)
+            {
+                string unityPath = dir.Replace('\\', '/');
+                string targetDirName = !string.IsNullOrEmpty(newSubCode) && string.Equals(Path.GetFileName(dir), oldSubCode, StringComparison.OrdinalIgnoreCase)
+                    ? newSubCode
+                    : newId;
+
+                // Also rename controller files inside this directory first
+                var controllerFiles = Directory.GetFiles(dir, "*.controller", SearchOption.TopDirectoryOnly);
+                foreach (var cf in controllerFiles)
+                {
+                    string cfUnityPath = cf.Replace('\\', '/');
+                    string cfName = Path.GetFileNameWithoutExtension(cfUnityPath);
+                    string targetCfName = cfName.Replace(oldId, newId, StringComparison.OrdinalIgnoreCase);
+                    if (!string.IsNullOrEmpty(oldSubCode) && !string.IsNullOrEmpty(newSubCode))
+                    {
+                        targetCfName = targetCfName.Replace(oldSubCode, newSubCode, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!string.Equals(cfName, targetCfName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string err = AssetDatabase.RenameAsset(cfUnityPath, targetCfName);
+                        if (string.IsNullOrEmpty(err))
+                        {
+                            renamedItems.Add($"Animator Controller: {targetCfName}.controller");
+                        }
+                    }
+                }
+
+                // Rename directory
+                if (!string.Equals(Path.GetFileName(dir), targetDirName, StringComparison.OrdinalIgnoreCase))
+                {
+                    string err = AssetDatabase.RenameAsset(unityPath, targetDirName);
+                    if (string.IsNullOrEmpty(err))
+                    {
+                        renamedItems.Add($"Animator Folder: {targetDirName}");
+                    }
+                }
+            }
+        }
+
+        private static void RenameResourcesFolder(string oldSubCode, string newSubCode, string oldId, string newId, List<string> renamedItems)
+        {
+            const string resourcesRoot = "Assets/Resources/Characters";
+            if (!Directory.Exists(resourcesRoot)) return;
+
+            var matchingDirs = Directory.GetDirectories(resourcesRoot, "*", SearchOption.AllDirectories)
+                .Where(d =>
+                {
+                    string dirName = Path.GetFileName(d);
+                    return string.Equals(dirName, oldId, StringComparison.OrdinalIgnoreCase) ||
+                           (!string.IsNullOrEmpty(oldSubCode) && string.Equals(dirName, oldSubCode, StringComparison.OrdinalIgnoreCase));
+                })
+                .ToList();
+
+            foreach (var dir in matchingDirs)
+            {
+                string unityPath = dir.Replace('\\', '/');
+                string targetDirName = !string.IsNullOrEmpty(newSubCode) && string.Equals(Path.GetFileName(dir), oldSubCode, StringComparison.OrdinalIgnoreCase)
+                    ? newSubCode
+                    : newId;
+
+                if (!string.Equals(Path.GetFileName(dir), targetDirName, StringComparison.OrdinalIgnoreCase))
+                {
+                    string err = AssetDatabase.RenameAsset(unityPath, targetDirName);
+                    if (string.IsNullOrEmpty(err))
+                    {
+                        renamedItems.Add($"Resources Folder: {targetDirName}");
+                    }
+                }
+            }
         }
     }
 }

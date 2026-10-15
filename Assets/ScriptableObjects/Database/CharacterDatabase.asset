@@ -18,6 +18,7 @@ MonoBehaviour:
     prefab: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
     baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -31,6 +32,7 @@ MonoBehaviour:
     prefab: {fileID: 3331147636676233856, guid: d0271d9b1b49b59468e7ba4652aceb7d, type: 3}
     baseStats: {fileID: 11400000, guid: 2ee72ab854b60a94eafa3f26ce011a87, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -39,11 +41,12 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
-  - id: ADVENTURER_N002
+  - id: ADVENTURER_N099
     characterName: Blue Witch
     prefab: {fileID: 3252151753393515643, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
     baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -57,6 +60,7 @@ MonoBehaviour:
     prefab: {fileID: 0}
     baseStats: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -67,9 +71,10 @@ MonoBehaviour:
         m_EditorAssetChanged: 0
   - id: MONSTER_MINION_TEST_WIZARD
     characterName: New Monster
-    prefab: {fileID: 1778415428086064179, guid: ab859a368a9038f419adb5d554f2562b, type: 3}
-    baseStats: {fileID: 11400000, guid: 5989d6ead3392e24083d88a9d359b827, type: 2}
+    prefab: {fileID: 0}
+    baseStats: {fileID: 11400000, guid: 039f270f8176ad74fb257d7e914d5af7, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -80,9 +85,10 @@ MonoBehaviour:
         m_EditorAssetChanged: 0
   - id: MONSTER_MINION_AUTO_002
     characterName: New Monster
-    prefab: {fileID: 5423902146521080805, guid: 4616235ae0b9b9d45a0367501f745aa1, type: 3}
-    baseStats: {fileID: 11400000, guid: 739db48d06551b641bc98f546d338fe5, type: 2}
+    prefab: {fileID: 0}
+    baseStats: {fileID: 11400000, guid: 8f8d016f628caed4da1bcebca3d4e75a, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -96,6 +102,7 @@ MonoBehaviour:
     prefab: {fileID: 6664999883879676430, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
     baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:
@@ -106,9 +113,10 @@ MonoBehaviour:
         m_EditorAssetChanged: 0
   - id: ADVENTURER_N001
     characterName: ADVENTURER_N001
-    prefab: {fileID: 3783388728839249596, guid: 37bde6b01f420c8418bc8150418ef165, type: 3}
-    baseStats: {fileID: 11400000, guid: a330ce9e361b93c42b47443dae7fb623, type: 2}
+    prefab: {fileID: 4555594661279472785, guid: 9789ed955e5dcf945927e4f758824ce3, type: 3}
+    baseStats: {fileID: 11400000, guid: d134582e38ada194696acd18ef9459c9, type: 2}
     defaultSkillIds: []
+    extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
       addressableAsset:

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c62d34756c87e3e4a829811825160d8c, type: 3}
+  m_Name: DefaultDungeonGeneratorConfig
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Dungeon.Unity.DungeonGeneratorConfigSO
+  minNormalRooms: 5
+  maxNormalRooms: 8
+  branchProbability: 0.35
+  loopProbability: 0.25
+  safeRoomCount: 1
+  roomWidth: 10
+  roomHeight: 10
+  corridorLength: 4
+  corridorWidth: 2
+  cellSize: 1
+  entranceRoomPrefab: {fileID: 0}
+  normalRoomPrefab: {fileID: 0}
+  safeRoomPrefab: {fileID: 0}
+  bossRoomPrefab: {fileID: 0}
+  doorPrefab: {fileID: 0}
+  bossDoorPrefab: {fileID: 0}
+  wallPrefab: {fileID: 0}

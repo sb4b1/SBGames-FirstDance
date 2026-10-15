@@ -17,6 +17,7 @@ namespace SBGames.Placement
         public IGridOccupancyTracker OccupancyTracker { get; }
         public ICapacityMultiplierStrategy MultiplierStrategy { get; set; }
         public IDungeonPhaseManager PhaseManager { get; set; }
+        public IBuildableCellValidator BuildableCellValidator { get; set; }
 
         public event Action<PlacedUnitInstance> OnUnitPlaced;
         public event Action<PlacedUnitInstance, bool> OnUnitRemoved; // (unit, wasRefunded)
@@ -27,13 +28,15 @@ namespace SBGames.Placement
             ICapacityPool capacityPool,
             IGridOccupancyTracker occupancyTracker,
             ICapacityMultiplierStrategy multiplierStrategy = null,
-            IDungeonPhaseManager phaseManager = null)
+            IDungeonPhaseManager phaseManager = null,
+            IBuildableCellValidator buildableCellValidator = null)
         {
             DungeonMaster = dungeonMaster ?? throw new ArgumentNullException(nameof(dungeonMaster));
             CapacityPool = capacityPool ?? throw new ArgumentNullException(nameof(capacityPool));
             OccupancyTracker = occupancyTracker ?? throw new ArgumentNullException(nameof(occupancyTracker));
             MultiplierStrategy = multiplierStrategy ?? new LinearCapacityMultiplierStrategy();
             PhaseManager = phaseManager;
+            BuildableCellValidator = buildableCellValidator;
         }
 
         /// <summary>
@@ -81,6 +84,18 @@ namespace SBGames.Placement
                         return PlacementValidationResult.FailureResult(
                             PlacementStatus.OutOfBounds,
                             $"Footprint tile {checkPos} is out of dungeon bounds {OccupancyTracker.GridSize}.",
+                            request.UnitDefinition.BaseCost,
+                            0,
+                            availableEnergy,
+                            CapacityPool.AvailableCapacity
+                        );
+                    }
+
+                    if (BuildableCellValidator != null && !BuildableCellValidator.IsCellBuildable(checkPos))
+                    {
+                        return PlacementValidationResult.FailureResult(
+                            PlacementStatus.NonBuildableCell,
+                            $"Grid cell {checkPos} is non-buildable (e.g. Entrance room or restricted area).",
                             request.UnitDefinition.BaseCost,
                             0,
                             availableEnergy,

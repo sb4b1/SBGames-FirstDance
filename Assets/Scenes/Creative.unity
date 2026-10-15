@@ -705,8 +705,19 @@ MonoBehaviour:
   totalAdventurersCount: 0
   defeatedAdventurersCount: 0
   retreatedAdventurersCount: 0
+  escapedAdventurersCount: 0
   activeAdventurersCount: 0
   isBossAlive: 1
+  currentReport:
+    blockedRetreats: []
+    potionsUsed: []
+    roomsExplored: []
+    checkpoints: []
+    deaths: []
+    escapes: []
+    leaderChanges: []
+    warpUsages: []
+    warpForfeits: []
   debugKills: 3
   debugRetreats: 1
 --- !u!1 &619394800
@@ -5008,7 +5019,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   m_UseGeometry: 0
-  m_DefaultArea: 0
+  m_DefaultArea: 3
   m_IgnoreNavMeshAgent: 1
   m_IgnoreNavMeshObstacle: 1
   m_OverrideTileSize: 0
@@ -5018,7 +5029,7 @@ MonoBehaviour:
   m_BuildHeightMesh: 0
   m_MinRegionArea: 0
   m_HideEditorLogs: 0
-  m_NavMeshData: {fileID: 23800000, guid: 8ee6bd4c0c385934b87810dbfd009870, type: 2}
+  m_NavMeshData: {fileID: 0}
 --- !u!114 &1681077228
 MonoBehaviour:
   m_ObjectHideFlags: 0

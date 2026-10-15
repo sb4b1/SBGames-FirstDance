@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"dotrush.roslyn.projectOrSolutionFiles": [
+			"d:\\UnityProject\\SBGames\\SBGames.sln"
+		]
+	}
+}

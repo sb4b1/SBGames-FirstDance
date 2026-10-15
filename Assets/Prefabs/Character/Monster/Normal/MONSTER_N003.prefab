@@ -114,6 +114,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   skills: []
   personality: {fileID: 5965182650109150222}
+  aiMemory: {fileID: 0}
+  adventurerProfile: {fileID: 0}
+  classStyleTable: {fileID: 0}
+  itemUseQualityTuning: {fileID: 0}
+  itemKitController: {fileID: 0}
+  statusEffectManager: {fileID: 0}
+  decisionThrottler: {fileID: 0}
+  doorwayStaging: {fileID: 0}
+  goalHysteresisBonus: 0.08
   agentType: MinionAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -663,7 +672,7 @@ MonoBehaviour:
     AllowedTags:
     - Adventurer
     - Monster
-  DetectionMode: 0
+  DetectionMode: 1
   Shape: 0
   Circle:
     Radius: 5
@@ -674,7 +683,7 @@ MonoBehaviour:
     Height: 1
   DetectsOnLayers:
     serializedVersion: 2
-    m_Bits: 65
+    m_Bits: 193
   IgnoreTriggerColliders: 0
   pulseRoutine:
     Mode:
@@ -994,7 +1003,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   level: 1
-  baseStats: {fileID: 0}
+  baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}
   isImmortal: 0
   life: 0
   mana: 0
@@ -1151,6 +1160,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SquadMember
   currentLeader: {fileID: 0}
+  overrideIsScout: 0
 --- !u!114 &5965182650109150222
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1180,6 +1190,11 @@ MonoBehaviour:
     PeelingBonusMultiplier: 1
     LowHealthTargetPriority: 1
     BleedingTargetPriority: 1
+    HazardMemoryDurationMultiplier: 0.5
+    GrudgeWeightMultiplier: 2.5
+    BurstDamagePanicMultiplier: 0.2
+    HasTunnelVision: 1
+    TargetPruneDelayMultiplier: 1
 --- !u!1 &7458907024609058052
 GameObject:
   m_ObjectHideFlags: 0

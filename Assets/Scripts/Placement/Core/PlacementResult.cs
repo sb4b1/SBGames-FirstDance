@@ -25,7 +25,10 @@ namespace SBGames.Placement
         ExceedsCapacityLimit = 5,
 
         /// <summary>Placement is disallowed during active combat or non-build phases.</summary>
-        PhaseLocked = 6
+        PhaseLocked = 6,
+
+        /// <summary>Target cell is in a non-buildable zone (e.g. Entrance room or void).</summary>
+        NonBuildableCell = 7
     }
 
     /// <summary>

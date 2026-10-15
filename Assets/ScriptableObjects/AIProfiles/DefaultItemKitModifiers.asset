@@ -28,11 +28,11 @@ MonoBehaviour:
     hpPotionDelta: 0
     manaPotionDelta: 0
     statusCureDelta: 0
-  - function: 3
+  - function: 4
     hpPotionDelta: 0
     manaPotionDelta: 1
     statusCureDelta: 0
-  - function: 4
+  - function: 8
     hpPotionDelta: 0
     manaPotionDelta: 0
     statusCureDelta: 0

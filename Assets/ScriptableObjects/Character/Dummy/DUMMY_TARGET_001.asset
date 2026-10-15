@@ -14,6 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterBaseStatSO
   characterLevel: 1
   characterRank: 0
+  characterClass: 0
+  characterFunction: 0
+  characterWealth: 0
+  extraItemIds: []
   MaxLife: 99999
   MaxMana: 0
   Movespeed: 0

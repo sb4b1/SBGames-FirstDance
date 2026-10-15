@@ -350,7 +350,7 @@ GameObject:
   - component: {fileID: 5254396860403196409}
   - component: {fileID: 6315216640608003175}
   m_Layer: 6
-  m_Name: ADVENTURER_N002
+  m_Name: ADVENTURER_N099
   m_TagString: Adventurer
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -148,14 +148,48 @@ public class LeaderCheckpointTuningSO : ScriptableObject
         return DefaultSafetyMarginTable[index];
     }
 
-    public float GetFunctionStepUpWeight(AdventurerFunction function)
+    private float GetRawWeight(int index)
     {
-        int index = Mathf.Clamp((int)function, 0, DefaultFunctionStepUpWeights.Length - 1);
-        if (functionStepUpWeights != null && index < functionStepUpWeights.Length)
+        if (functionStepUpWeights != null && index >= 0 && index < functionStepUpWeights.Length)
         {
             return functionStepUpWeights[index];
         }
+        index = Mathf.Clamp(index, 0, DefaultFunctionStepUpWeights.Length - 1);
         return DefaultFunctionStepUpWeights[index];
+    }
+
+    public float GetFunctionStepUpWeight(AdventurerFunction function)
+    {
+        if (function == AdventurerFunction.None)
+        {
+            return GetRawWeight(0);
+        }
+
+        float maxWeight = 0f;
+        bool any = false;
+
+        if ((function & AdventurerFunction.Tank) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, GetRawWeight(1));
+            any = true;
+        }
+        if ((function & AdventurerFunction.DPS) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, GetRawWeight(2));
+            any = true;
+        }
+        if ((function & AdventurerFunction.Healer) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, GetRawWeight(3));
+            any = true;
+        }
+        if ((function & AdventurerFunction.Scout) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, GetRawWeight(4));
+            any = true;
+        }
+
+        return any ? maxWeight : GetRawWeight(0);
     }
 
     public static float GetFunctionStepUpWeightOrDefault(LeaderCheckpointTuningSO tuning, AdventurerFunction function)
@@ -164,8 +198,37 @@ public class LeaderCheckpointTuningSO : ScriptableObject
         {
             return tuning.GetFunctionStepUpWeight(function);
         }
-        int index = Mathf.Clamp((int)function, 0, DefaultFunctionStepUpWeights.Length - 1);
-        return DefaultFunctionStepUpWeights[index];
+
+        if (function == AdventurerFunction.None)
+        {
+            return DefaultFunctionStepUpWeights[0];
+        }
+
+        float maxWeight = 0f;
+        bool any = false;
+
+        if ((function & AdventurerFunction.Tank) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, DefaultFunctionStepUpWeights[1]);
+            any = true;
+        }
+        if ((function & AdventurerFunction.DPS) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, DefaultFunctionStepUpWeights[2]);
+            any = true;
+        }
+        if ((function & AdventurerFunction.Healer) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, DefaultFunctionStepUpWeights[3]);
+            any = true;
+        }
+        if ((function & AdventurerFunction.Scout) != 0)
+        {
+            maxWeight = Mathf.Max(maxWeight, DefaultFunctionStepUpWeights[4]);
+            any = true;
+        }
+
+        return any ? maxWeight : DefaultFunctionStepUpWeights[0];
     }
 
     public bool ShouldStayLooseWhenLeaderless(LeaderlessBehavior behavior)

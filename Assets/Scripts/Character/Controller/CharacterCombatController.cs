@@ -54,27 +54,27 @@ public class CharacterCombatController : MonoBehaviour
             Collider2D hit = hitBuffer[i];
             if (hit == null) continue;
 
-            var targetRoot = hit.transform.root;
-            if (targetRoot == this.transform.root) continue; // Skip self
+            var targetBrain = hit.GetComponentInParent<CharacterBrain>();
+            if (targetBrain == null || targetBrain == this.brain) continue; // Skip self or non-characters
 
             // Prevent friendly fire
             if (factionMember != null)
             {
-                if (!factionMember.IsHostileTo(targetRoot.gameObject)) continue;
+                if (!factionMember.IsHostileTo(targetBrain.gameObject)) continue;
             }
             else
             {
-                if (CompareTag("Adventurer") && targetRoot.CompareTag("Adventurer")) continue;
-                if (CompareTag("Monster") && targetRoot.CompareTag("Monster")) continue;
+                if (CompareTag("Adventurer") && targetBrain.CompareTag("Adventurer")) continue;
+                if (CompareTag("Monster") && targetBrain.CompareTag("Monster")) continue;
             }
 
-            IDamageable targetStats = hit.GetComponentInParent<IDamageable>() ?? targetRoot.GetComponentInChildren<IDamageable>();
+            IDamageable targetStats = targetBrain.StatsManager;
             if (targetStats != null && !hitTargetsBuffer.Contains(targetStats))
             {
                 hitTargetsBuffer.Add(targetStats);
                 float damageAmount = stats != null && stats.Damage != null && stats.Damage.Value > 0 ? stats.Damage.Value : 10f;
                 targetStats.TakeDamage(new DamageData(damageAmount, DamageType.Physical));
-                ELogger.Log(this, nameof(SearchForTargets), $"Hit {targetRoot.name} for {damageAmount} damage");
+                ELogger.Log(this, nameof(SearchForTargets), $"Hit {targetBrain.name} for {damageAmount} damage");
             }
         }
     }
