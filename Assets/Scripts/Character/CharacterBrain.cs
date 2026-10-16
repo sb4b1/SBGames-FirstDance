@@ -47,6 +47,9 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     public AdventurerItemKitController ItemKitController => cachedItemKitController != null
         ? cachedItemKitController
         : (cachedItemKitController = GetComponent<AdventurerItemKitController>() ?? GetComponentInChildren<AdventurerItemKitController>());
+    public BaseAI BaseAI => cachedBaseAI != null
+        ? cachedBaseAI
+        : (cachedBaseAI = (aiAugment != null ? aiAugment.GetComponent<BaseAI>() : null) ?? GetComponentInChildren<BaseAI>(true));
 
     private void Awake()
     {

@@ -134,6 +134,8 @@ public class BaseAI : MonoBehaviour, IPoolable
     [SerializeField] private float alertShoutRadius = 12f;
     [SerializeField] private float alertShoutCooldown = 4f;
     private float lastAlertShoutTime = -999f;
+    private float woundedAllyDetectedTime = -1f;
+    public float WoundedAllyDetectedTime { get => woundedAllyDetectedTime; set => woundedAllyDetectedTime = value; }
     private static readonly Collider2D[] proximityAlertBuffer = new Collider2D[16];
 
     public System.Action<Transform> OnAlertShout;
@@ -237,6 +239,13 @@ public class BaseAI : MonoBehaviour, IPoolable
         if (aiMemory == null)
         {
             aiMemory = GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>();
+        }
+
+        if (agent == null) agent = GetComponentInParent<NavMeshAgent>();
+        if (agent != null)
+        {
+            agent.updateRotation = false;
+            agent.updateUpAxis = false;
         }
 
         if (adventurerProfile != null)
@@ -714,6 +723,129 @@ public class BaseAI : MonoBehaviour, IPoolable
     public void SetAgentMana(float mana) => AgentMana = mana;
     public void SetFearLevel(int level) => FearLevel = level;
 
+    /// <summary>
+    /// Evaluates visible allies and squad members to find the best candidate for healing.
+    /// Differentiated by AdventurerProfile heuristics (HealHpThreshold, HealPriorityMode).
+    /// Zero managed allocations.
+    /// </summary>
+    public bool GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent)
+    {
+        woundedTarget = null;
+        lowestHpPercent = 1.0f;
+
+        float threshold = adventurerProfile != null ? adventurerProfile.HealHpThreshold : 0.50f;
+        HealerPriorityMode priorityMode = adventurerProfile != null ? adventurerProfile.HealPriorityMode : HealerPriorityMode.LowestHp;
+
+        Transform bestCandidate = null;
+        float lowestHp = 1.0f;
+        Transform tankCandidate = null;
+        float tankHp = 1.0f;
+
+        // 1. Scan visible ally targets from perception
+        if (allyTargets != null)
+        {
+            for (int i = 0; i < allyTargets.Count; i++)
+            {
+                var ally = allyTargets[i];
+                if (ally == null) continue;
+
+                var stats = ally.GetComponent<CharacterStatsManager>() ?? ally.GetComponentInParent<CharacterStatsManager>();
+                if (stats == null || stats.Life <= 0f) continue;
+
+                float maxHp = stats.MaxLife != null && stats.MaxLife.Value > 0f ? stats.MaxLife.Value : 100f;
+                float hpPercent = stats.Life / maxHp;
+
+                if (hpPercent < threshold)
+                {
+                    bool isTank = (stats.EffectiveFunction & AdventurerFunction.Tank) != 0;
+                    if (isTank && hpPercent < tankHp)
+                    {
+                        tankHp = hpPercent;
+                        tankCandidate = ally;
+                    }
+
+                    if (hpPercent < lowestHp)
+                    {
+                        lowestHp = hpPercent;
+                        bestCandidate = ally;
+                    }
+                }
+            }
+        }
+
+        // 2. Also check squad members if registered
+        if (HasSquadLeader && SquadMember.Leader != null)
+        {
+            var leader = SquadMember.Leader;
+            var members = leader.Members;
+            if (members != null)
+            {
+                for (int i = 0; i < members.Count; i++)
+                {
+                    var m = members[i];
+                    if (m == null || !m.IsAlive || m.gameObject == gameObject) continue;
+
+                    var stats = m.StatsManager;
+                    if (stats == null || stats.Life <= 0f) continue;
+
+                    float maxHp = stats.MaxLife != null && stats.MaxLife.Value > 0f ? stats.MaxLife.Value : 100f;
+                    float hpPercent = stats.Life / maxHp;
+
+                    if (hpPercent < threshold)
+                    {
+                        bool isTank = (stats.EffectiveFunction & AdventurerFunction.Tank) != 0;
+                        if (isTank && hpPercent < tankHp)
+                        {
+                            tankHp = hpPercent;
+                            tankCandidate = m.transform;
+                        }
+
+                        if (hpPercent < lowestHp)
+                        {
+                            lowestHp = hpPercent;
+                            bestCandidate = m.transform;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Selection based on priority mode
+        if (priorityMode == HealerPriorityMode.TankFirstThenLowestHp && tankCandidate != null)
+        {
+            woundedTarget = tankCandidate;
+            lowestHpPercent = tankHp;
+            return true;
+        }
+
+        if (bestCandidate != null)
+        {
+            woundedTarget = bestCandidate;
+            lowestHpPercent = lowestHp;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether this agent currently has a ready heal skill (AlliesOnly target filter).
+    /// </summary>
+    public bool HasReadyHealSkill()
+    {
+        if (skillController == null || skillController.Skills == null) return false;
+        var skillList = skillController.Skills;
+        for (int i = 0; i < skillList.Count; i++)
+        {
+            var s = skillList[i];
+            if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.IsReady)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void SetGoal(bool force = false)
     {
         EnumUtilGoal bestGoal = SelectBestGoal();
@@ -756,6 +888,8 @@ public class BaseAI : MonoBehaviour, IPoolable
         activeGoal = chosen;
         return chosen;
     }
+
+    public EnumUtilGoal CurrentGoalKey => activeGoal;
 
     public void SetActiveGoalForTesting(EnumUtilGoal goal)
     {
@@ -929,6 +1063,9 @@ public class BaseAI : MonoBehaviour, IPoolable
                 break;
             case EnumUtilGoal.Warp:
                 provider.RequestGoal<WarpGoal>();
+                break;
+            case EnumUtilGoal.HealAlly:
+                provider.RequestGoal<HealAllyGoal>();
                 break;
             default:
                 Debug.LogWarning("Unknown utility goal: " + goalKey);

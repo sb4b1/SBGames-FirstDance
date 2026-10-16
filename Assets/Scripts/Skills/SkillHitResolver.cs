@@ -5,6 +5,20 @@ public class SkillHitResolver : MonoBehaviour
 {
     public void ResolveHit(SkillInstance skill, GameObject target)
     {
+        if (target == null) return;
+
+        // Healing skills (AlliesOnly or SelfOnly): restore life to target's CharacterStatsManager
+        if (skill != null && skill.Data != null &&
+            (skill.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly || skill.Data.targetFilter == SkillData.SkillTargetFilter.SelfOnly))
+        {
+            var stats = target.GetComponent<CharacterStatsManager>() ?? target.GetComponentInParent<CharacterStatsManager>();
+            if (stats != null)
+            {
+                float healAmount = skill.CurrentDamage > 0f ? skill.CurrentDamage : skill.Data.baseDamage;
+                stats.RestoreLife(healAmount);
+            }
+            return;
+        }
 
         IDamageable damagable = target.GetComponent<IDamageable>() ?? target.GetComponentInParent<IDamageable>() ?? target.transform.root.GetComponentInChildren<IDamageable>();
         if (damagable == null)

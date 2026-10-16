@@ -40,14 +40,31 @@ public class SkillInstance : MonoBehaviour, IPoolable
     private bool hasExitedCaster;
     private float launchArmingTimer;
     private const float LAUNCH_ARMING_DELAY = 0.1f;
+    private bool isDespawningFromPool;
+    private Collider2D hitboxCollider;
+    private readonly Collider2D[] overlapBuffer = new Collider2D[8];
+    private static ContactFilter2D skillContactFilter;
+    private static bool filterInitialized;
 
     private void Awake()
     {
         hitResolver = GetComponent<SkillHitResolver>();
         movement    = GetComponent<ISkillMovement>();
         detonation  = GetComponent<ISkillDetonation>();
-        
         targeting   = GetComponentInChildren<SkillTargeting>();
+        if (hitboxObject != null)
+            hitboxCollider = hitboxObject.GetComponent<Collider2D>();
+
+        if (!filterInitialized)
+        {
+            filterInitialized = true;
+            skillContactFilter = new ContactFilter2D
+            {
+                useTriggers = true,
+                useLayerMask = true,
+                layerMask = (1 << 6) | (1 << 7) // Character (6) and HitboxTrigger (7)
+            };
+        }
     }
 
     public void Initialize(SkillStatsManager stats, Vector3 direction, string casterID, GameObject target = null, GameObject casterGameObject = null)
@@ -77,6 +94,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         else
         {
             ActivateHitbox();
+            CheckOverlapHits();
         }
     }
 
@@ -107,6 +125,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         else
         {
             ActivateHitbox();
+            CheckOverlapHits();
         }
     }
 
@@ -119,12 +138,59 @@ public class SkillInstance : MonoBehaviour, IPoolable
         launchArmingTimer += dt;
 
         if (!isHit)
+        {
             movement?.Tick(this, dt);
+            CheckOverlapHits();
+        }
 
         lifetimeTimer -= dt;
         if (lifetimeTimer <= 0f)
         {
             ReturnToPool();
+        }
+    }
+
+    private void CheckOverlapHits()
+    {
+        if (!isActive || isHit || hitboxObject == null || !hitboxObject.activeInHierarchy)
+            return;
+
+        // 1. Direct target check for AtTarget / homing skills (e.g. AlliesOnly heals spawned directly at target)
+        if (currentTarget != null)
+        {
+            float distSq = (transform.position - currentTarget.transform.position).sqrMagnitude;
+            if (distSq <= 0.36f && CanHitTarget(currentTarget, HitContext.Direct))
+            {
+                OnHit(currentTarget, HitContext.Direct);
+                if (isHit) return;
+            }
+        }
+
+        // 2. Zero-allocation Physics2D overlap check on hitbox (handles static-collider projectiles vs kinematic character triggers)
+        int count = 0;
+        if (hitboxCollider != null && hitboxCollider.enabled)
+        {
+            count = hitboxCollider.Overlap(skillContactFilter, overlapBuffer);
+        }
+        else
+        {
+            count = Physics2D.OverlapCircle(hitboxObject.transform.position, 0.35f, skillContactFilter, overlapBuffer);
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            var col = overlapBuffer[i];
+            if (col == null) continue;
+
+            var brain = col.GetComponentInParent<CharacterBrain>();
+            GameObject target = brain != null ? brain.gameObject : col.transform.root.gameObject;
+
+            if (CanHitTarget(target, HitContext.Direct))
+            {
+                OnHit(target, HitContext.Direct);
+                if (isHit && RemainingChains <= 0)
+                    return;
+            }
         }
     }
 
@@ -194,23 +260,29 @@ public class SkillInstance : MonoBehaviour, IPoolable
             return false;
 
         // Check IFactionMember first
-        if (CasterGameObject.TryGetComponent<IFactionMember>(out var casterFaction) &&
-            target.TryGetComponent<IFactionMember>(out var targetFaction))
+        var casterFaction = CasterGameObject.GetComponentInParent<IFactionMember>();
+        var targetFaction = target.GetComponentInParent<IFactionMember>();
+        if (casterFaction != null && targetFaction != null)
         {
             return casterFaction.IsAllyOf(targetFaction);
         }
 
         // Check tags fallback (Adventurer, Monster, Factions)
-        if (CasterGameObject.CompareTag("Adventurer") && target.CompareTag("Adventurer"))
+        var casterBrain = CasterGameObject.GetComponentInParent<CharacterBrain>();
+        var targetBrain = target.GetComponentInParent<CharacterBrain>();
+        string casterTag = casterBrain != null ? casterBrain.gameObject.tag : CasterGameObject.tag;
+        string targetTag = targetBrain != null ? targetBrain.gameObject.tag : target.tag;
+
+        if (casterTag == "Adventurer" && targetTag == "Adventurer")
             return true;
 
-        if (CasterGameObject.CompareTag("Monster") && target.CompareTag("Monster"))
+        if (casterTag == "Monster" && targetTag == "Monster")
             return true;
 
-        if (CasterGameObject.CompareTag("Faction_01") && target.CompareTag("Faction_01"))
+        if (casterTag == "Faction_01" && targetTag == "Faction_01")
             return true;
 
-        if (CasterGameObject.CompareTag("Faction_02") && target.CompareTag("Faction_02"))
+        if (casterTag == "Faction_02" && targetTag == "Faction_02")
             return true;
 
         return false;
@@ -221,7 +293,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (!isActive)
             return;
 
-        if (animator != null)
+        if (animator != null && animator.runtimeAnimatorController != null)
             animator.SetTrigger(OnHitHash);
             
         isHit = true;
@@ -233,6 +305,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
             targeting != null &&
             targeting.TryGetTarget(this, out var next))
         {
+            isHit = false;
             RemainingChains--;
             float multiplier = Stats != null ? Stats.ChainDamageMultiplier.Value : (Data != null ? Data.chainDamageMultiplier : 1f);
             CurrentDamage *= multiplier;
@@ -243,6 +316,11 @@ public class SkillInstance : MonoBehaviour, IPoolable
         if (context == HitContext.Direct || context == HitContext.Chain)
         {
             Detonate();
+            // If there is no detonation component and no hit animation controller, return to pool immediately
+            if (detonation == null && (animator == null || animator.runtimeAnimatorController == null))
+            {
+                ReturnToPool();
+            }
         }
     }
 
@@ -261,16 +339,27 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     private void ReturnToPool()
     {
-        if (!isActive)
+        if (!isActive && !gameObject.activeSelf)
             return;
 
         isActive = false;
-        ObjectPoolManager.Instance.Despawn(gameObject);
+        isDespawningFromPool = true;
+        if (ObjectPoolManager.Instance != null)
+        {
+            ObjectPoolManager.Instance.Despawn(gameObject);
+        }
+        else
+        {
+            OnDespawn();
+            gameObject.SetActive(false);
+        }
+        isDespawningFromPool = false;
     }
 
     public void OnSpawn()
     {
         isActive = true;
+        isDespawningFromPool = false;
         HasDetonated = false;
         hasExitedCaster = false;
         launchArmingTimer = 0f;
@@ -279,6 +368,14 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     public void OnDespawn()
     {
+        // If an AnimationEvent (e.g. WIS001_H.anim) or AoEDetonation calls OnDespawn() directly,
+        // route through ObjectPoolManager so the GameObject is deactivated and returned to pool.
+        if (!isDespawningFromPool && gameObject.activeSelf && ObjectPoolManager.Instance != null)
+        {
+            ReturnToPool();
+            return;
+        }
+
         isActive = false;
         currentTarget = null;
         CasterGameObject = null;
@@ -296,12 +393,17 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     public void ActivateHitbox()
     {
-        hitboxObject.SetActive(true);
+        if (hitboxObject != null)
+        {
+            hitboxObject.SetActive(true);
+            CheckOverlapHits();
+        }
     }
 
     public void DeactivateHitbox()
     {
-        hitboxObject.SetActive(false);
+        if (hitboxObject != null)
+            hitboxObject.SetActive(false);
     }
 
 #if UNITY_EDITOR

@@ -34,6 +34,12 @@ public enum LeaderlessBehavior
     StayLoose = 1
 }
 
+public enum HealerPriorityMode
+{
+    LowestHp = 0,
+    TankFirstThenLowestHp = 1
+}
+
 /// <summary>
 /// Data-driven baseline decision parameters per adventurer rank.
 /// Higher ranks (B, A, S) can be added as additional assets without code changes.
@@ -94,6 +100,16 @@ public class AdventurerAIProfile : ScriptableObject
     [Tooltip("Room loop state machine timings, weights, and boss door policies for this rank.")]
     [SerializeField] private SBGames.Characters.AI.RoomLoopTuningSO roomLoopTuning;
 
+    [Header("Healer Heuristics")]
+    [Tooltip("Ally HP fraction below which healer triggers heal goal.")]
+    [SerializeField, Range(0.2f, 0.9f)] private float healHpThreshold = 0.50f;
+
+    [Tooltip("Healer target prioritization mode.")]
+    [SerializeField] private HealerPriorityMode healPriorityMode = HealerPriorityMode.LowestHp;
+
+    [Tooltip("Reaction delay or interval for healing decisions in seconds.")]
+    [SerializeField, Range(0.0f, 2.0f)] private float healReactionDelay = 0.3f;
+
     public CharacterRank Rank => rank;
     public float DecisionInterval => decisionInterval;
     public float VisionRadius => visionRadius;
@@ -111,6 +127,24 @@ public class AdventurerAIProfile : ScriptableObject
     public LeaderlessBehavior LeaderlessBehavior => leaderlessBehavior;
     public AdventurerItemKit StartingItemKit => startingItemKit;
     public SBGames.Characters.AI.RoomLoopTuningSO RoomLoopTuning => roomLoopTuning;
+
+    public float HealHpThreshold => healHpThreshold > 0f ? healHpThreshold : (rank switch
+    {
+        CharacterRank.E => 0.35f,
+        CharacterRank.D => 0.50f,
+        CharacterRank.C => 0.70f,
+        _ => 0.50f
+    });
+
+    public HealerPriorityMode HealPriorityMode => rank == CharacterRank.C ? HealerPriorityMode.TankFirstThenLowestHp : healPriorityMode;
+
+    public float HealReactionDelay => rank switch
+    {
+        CharacterRank.E => 0.8f,
+        CharacterRank.D => 0.25f,
+        CharacterRank.C => 0.05f,
+        _ => healReactionDelay
+    };
 
     /// <summary>
     /// Computes the individual flee HP threshold adjusted by a personality multiplier.

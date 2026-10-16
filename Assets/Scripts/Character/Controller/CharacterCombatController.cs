@@ -11,6 +11,7 @@ public class CharacterCombatController : MonoBehaviour
     [SerializeField] private Transform attackPoint;
     [SerializeField] private float attackRadius = 0.4f;
     private const float DEFAULT_ATTACK_RADIUS = 0.4f;
+    public Transform AttackPoint => attackPoint;
 
     [SerializeField] private FactionMember factionMember;
 
@@ -26,6 +27,12 @@ public class CharacterCombatController : MonoBehaviour
 
     public bool Attack()
     {
+        if (brain != null && brain.BaseAI != null && brain.BaseAI.CurrentTarget != null)
+        {
+            float dx = brain.BaseAI.CurrentTarget.position.x - transform.position.x;
+            var flip = GetComponentInChildren<CharacterFlipRotator>();
+            if (flip != null && Mathf.Abs(dx) > 0.05f) flip.ApplyFlip(dx > 0f);
+        }
         return brain != null && brain.TryStartAttack();
     }
 

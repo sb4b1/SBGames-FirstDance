@@ -16,27 +16,67 @@ public class CharacterFlipRotator : MonoBehaviour
     public Axis flipAxis = Axis.X; // 2D default
 
     public enum Axis { X, Y, Z }
+    private bool naturalFacesRight;
+    private bool facingResolved;
+    private Transform sensorTransform;
+
     private void Awake()
     {
-        if (rootTransform == null)
-            rootTransform = transform.root;
+        ResolveReferences();
     }
 
     private void Start()
     {
-        if (rootTransform == null)
-            rootTransform = transform.root;
+        ResolveReferences();
     }
 
-    public void ApplyFlip(bool flipped)
+    private void ResolveReferences()
     {
         if (rootTransform == null)
-            rootTransform = transform.root;
+            rootTransform = GetComponentInParent<CharacterBrain>()?.transform ?? transform.root;
 
+        if (sensorTransform == null && rootTransform != null)
+        {
+            sensorTransform = rootTransform.Find("Sensor");
+            if (sensorTransform == null)
+            {
+                var vision = rootTransform.GetComponentInChildren<VisionController>();
+                if (vision != null) sensorTransform = vision.transform;
+            }
+        }
+
+        if (rootTransform != null && !facingResolved)
+        {
+            facingResolved = true;
+
+            var combat = rootTransform.GetComponent<CharacterCombatController>();
+            Transform attackPoint = combat != null ? combat.AttackPoint : null;
+            if (attackPoint == null)
+            {
+                var gizmo = rootTransform.GetComponentInChildren<AttackPointGizmo>();
+                if (gizmo != null) attackPoint = gizmo.transform;
+            }
+
+            // If AttackPoint is authored at localPosition.x > 0, positive scale.x faces Right (+X).
+            // If AttackPoint is authored at localPosition.x < 0 (e.g. SPUM Adventurer), positive scale.x faces Left (-X).
+            if (attackPoint != null && Mathf.Abs(attackPoint.localPosition.x) > 0.001f)
+            {
+                naturalFacesRight = attackPoint.localPosition.x > 0f;
+            }
+            else
+            {
+                naturalFacesRight = false;
+            }
+        }
+    }
+
+    public void ApplyFlip(bool faceRight)
+    {
+        ResolveReferences();
         if (rootTransform == null) return;
 
         Vector3 scale = rootTransform.localScale;
-        float sign = flipped ? -1f : 1f;
+        float sign = (faceRight == naturalFacesRight) ? 1f : -1f;
 
         switch (flipAxis)
         {
@@ -58,15 +98,25 @@ public class CharacterFlipRotator : MonoBehaviour
         }
 
         rootTransform.localScale = scale;
+        if (rootTransform.localRotation != Quaternion.identity)
+        {
+            rootTransform.localRotation = Quaternion.identity;
+        }
+
+        // Keep Sensor transform world rotation aligned with 2D facing direction (SensorToolkit LOSSensor2D uses transform.up).
+        // Using world rotation (sensor.rotation) ensures sensor.up always points along +/- Vector3.right
+        // regardless of whether the parent rootTransform has positive or negative localScale.x.
+        if (sensorTransform != null)
+        {
+            sensorTransform.rotation = Quaternion.Euler(0f, 0f, faceRight ? -90f : 90f);
+        }
     }
 
 #if UNITY_EDITOR
     [Button]
     private void ToggleFlip()
     {
-        if (rootTransform == null)
-            rootTransform = transform.root;
-
+        ResolveReferences();
         if (rootTransform == null) return;
 
         bool isCurrentlyPositive = flipAxis switch
@@ -77,7 +127,8 @@ public class CharacterFlipRotator : MonoBehaviour
             _ => true
         };
 
-        ApplyFlip(isCurrentlyPositive);
+        bool currentlyFacingRight = isCurrentlyPositive ? naturalFacesRight : !naturalFacesRight;
+        ApplyFlip(!currentlyFacingRight);
     }
 #endif
 }

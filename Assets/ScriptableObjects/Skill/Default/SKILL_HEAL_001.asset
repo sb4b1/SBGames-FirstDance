@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf3fe472de7fa6d4684979c378aa3f69, type: 3}
+  m_Name: SKILL_HEAL_001
+  m_EditorClassIdentifier: Assembly-CSharp::SkillData
+  skillID: SKILL_HEAL_001
+  skillName: Heal
+  description: Restores HP to a wounded ally.
+  icon: {fileID: 0}
+  skillPrefab: {fileID: 4586513395091411629, guid: 5c669f6b0d2be1e4e92a285a4059f8bd, type: 3}
+  utilityData: {fileID: 11400000, guid: e8494423a0101de41b9968f849b676a6, type: 2}
+  projectileForward: 0
+  projectileRotationOffset: 0
+  type: 1
+  targetFilter: 3
+  castRange: 6
+  baseDamage: 25
+  damageType: 0
+  baseManaCost: 10
+  useCustomRecoveryDuration: 1
+  postCastRecoveryDuration: 0.35
+  projectileSpeed: 12
+  projectileLifetime: 3
+  chain: 0
+  maxChainTargets: 0
+  chainDamageMultiplier: 0.7
+  area: 0
+  areaRadius: 0
+  beamTickInterval: 0.1
+  statusEffects: []

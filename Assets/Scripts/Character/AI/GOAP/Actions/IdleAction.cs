@@ -43,7 +43,7 @@ public class IdleAction : GoapActionBase<IdleAction.Data>
                     float dx = nearest.position.x - currentPos.x;
                     if (Mathf.Abs(dx) > 0.05f)
                     {
-                        data.FlipRotator.ApplyFlip(dx < 0f);
+                        data.FlipRotator.ApplyFlip(dx > 0f);
                     }
                 }
             }
@@ -52,7 +52,7 @@ public class IdleAction : GoapActionBase<IdleAction.Data>
                 float dx = data.AI.LeaderTransform.position.x - agent.Transform.position.x;
                 if (Mathf.Abs(dx) > 0.05f)
                 {
-                    data.FlipRotator.ApplyFlip(dx < 0f);
+                    data.FlipRotator.ApplyFlip(dx > 0f);
                 }
             }
         }

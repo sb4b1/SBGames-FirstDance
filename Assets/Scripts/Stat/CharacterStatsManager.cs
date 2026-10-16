@@ -15,11 +15,13 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStatSO baseStats;
+    private AdventurerFunction? functionOverride;
     public CharacterBaseStatSO BaseStats => baseStats;
     public CharacterClass CharacterClass => baseStats != null ? baseStats.characterClass : CharacterClass.None;
-    public AdventurerFunction CharacterFunction => baseStats != null ? baseStats.characterFunction : AdventurerFunction.None;
-    public AdventurerFunction EffectiveFunction => (baseStats != null && baseStats.characterFunction != AdventurerFunction.None) ? baseStats.characterFunction : AdventurerFunction.DPS;
+    public AdventurerFunction CharacterFunction => functionOverride ?? (baseStats != null ? baseStats.characterFunction : AdventurerFunction.None);
+    public AdventurerFunction EffectiveFunction => (functionOverride.HasValue && functionOverride.Value != AdventurerFunction.None) ? functionOverride.Value : ((baseStats != null && baseStats.characterFunction != AdventurerFunction.None) ? baseStats.characterFunction : AdventurerFunction.DPS);
     public AdventurerWealth CharacterWealth => baseStats != null ? baseStats.characterWealth : AdventurerWealth.Average;
+    public void SetFunctionOverride(AdventurerFunction func) => functionOverride = func;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;
@@ -37,6 +39,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     public event System.Action<int> OnLevelChanged;
     public event System.Action<DamageData> OnDamaged;
+    public event System.Action<float> OnLifeRestored;
 
     // Core stats (private set = safer)
 
@@ -139,8 +142,14 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     {
         if (value <= 0) return;
 
+        float oldLife = Life;
         Life = Mathf.Min(Life + value, MaxLife.Value);
+        float actualRestored = Mathf.Max(0f, Life - oldLife);
         NotifyLifeChanged();
+        if (actualRestored > 0f)
+        {
+            OnLifeRestored?.Invoke(actualRestored);
+        }
 
         ELogger.Log(this, nameof(RestoreLife),
             $"{name} healed <color=green>{value}</color>");

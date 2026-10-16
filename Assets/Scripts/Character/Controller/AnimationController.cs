@@ -73,8 +73,30 @@ public class AnimationController : AnimationObjectController
     protected virtual void UpdateFlip()
     {
         if (flipRotator == null) return;
-        if (lastMoveDir.x > 0.1f) flipRotator.ApplyFlip(false);
-        else if (lastMoveDir.x < -0.1f) flipRotator.ApplyFlip(true);
+
+        // 1. If actively engaging a target in combat, continuously face towards target
+        Transform target = brain != null && brain.BaseAI != null ? brain.BaseAI.CurrentTarget : null;
+        if (target != null)
+        {
+            float dx = target.position.x - transform.position.x;
+            if (Mathf.Abs(dx) > 0.05f)
+            {
+                // SPUM convention: flipped == true gives scale.x < 0 (facing right)
+                //                  flipped == false gives scale.x > 0 (facing left)
+                flipRotator.ApplyFlip(dx > 0f);
+                return;
+            }
+        }
+
+        // 2. Continuously face movement direction
+        if (lastMoveDir.x > 0.05f)
+        {
+            flipRotator.ApplyFlip(true);
+        }
+        else if (lastMoveDir.x < -0.05f)
+        {
+            flipRotator.ApplyFlip(false);
+        }
     }
 
     // =========================

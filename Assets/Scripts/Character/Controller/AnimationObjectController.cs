@@ -188,24 +188,32 @@ public class AnimationObjectController : MonoBehaviour
     public virtual void SetBool(string paramName, bool value)
     {
         if (animator == null || string.IsNullOrEmpty(paramName)) return;
+        if (parameterHashes.Count == 0) CacheAnimatorParameters();
+        if (!HasParameter(paramName)) return;
         animator.SetBool(paramName, value);
     }
 
     public virtual void SetBool(int paramHash, bool value)
     {
         if (animator == null) return;
+        if (parameterHashes.Count == 0) CacheAnimatorParameters();
+        if (!HasParameter(paramHash)) return;
         animator.SetBool(paramHash, value);
     }
 
     public virtual void SetFloat(string paramName, float value)
     {
         if (animator == null || string.IsNullOrEmpty(paramName)) return;
+        if (parameterHashes.Count == 0) CacheAnimatorParameters();
+        if (!HasParameter(paramName)) return;
         animator.SetFloat(paramName, value);
     }
 
     public virtual void SetFloat(int paramHash, float value)
     {
         if (animator == null) return;
+        if (parameterHashes.Count == 0) CacheAnimatorParameters();
+        if (!HasParameter(paramHash)) return;
         animator.SetFloat(paramHash, value);
     }
 

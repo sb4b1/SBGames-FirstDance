@@ -13,5 +13,6 @@ public enum EnumUtilGoal
     ScoutRecon,
     DebriefLeader,
     Recover,
-    Warp
+    Warp,
+    HealAlly
 }

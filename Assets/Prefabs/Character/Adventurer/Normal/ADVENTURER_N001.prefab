@@ -1222,6 +1222,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 26a318c9485a2d341b9decefd6b157e6, type: 2}
   - {fileID: 11400000, guid: 764a756b5ae23a44db23d5d835e4baa2, type: 2}
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+  - {fileID: 11400000, guid: c627277d676510d4693af1dff82852c6, type: 2}
   skills: []
   personality: {fileID: 5777875152131430483}
   aiMemory: {fileID: 3911066264005910028}

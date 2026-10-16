@@ -45,6 +45,8 @@ namespace SBGames.Testing
 
         private void Awake()
         {
+            Application.runInBackground = true;
+
             if (suppressMetaGameSystems)
             {
                 PurgeUnwantedMetaGameObjects();

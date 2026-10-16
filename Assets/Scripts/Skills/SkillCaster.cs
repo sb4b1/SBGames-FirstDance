@@ -36,6 +36,7 @@ public class SkillCaster : MonoBehaviour
     private CharacterStatsManager casterStats;
 
     public bool IsReady() => cooldownTimer <= 0f;
+    public event Action<SkillData, GameObject> OnSkillCast;
 
     #region FLAGS
     public bool SkillTargetComponentExists() => targeting != null;
@@ -319,6 +320,7 @@ public class SkillCaster : MonoBehaviour
             {
                 skillInstance.Initialize(skillData, direction, resolvedCasterId, target, casterGo);
             }
+            OnSkillCast?.Invoke(skillData, target);
         }
         else
         {

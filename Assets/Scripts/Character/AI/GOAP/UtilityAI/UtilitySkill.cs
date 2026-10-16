@@ -29,6 +29,7 @@ public class UtilitySkill : ScriptableObject
     [SerializeField, Range(0f, 100f)] private float maxHealthPercent = 100f;
 
     public virtual string GetID() => skillID;
+    public void SetSkillID(string id) => skillID = id;
 
     public virtual float Evaluate(BaseAI context)
     {

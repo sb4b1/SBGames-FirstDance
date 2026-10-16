@@ -13,6 +13,7 @@ public class VisionController : MonoBehaviour
 
     // Preallocated internal buffer for SensorToolkit zero-alloc queries
     private readonly List<GameObject> detectionBuffer = new(16);
+    private static readonly HashSet<GameObject> warnedUnclassifiedObjects = new();
 
     public List<Transform> EnemyTargets => enemyTargets;
     public List<Transform> AllyTargets => allyTargets;
@@ -152,36 +153,78 @@ public class VisionController : MonoBehaviour
 
         enemyTargets.Clear();
         allyTargets.Clear();
+        if (factionMember == null)
+        {
+            factionMember = GetComponentInParent<FactionMember>();
+        }
+
+        var myBrain = brain != null ? brain.GetComponentInParent<CharacterBrain>() : GetComponentInParent<CharacterBrain>();
+        var myUnit = myBrain != null ? myBrain.gameObject : (factionMember != null ? factionMember.gameObject : gameObject);
+
         for (int i = 0; i < detectionBuffer.Count; i++)
         {
             var obj = detectionBuffer[i];
             if (obj == null) continue;
 
+            // Resolve target unit root (parent containing CharacterBrain or IFactionMember)
+            var targetBrain = obj.GetComponentInParent<CharacterBrain>();
+            var targetMember = obj.GetComponentInParent<IFactionMember>();
+            var targetUnit = targetBrain != null ? targetBrain.gameObject : ((targetMember as Component)?.gameObject ?? obj);
+            var targetTransform = targetUnit.transform;
+
+            if (targetUnit == myUnit) continue; // Skip self
+
             if (factionMember != null)
             {
                 if (factionMember.IsAllyOf(obj))
                 {
-                    allyTargets.Add(obj.transform);
+                    if (!allyTargets.Contains(targetTransform))
+                    {
+                        allyTargets.Add(targetTransform);
+                    }
                 }
                 else if (factionMember.IsHostileTo(obj))
                 {
-                    enemyTargets.Add(obj.transform);
+                    if (!enemyTargets.Contains(targetTransform))
+                    {
+                        enemyTargets.Add(targetTransform);
+                    }
                 }
                 else
                 {
-                    enemyTargets.Add(obj.transform);
+                    // Unclassified detection: ignore and warn once per object
+                    if (warnedUnclassifiedObjects.Add(obj))
+                    {
+                        Debug.LogWarning($"[VisionController] Unclassified detection ignored: '{obj.name}' (unit: '{targetUnit.name}', tag: '{targetUnit.tag}'). Neither ally nor hostile to faction '{factionMember.Faction}'.", this);
+                    }
                 }
             }
             else
             {
-                if ((CompareTag("Adventurer") && obj.CompareTag("Adventurer")) ||
-                    (CompareTag("Monster") && obj.CompareTag("Monster")))
+                string myTag = myUnit.tag;
+                string targetTag = targetUnit.tag;
+                if ((myTag == "Adventurer" && targetTag == "Adventurer") ||
+                    (myTag == "Monster" && targetTag == "Monster"))
                 {
-                    allyTargets.Add(obj.transform);
+                    if (!allyTargets.Contains(targetTransform))
+                    {
+                        allyTargets.Add(targetTransform);
+                    }
+                }
+                else if ((myTag == "Adventurer" && targetTag == "Monster") ||
+                         (myTag == "Monster" && targetTag == "Adventurer"))
+                {
+                    if (!enemyTargets.Contains(targetTransform))
+                    {
+                        enemyTargets.Add(targetTransform);
+                    }
                 }
                 else
                 {
-                    enemyTargets.Add(obj.transform);
+                    if (warnedUnclassifiedObjects.Add(obj))
+                    {
+                        Debug.LogWarning($"[VisionController] Unclassified detection ignored: '{obj.name}' (unit: '{targetUnit.name}', tag: '{targetTag}'). Neither ally nor hostile to tag '{myTag}'.", this);
+                    }
                 }
             }
         }
