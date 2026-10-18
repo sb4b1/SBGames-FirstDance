@@ -125,3 +125,59 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: ADVENTURER_N002
+    characterName: ADVENTURER_N002
+    prefab: {fileID: 987585163145237534, guid: 784a4cbc838b0014db8f88a40a8b4b9c, type: 3}
+    baseStats: {fileID: 11400000, guid: bb3b633e0702e314791b0c35ee372e33, type: 2}
+    defaultSkillIds: []
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
+  - id: ADVENTURER_N003
+    characterName: ADVENTURER_N003
+    prefab: {fileID: 2447354082830911871, guid: 7b628a6ad8d0c7d418dde7e8ee9a0beb, type: 3}
+    baseStats: {fileID: 11400000, guid: 81675e6e289581647a872db1a06db1ce, type: 2}
+    defaultSkillIds: []
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
+  - id: ADVENTURER_N004
+    characterName: ADVENTURER_N004
+    prefab: {fileID: 3908054586235029584, guid: d5149ec894759344e947429eaf93f128, type: 3}
+    baseStats: {fileID: 11400000, guid: 019464b743efac54ba57bee6c956fb2d, type: 2}
+    defaultSkillIds: []
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0
+  - id: ADVENTURER_N005
+    characterName: ADVENTURER_N005
+    prefab: {fileID: 2413717049819899333, guid: 3b7d5d87926fa0a4786ae4c73960b1eb, type: 3}
+    baseStats: {fileID: 11400000, guid: 99a6aaa0718b9444db6a8e5a54f44a30, type: 2}
+    defaultSkillIds: []
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

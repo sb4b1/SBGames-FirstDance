@@ -35,3 +35,6 @@ MonoBehaviour:
   - characterClass: 5
     preferredRangeBand: 0.85
     skillReliance: 0.7
+  - characterClass: 6
+    preferredRangeBand: 0.9
+    skillReliance: 0.5

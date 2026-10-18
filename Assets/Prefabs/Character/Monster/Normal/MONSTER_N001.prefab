@@ -824,6 +824,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4220041162180980065}
   brain: {fileID: 3967720624424618889}
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
+  factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
 --- !u!1 &8899575827743905027
 GameObject:
   m_ObjectHideFlags: 0
@@ -1027,6 +1030,7 @@ MonoBehaviour:
   stats: {fileID: 7331921466431717763}
   attackPoint: {fileID: 3843292984236393184}
   attackRadius: 0.4
+  factionMember: {fileID: 0}
 --- !u!114 &779946892532255747
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1197,16 +1201,32 @@ MonoBehaviour:
   motionController: {fileID: 5841761043065473055}
   skillController: {fileID: 9150011966489319026}
   vision: {fileID: 1419777042176616269}
+  squadMember: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   skills:
   - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
+  personality: {fileID: 0}
+  aiMemory: {fileID: 0}
+  adventurerProfile: {fileID: 0}
+  classStyleTable: {fileID: 0}
+  itemUseQualityTuning: {fileID: 0}
+  itemKitController: {fileID: 0}
+  statusEffectManager: {fileID: 0}
+  decisionThrottler: {fileID: 0}
+  doorwayStaging: {fileID: 0}
+  goalHysteresisBonus: 0.08
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
   enemyTargets: []
   allyTargets: []
+  localKnownEnemies: []
+  hasAlertedAllies: 1
+  alertShoutRadius: 12
+  alertShoutCooldown: 4
+  spawnPosition: {x: 0, y: 0, z: 0}
   threatLevel: 0
   fearLevel: 0
   agentLife: 0

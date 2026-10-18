@@ -1,5 +1,51 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1260756780467848515
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3843292984236393184}
+  - component: {fileID: 9034160231394880865}
+  m_Layer: 0
+  m_Name: AttackPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3843292984236393184
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260756780467848515}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.102, y: -0.038, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 286667418776334637}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9034160231394880865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1260756780467848515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 986064bf9e6c70946b48765a94fb9126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AttackPointGizmo
+  attackPoint: {fileID: 3843292984236393184}
+  attackRadius: 0.4
 --- !u!1 &1442731878584338539
 GameObject:
   m_ObjectHideFlags: 0
@@ -126,6 +172,7 @@ MonoBehaviour:
   stats: {fileID: 583056955256405874}
   attackPoint: {fileID: 3843292984236393184}
   attackRadius: 0.4
+  factionMember: {fileID: 0}
 --- !u!114 &583056955256405874
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140,6 +187,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterStatsManager
   level: 1
   baseStats: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
+  isImmortal: 0
   life: 0
   mana: 0
   maxLife: 0
@@ -487,6 +535,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimationController
   animator: {fileID: 4654255013733559382}
   sprite: {fileID: 8372094761042967817}
+  enableYSorting: 1
+  targetSortingLayer: Character
+  sortingOrdersPerWorldUnit: 100
   brain: {fileID: 5412846263211813637}
   movement: {fileID: 8142828820705702646}
   agent: {fileID: 2876902180845984889}
@@ -520,7 +571,7 @@ MonoBehaviour:
   combatController: {fileID: 4025492394318729815}
   skillController: {fileID: 0}
   brain: {fileID: 5412846263211813637}
---- !u!1 &8899575827743905027
+--- !u!1 &5702767144640782713
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -528,76 +579,170 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 286667418776334637}
+  - component: {fileID: 2121575903542404369}
+  - component: {fileID: 1793894022187338747}
+  - component: {fileID: 2127137709563187313}
+  - component: {fileID: 4541481479586341584}
+  - component: {fileID: 7622576983817106478}
   m_Layer: 0
-  m_Name: Helper
-  m_TagString: Untagged
+  m_Name: NormalAI
+  m_TagString: AI_Augment
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &286667418776334637
+--- !u!4 &2121575903542404369
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8899575827743905027}
+  m_GameObject: {fileID: 5702767144640782713}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1087599260838737379}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1793894022187338747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5702767144640782713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72344165e2cc41da93476bb1aa2cdd4b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CrashKonijn.Goap.Runtime::CrashKonijn.Goap.Runtime.GoapActionProvider
+  <LoggerConfig>k__BackingField:
+    <DebugMode>k__BackingField: 1
+    <MaxLogSize>k__BackingField: 20
+  <AgentTypeBehaviour>k__BackingField: {fileID: 0}
+  <DistanceMultiplier>k__BackingField: 1
+--- !u!114 &2127137709563187313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5702767144640782713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cef53d855ccf0b46bcf004b27c4a52a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CrashKonijn.Agent.Runtime::CrashKonijn.Agent.Runtime.AgentBehaviour
+  <ActionProviderBase>k__BackingField: {fileID: 1793894022187338747}
+  <RunInUnityUpdate>k__BackingField: 1
+  isPaused: 0
+  <LoggerConfig>k__BackingField:
+    <DebugMode>k__BackingField: 1
+    <MaxLogSize>k__BackingField: 20
+--- !u!114 &4541481479586341584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5702767144640782713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2764e0c64ff38814ba8b4c8521fdefda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AgentMoveBehaviour
+  agent: {fileID: 7622576983817106478}
+  agentBehaviour: {fileID: 2127137709563187313}
+--- !u!114 &7622576983817106478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5702767144640782713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
+  agent: {fileID: 2876902180845984889}
+  agentBehaviour: {fileID: 2127137709563187313}
+  brain: {fileID: 5412846263211813637}
+  stats: {fileID: 583056955256405874}
+  motionController: {fileID: 8142828820705702646}
+  skillController: {fileID: 0}
+  vision: {fileID: 1419777042176616269}
+  squadMember: {fileID: 0}
+  goals:
+  - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
+  - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
+  skills: []
+  personality: {fileID: 0}
+  aiMemory: {fileID: 0}
+  adventurerProfile: {fileID: 0}
+  classStyleTable: {fileID: 0}
+  itemUseQualityTuning: {fileID: 0}
+  itemKitController: {fileID: 0}
+  statusEffectManager: {fileID: 0}
+  decisionThrottler: {fileID: 0}
+  doorwayStaging: {fileID: 0}
+  goalHysteresisBonus: 0.08
+  agentType: NormalAgent
+  currentTarget: {fileID: 0}
+  targetDistance: 0
+  enemyTargets: []
+  allyTargets: []
+  localKnownEnemies: []
+  hasAlertedAllies: 1
+  alertShoutRadius: 12
+  alertShoutCooldown: 4
+  spawnPosition: {x: 0, y: 0, z: 0}
+  threatLevel: 0
+  fearLevel: 0
+  agentLife: 0
+  agentMana: 0
+  currentGoalKey: None
+  goalScores:
+    pairs: []
+  currentSkillKey: None
+  currentSkillScore: 0
+  skillScores:
+    pairs: []
+--- !u!1 &6045907984605155341
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1945769140018042281}
+  m_Layer: 0
+  m_Name: Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1945769140018042281
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6045907984605155341}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3843292984236393184}
-  m_Father: {fileID: 7508039659297886590}
+  - {fileID: 223383599700414436}
+  - {fileID: 2729599850523166590}
+  m_Father: {fileID: 1087599260838737379}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1260756780467848515
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3843292984236393184}
-  - component: {fileID: 9034160231394880865}
-  m_Layer: 0
-  m_Name: AttackPoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3843292984236393184
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1260756780467848515}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.102, y: -0.038, z: 0}
-  m_LocalScale: {x: 2, y: 2, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 286667418776334637}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &9034160231394880865
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1260756780467848515}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 986064bf9e6c70946b48765a94fb9126, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AttackPointGizmo
-  attackPoint: {fileID: 3843292984236393184}
-  attackRadius: 0.4
 --- !u!1 &8309516993667836581
 GameObject:
   m_ObjectHideFlags: 0
@@ -856,7 +1001,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4220041162180980065}
   brain: {fileID: 7622576983817106478}
---- !u!1 &5702767144640782713
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
+  factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
+--- !u!1 &8899575827743905027
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -864,151 +1012,27 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2121575903542404369}
-  - component: {fileID: 1793894022187338747}
-  - component: {fileID: 2127137709563187313}
-  - component: {fileID: 4541481479586341584}
-  - component: {fileID: 7622576983817106478}
+  - component: {fileID: 286667418776334637}
   m_Layer: 0
-  m_Name: NormalAI
-  m_TagString: AI_Augment
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2121575903542404369
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5702767144640782713}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1087599260838737379}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1793894022187338747
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5702767144640782713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72344165e2cc41da93476bb1aa2cdd4b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: CrashKonijn.Goap.Runtime::CrashKonijn.Goap.Runtime.GoapActionProvider
-  <LoggerConfig>k__BackingField:
-    <DebugMode>k__BackingField: 1
-    <MaxLogSize>k__BackingField: 20
-  <AgentTypeBehaviour>k__BackingField: {fileID: 0}
-  <DistanceMultiplier>k__BackingField: 1
---- !u!114 &2127137709563187313
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5702767144640782713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1cef53d855ccf0b46bcf004b27c4a52a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: CrashKonijn.Agent.Runtime::CrashKonijn.Agent.Runtime.AgentBehaviour
-  <ActionProviderBase>k__BackingField: {fileID: 1793894022187338747}
-  <RunInUnityUpdate>k__BackingField: 1
-  isPaused: 0
-  <LoggerConfig>k__BackingField:
-    <DebugMode>k__BackingField: 1
-    <MaxLogSize>k__BackingField: 20
---- !u!114 &4541481479586341584
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5702767144640782713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2764e0c64ff38814ba8b4c8521fdefda, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AgentMoveBehaviour
-  agent: {fileID: 7622576983817106478}
-  agentBehaviour: {fileID: 2127137709563187313}
---- !u!114 &7622576983817106478
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5702767144640782713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8b94572b7104944d82db639555bc3a3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BaseAI
-  agent: {fileID: 2876902180845984889}
-  agentBehaviour: {fileID: 2127137709563187313}
-  brain: {fileID: 5412846263211813637}
-  stats: {fileID: 583056955256405874}
-  motionController: {fileID: 8142828820705702646}
-  skillController: {fileID: 0}
-  vision: {fileID: 1419777042176616269}
-  goals:
-  - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
-  - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
-  skills: []
-  agentType: NormalAgent
-  currentTarget: {fileID: 0}
-  targetDistance: 0
-  enemyTargets: []
-  allyTargets: []
-  threatLevel: 0
-  fearLevel: 0
-  agentLife: 0
-  agentMana: 0
-  currentGoalKey: None
-  goalScores:
-    pairs: []
-  currentSkillKey: None
-  currentSkillScore: 0
-  skillScores:
-    pairs: []
---- !u!1 &6045907984605155341
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1945769140018042281}
-  m_Layer: 0
-  m_Name: Hitbox
+  m_Name: Helper
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1945769140018042281
+--- !u!4 &286667418776334637
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6045907984605155341}
+  m_GameObject: {fileID: 8899575827743905027}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 223383599700414436}
-  - {fileID: 2729599850523166590}
-  m_Father: {fileID: 1087599260838737379}
+  - {fileID: 3843292984236393184}
+  m_Father: {fileID: 7508039659297886590}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

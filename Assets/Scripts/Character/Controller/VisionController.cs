@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using Micosmo.SensorToolkit;
+using SB4b1.GameMath;
 using UnityEngine;
 
 public class VisionController : MonoBehaviour
 {
     [SerializeField] private Sensor sensor;
     [SerializeField] private BaseAI brain;
+    [SerializeField] private PerceptionTuningSO tuning;
 
     // Allocated once; owned by this component; read by BaseAI/GOAP sensors
     [SerializeField] private readonly List<Transform> enemyTargets = new(16);
@@ -19,25 +21,263 @@ public class VisionController : MonoBehaviour
     public List<Transform> AllyTargets => allyTargets;
     public Sensor Sensor => sensor;
     public float VisionRadius => GetVisionRadius();
+    public BaseAI Brain { get => brain ??= (GetComponent<BaseAI>() ?? GetComponentInParent<BaseAI>()); set => brain = value; }
+    public PerceptionTuningSO Tuning { get => tuning; set => tuning = value; }
 
+    // Adaptive pulse state
+    public const float DEFAULT_SEARCH_INTERVAL = 0.2f;
     private float searchTimer;
     private float configuredVisionRadius = -1f;
-    private const float SEARCH_INTERVAL = 0.2f;
+    private PerceptionTier currentTier = PerceptionTier.Default;
+    private float tierDwellTimer;
+    private float lastForcePulseTime = -999f;
+    private bool forcePulseRequested;
+    private SquadOrderType lastKnownSquadOrder = SquadOrderType.None;
+
+    public PerceptionTier CurrentTier => currentTier;
+    public float SearchTimer => searchTimer;
+    public float TierDwellTimer => tierDwellTimer;
+    public float LastForcePulseTime => lastForcePulseTime;
+    public bool ForcePulseRequested => forcePulseRequested;
 
     [SerializeField] private FactionMember factionMember;
+    [SerializeField] private CharacterStatsManager statsManager;
 
     private void Awake()
     {
-        if (brain == null) brain = GetComponent<BaseAI>();
-        if (brain == null) brain = GetComponentInParent<BaseAI>();
-        if (sensor == null) sensor = GetComponentInChildren<Sensor>();
-        if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
+        ResolveDependencies();
 
         if (configuredVisionRadius > 0f && sensor != null)
         {
             ApplyRadiusToSensor(sensor, configuredVisionRadius);
         }
     }
+
+    private void OnEnable()
+    {
+        ResolveDependencies();
+
+        if (statsManager != null)
+        {
+            statsManager.OnDamaged -= HandleOnDamaged;
+            statsManager.OnDamaged += HandleOnDamaged;
+        }
+
+        SBGames.Characters.AI.AdventurerEventHub.OnCharacterDied -= HandleCharacterDeath;
+        SBGames.Characters.AI.AdventurerEventHub.OnCharacterDied += HandleCharacterDeath;
+
+        currentTier = EvaluateTier();
+        tierDwellTimer = 0f;
+        InitializePhaseOffset();
+    }
+
+
+    private void OnDisable()
+    {
+        if (statsManager != null)
+        {
+            statsManager.OnDamaged -= HandleOnDamaged;
+        }
+
+        SBGames.Characters.AI.AdventurerEventHub.OnCharacterDied -= HandleCharacterDeath;
+    }
+
+    private void ResolveDependencies()
+    {
+        if (brain == null) brain = GetComponent<BaseAI>() ?? GetComponentInParent<BaseAI>();
+        if (sensor == null) sensor = GetComponentInChildren<Sensor>();
+        if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
+        if (statsManager == null) statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInParent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+    }
+
+    /// <summary>
+    /// Phase offset on activation so units' perception pulses do not synchronize across units.
+    /// Uses GameRng seeded with unit instance and coordinate hash to remain reproducible per seed.
+    /// </summary>
+    public void InitializePhaseOffset()
+    {
+        float interval = GetTierInterval(currentTier);
+        uint seed = (uint)(GetEntityId().GetHashCode() ^ (int)(transform.position.x * 100f) ^ ((int)(transform.position.y * 100f) << 16));
+        if (seed == 0) seed = 1;
+        var rng = new GameRng(seed);
+        searchTimer = rng.Range(0f, Mathf.Max(0.01f, interval));
+        tierDwellTimer = 0f;
+    }
+
+    public void InitializePhaseOffset(ref GameRng rng)
+    {
+        float interval = GetTierInterval(currentTier);
+        searchTimer = rng.Range(0f, Mathf.Max(0.01f, interval));
+        tierDwellTimer = 0f;
+    }
+
+    /// <summary>
+    /// Triggers a rate-limited perception pulse on the next tick.
+    /// Call on damage taken, ally death, squad order received, and AlertAllies signals.
+    /// </summary>
+    public void RequestImmediatePulse()
+    {
+        float minGap = tuning != null ? tuning.ForcePulseMinGap : 0.05f;
+        if (Time.time - lastForcePulseTime < minGap)
+        {
+            return;
+        }
+        forcePulseRequested = true;
+    }
+
+    private void HandleOnDamaged(DamageData damage)
+    {
+        RequestImmediatePulse();
+    }
+
+    private void HandleCharacterDeath(SBGames.Characters.AI.CharacterDiedEvent evt)
+    {
+        if (evt.CharacterStats == null || evt.CharacterStats == statsManager) return;
+
+        // Check if the deceased was an ally
+        if (factionMember != null && evt.CharacterGameObject != null && factionMember.IsAllyOf(evt.CharacterGameObject))
+        {
+            RequestImmediatePulse();
+        }
+        else if (factionMember == null && evt.CharacterGameObject != null)
+        {
+            string myTag = gameObject.tag;
+            string deadTag = evt.CharacterGameObject.tag;
+            if ((myTag == "Adventurer" && deadTag == "Adventurer") ||
+                (myTag == "Monster" && deadTag == "Monster"))
+            {
+                RequestImmediatePulse();
+            }
+        }
+    }
+
+    public void NotifySquadOrderReceived(SquadOrderType order)
+    {
+        if (order != lastKnownSquadOrder)
+        {
+            lastKnownSquadOrder = order;
+            RequestImmediatePulse();
+        }
+    }
+
+    public PerceptionTier EvaluateTier()
+    {
+        var b = Brain;
+        if (b == null)
+        {
+            return PerceptionTier.Default;
+        }
+
+        // 1. Critical Tier: Low health, fleeing, Morale Shock (high fear), Survive/FallBack goal
+        float critHpThresh = tuning != null ? tuning.CriticalHealthThreshold : 0.3f;
+        int critFearThresh = tuning != null ? tuning.CriticalFearThreshold : 80;
+
+        float maxLife = b.StatsManager != null && b.StatsManager.MaxLife != null && b.StatsManager.MaxLife.Value > 0f
+            ? b.StatsManager.MaxLife.Value
+            : 100f;
+        // If StatsManager is attached, use AgentLife / maxLife; if no StatsManager is attached and agentLife is 0 (uninitialized default), treat as healthy (1.0)
+        float currentHpPct = (b.StatsManager != null || b.AgentLife > 0f) ? (b.AgentLife / maxLife) : 1.0f;
+
+        bool isLowHealth = currentHpPct <= critHpThresh;
+        bool isMoraleShock = b.FearLevel >= critFearThresh;
+        bool isCriticalGoal = b.ActiveGoal == EnumUtilGoal.Survive || b.ActiveGoal == EnumUtilGoal.FallBack;
+        bool isCriticalOrder = b.SquadOrder == SquadOrderType.FallBack;
+
+
+        if (isLowHealth || isMoraleShock || isCriticalGoal || isCriticalOrder)
+        {
+            return PerceptionTier.Critical;
+        }
+
+        // 2. Engaged Tier: Current target, or enemy within attack range or threat range margin
+        float baseAtkRange = b.StatsManager != null && b.StatsManager.AttackRange != null
+            ? b.StatsManager.AttackRange.Value
+            : 1.5f;
+        float threatMargin = tuning != null ? tuning.ThreatRangeMargin : 3.0f;
+        float engagedDistanceLimit = baseAtkRange + threatMargin;
+
+        bool hasTarget = b.CurrentTarget != null;
+        bool hasEngagedDistance = b.CurrentTarget != null && b.TargetDistance <= engagedDistanceLimit;
+        bool hasDirectEnemies = b.EnemyTargets != null && b.EnemyTargets.Count > 0;
+        bool hasHighThreat = b.ThreatLevel > 0;
+
+        if (hasTarget || hasEngagedDistance || hasDirectEnemies || hasHighThreat)
+        {
+            return PerceptionTier.Engaged;
+        }
+
+        // 3. Calm Tier: Idle/none, wandering, scouting, following leader with NO known enemies
+        bool hasNoKnownEnemies = !b.HasKnownEnemies;
+        bool isCalmGoal = b.ActiveGoal == EnumUtilGoal.None ||
+                         b.ActiveGoal == EnumUtilGoal.Wander ||
+                         b.ActiveGoal == EnumUtilGoal.ScoutRecon ||
+                         b.ActiveGoal == EnumUtilGoal.DebriefLeader ||
+                         b.ActiveGoal == EnumUtilGoal.FollowLeader ||
+                         b.ActiveGoal == EnumUtilGoal.Standby;
+
+        if (hasNoKnownEnemies && isCalmGoal && b.ThreatLevel == 0 && b.FearLevel == 0)
+        {
+            return PerceptionTier.Calm;
+        }
+
+        return PerceptionTier.Default;
+    }
+
+
+    public float GetTierInterval(PerceptionTier tier)
+    {
+        if (tuning != null)
+        {
+            return tuning.GetInterval(tier);
+        }
+        return DEFAULT_SEARCH_INTERVAL;
+    }
+
+    private static int GetTierPriority(PerceptionTier tier)
+    {
+        switch (tier)
+        {
+            case PerceptionTier.Critical: return 3;
+            case PerceptionTier.Engaged:  return 2;
+            case PerceptionTier.Default:  return 1;
+            case PerceptionTier.Calm:
+            default:
+                return 0;
+        }
+    }
+
+    public void UpdateTierSelection(float deltaTime)
+    {
+        PerceptionTier evaluated = EvaluateTier();
+
+        if (evaluated == currentTier)
+        {
+            tierDwellTimer = 0f;
+            return;
+        }
+
+        float evalInterval = GetTierInterval(evaluated);
+        float currentInterval = GetTierInterval(currentTier);
+
+        if (evalInterval < currentInterval)
+        {
+            // Moving to a faster tier (shorter interval) is immediate
+            currentTier = evaluated;
+            tierDwellTimer = 0f;
+        }
+        else
+        {
+            // Dropping to a slower tier (longer interval) requires hysteresis dwell time
+            float dwellLimit = tuning != null ? tuning.HysteresisDwellTime : 0.5f;
+            tierDwellTimer += deltaTime;
+            if (tierDwellTimer >= dwellLimit)
+            {
+                currentTier = evaluated;
+                tierDwellTimer = 0f;
+            }
+        }
+    }
+
 
     /// <summary>
     /// Sets the perception sensor detection radius (e.g. from <see cref="AdventurerAIProfile"/>).
@@ -131,10 +371,23 @@ public class VisionController : MonoBehaviour
 
     private void Update()
     {
-        searchTimer -= Time.deltaTime;
-        if (searchTimer > 0f) return;
-        searchTimer = SEARCH_INTERVAL;
+        float dt = Time.deltaTime;
+        UpdateTierSelection(dt);
 
+        searchTimer -= dt;
+
+        if (forcePulseRequested)
+        {
+            forcePulseRequested = false;
+            lastForcePulseTime = Time.time;
+            searchTimer = GetTierInterval(currentTier);
+            TickPerception();
+            return;
+        }
+
+        if (searchTimer > 0f) return;
+
+        searchTimer = GetTierInterval(currentTier);
         TickPerception();
     }
 

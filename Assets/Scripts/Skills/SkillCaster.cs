@@ -255,6 +255,11 @@ public class SkillCaster : MonoBehaviour
             // Target is required and a targeting sensor exists, but no target is in range
             return false;
         }
+        else if (target == null && (spawnType == SpawnTypes.AtTarget || (skillData != null && skillData.targetFilter == SkillData.SkillTargetFilter.AlliesOnly)))
+        {
+            // Allies-only or target-targeted skill cannot be cast without a target
+            return false;
+        }
         else
         {
             // ✅ NO TARGET → CAST IN FACING DIRECTION
@@ -296,12 +301,13 @@ public class SkillCaster : MonoBehaviour
 
         Quaternion rotation = Quaternion.Euler(0f, 0f, zRot);
 
-        GameObject skillObject =
-            ObjectPoolManager.Instance.Spawn(
+        GameObject skillObject = ObjectPoolManager.Instance != null
+            ? ObjectPoolManager.Instance.Spawn(
                 skillData.skillPrefab,
                 spawnPosition,
                 rotation
-            );
+            )
+            : Instantiate(skillData.skillPrefab, spawnPosition, rotation);
 
         GameObject casterGo = casterTransform != null ? casterTransform.gameObject : (transform.root != null ? transform.root.gameObject : gameObject);
         string resolvedCasterId = casterID;

@@ -1,32 +1,42 @@
-# Agent Guidelines
+# Agent Guidelines — SBGames
 
-## Agent skills
+2D dungeon-defense / auto-battler RPG in Unity 6 (`6000.6.4f1`). This file is only the entry point; the deep docs below are the source of truth.
 
-### Project overview
+## Communication
+- Respond in English only, regardless of the language of prompts, comments, or docs (`GEMINI.md`).
 
-High-level architecture, game loop, directory layout, and binding rules. See `docs/agents/project_overview.md`.
+## Read first
+- `docs/agents/project_overview.md` — game loop, subsystems, directory layout, binding rules.
+- `docs/engineering_guide.md` — architecture patterns, coding invariants (§4), feature playbooks (§5), known quirks (§6).
+- `docs/goap_utility_context.md` — GOAP + Utility AI; its **Rules** section is binding and its boilerplates are the templates to start from.
+- `GLOSSARY.md` + `docs/adr/` — canonical domain vocabulary and decisions (`docs/agents/domain.md`).
+- `docs/agents/issue-tracker.md` + `docs/agents/triage-labels.md` — issues/specs are GitHub Issues, driven with `gh`.
+- `docs/project_status_snapshot.md` — latest progress; regenerate with the `project-snapshot` skill.
 
-### Engineering guide
+## Paths: trust the filesystem, not the docs
+Earlier docs (including `goap_utility_context.md`'s relative file links) predate a code reorganization and point at folders that no longer exist. Current locations:
+- Characters/combat: `Assets/Scripts/Character/` (docs say `Characters/`).
+- GOAP + Utility AI: `Assets/Scripts/Character/AI/GOAP/` (docs say `Assets/Scripts/GOAP/`).
+- Runtime tests: `Assets/Tests/` (NUnit, namespace `SBGames.Tests`) — not under `Assets/Scripts/`.
+- Editor tooling: `Assets/Editor/` and `Assets/Scripts/Editor/`. Data tables: `Assets/DataTables/`.
 
-Code-level technical architecture, component lifecycles, data flow, and feature extension playbooks. See `docs/engineering_guide.md`.
+## Unity automation (mandatory)
+Use the Unity CLI (`unity`, or `C:\Users\Admin\AppData\Local\Unity\bin\unity.exe`); never Unity MCP. The Editor is usually left running, so prefer live pipeline commands:
+- `unity status` — confirm an Editor is connected before issuing other pipeline commands.
+- `unity cmd <name>` — run Editor-registered pipeline commands (e.g. `unity cmd console`, `unity cmd eval`); bare `unity cmd` lists them.
+- `unity recompile` — recompile and report compile errors.
+- `unity test --mode EditMode --filter <TestName>` — run tests (`EditMode` or `PlayMode`); writes an NUnit report to `test-results.xml`.
+- Batch fallback: `unity -quit -batchmode -projectPath "D:\UnityProject\SBGames" -executeMethod UnityEditor.Compilation.CompilationPipeline.RequestScriptCompilation`.
 
-### Issue tracker
+## Coding invariants agents most often miss
+Full set in `docs/engineering_guide.md` §4; the commonly violated ones:
+- Never mutate ScriptableObjects at runtime — keep mutable state on component managers.
+- Damage only through `IDamageable.TakeDamage(in DamageData)`; never deduct health directly.
+- Hot paths (`Update`, `FixedUpdate`, GOAP `Sense`/`Perform`, Utility `Evaluate`) must be zero-alloc: no LINQ, no per-call lambdas, `sqrMagnitude`, `NonAlloc` physics.
+- GOAP actions only act — movement is owned by `AgentMoveBehaviour`; inject controllers with `[GetComponentInParent]`.
+- No inline TODO/FIXME comments — track work in GitHub Issues.
 
-Issues and specs live in GitHub Issues. See `docs/agents/issue-tracker.md`.
+Note: `docs/engineering_guide.md` §6.3's list of misspelled files is stale (those were since renamed); verify names on disk before trusting it.
 
-### Triage labels
-
-Canonical triage label vocabulary. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context layout (`GLOSSARY.md` + `docs/adr/`). See `docs/agents/domain.md`.
-
-### GOAP / Utility AI
-
-Before adding or changing AI code (`Assets/Scripts/GOAP/`: actions, goals, sensors, keys, utility scorers, SensorToolkit wiring), read `docs/goap_utility_context.md`. Its **Rules** section is binding. Its boilerplates are the templates to start from.
-
-### Unity Automation
-
-Always use the **Unity CLI** (`unity` / `C:\Users\Admin\AppData\Local\Unity\bin\unity.exe`) for Unity Editor automation, package management, testing, and project inspection instead of Unity MCP.
-The Unity Editor is always kept running by the user: prioritize pipeline commands (`unity cmd console`, `unity cmd eval`, `unity cmd recompile`, etc.) for reading logs and interacting with the editor.
+## Build layout
+- Game code compiles into `Assembly-CSharp`; the only project asmdefs ship inside `SensorToolkit`. Adding an asmdef changes compile boundaries, so don't add one casually.

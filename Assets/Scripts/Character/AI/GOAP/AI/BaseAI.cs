@@ -193,8 +193,8 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     public int ThreatLevel { get => threatLevel; private set => threatLevel = value; }
     public int FearLevel { get => fearLevel; private set => fearLevel = value; }
-    public float AgentLife { get => agentLife; private set => agentLife = value; }
-    public float AgentMana { get => agentMana; private set => agentMana = value; }
+    public float AgentLife { get => StatsManager != null ? StatsManager.Life : agentLife; private set => agentLife = value; }
+    public float AgentMana { get => StatsManager != null ? StatsManager.Mana : agentMana; private set => agentMana = value; }
 
     public int EnemiesInSkillRange(float range)
     {
@@ -607,7 +607,13 @@ public class BaseAI : MonoBehaviour, IPoolable
 
         // Elevate ThreatLevel to enter combat readiness stance
         threatLevel = Mathf.Max(threatLevel, Mathf.RoundToInt(15 * EffectiveThreatMultiplier));
+
+        if (Vision != null)
+        {
+            Vision.RequestImmediatePulse();
+        }
     }
+
 
     public void PerformAlertShout()
     {
@@ -773,10 +779,36 @@ public class BaseAI : MonoBehaviour, IPoolable
             }
         }
 
-        // 2. Also check squad members if registered
+        // 2. Also check squad members and leader if registered
         if (HasSquadLeader && SquadMember.Leader != null)
         {
             var leader = SquadMember.Leader;
+
+            // Check the leader itself
+            if (leader.gameObject != gameObject)
+            {
+                var leaderStats = leader.StatsManager;
+                if (leaderStats != null && leaderStats.Life > 0f)
+                {
+                    float leaderMaxHp = leaderStats.MaxLife != null && leaderStats.MaxLife.Value > 0f ? leaderStats.MaxLife.Value : 100f;
+                    float leaderHpPercent = leaderStats.Life / leaderMaxHp;
+                    if (leaderHpPercent < threshold)
+                    {
+                        bool isTank = (leaderStats.EffectiveFunction & AdventurerFunction.Tank) != 0;
+                        if (isTank && leaderHpPercent < tankHp)
+                        {
+                            tankHp = leaderHpPercent;
+                            tankCandidate = leader.transform;
+                        }
+                        if (leaderHpPercent < lowestHp)
+                        {
+                            lowestHp = leaderHpPercent;
+                            bestCandidate = leader.transform;
+                        }
+                    }
+                }
+            }
+
             var members = leader.Members;
             if (members != null)
             {

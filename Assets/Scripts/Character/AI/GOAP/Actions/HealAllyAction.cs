@@ -25,7 +25,38 @@ public class HealAllyAction : GoapActionBase<HealAllyAction.Data>
             GameObject targetObj = null;
             if (data.Target is TransformTarget tt && tt.Transform != null)
             {
-                targetObj = tt.Transform.gameObject;
+                var brain = tt.Transform.GetComponentInParent<CharacterBrain>();
+                targetObj = brain != null ? brain.gameObject : tt.Transform.root.gameObject;
+            }
+
+            // Fallback: if data.Target was not resolved yet, ask BaseAI for best wounded ally
+            if (targetObj == null && data.AI != null && data.AI.GetBestWoundedAllyTarget(out Transform fallbackTarget, out _))
+            {
+                var brain = fallbackTarget.GetComponentInParent<CharacterBrain>();
+                targetObj = brain != null ? brain.gameObject : fallbackTarget.root.gameObject;
+            }
+
+            // If no ally target exists or the ally does not need healing, complete immediately without casting
+            if (targetObj == null)
+            {
+                if (data.Brain != null) data.Brain.EndCastSkill(0f);
+                return ActionRunState.Completed;
+            }
+
+            var targetStats = targetObj.GetComponent<CharacterStatsManager>() ?? targetObj.GetComponentInParent<CharacterStatsManager>();
+            if (targetStats == null || targetStats.Life <= 0f)
+            {
+                if (data.Brain != null) data.Brain.EndCastSkill(0f);
+                return ActionRunState.Completed;
+            }
+
+            float maxHp = targetStats.MaxLife != null && targetStats.MaxLife.Value > 0f ? targetStats.MaxLife.Value : 100f;
+            float hpThreshold = data.AI != null && data.AI.AdventurerProfile != null ? data.AI.AdventurerProfile.HealHpThreshold : 0.50f;
+            if (targetStats.Life >= maxHp || (targetStats.Life / maxHp) >= hpThreshold)
+            {
+                // Ally is already above heal threshold or at full HP - do not cast!
+                if (data.Brain != null) data.Brain.EndCastSkill(0f);
+                return ActionRunState.Completed;
             }
 
             var skillController = data.SkillController;
@@ -107,6 +138,11 @@ public class HealAllyAction : GoapActionBase<HealAllyAction.Data>
         if (data.CastInitiated && data.Brain != null && data.Brain.IsCastingSkill)
         {
             return true;
+        }
+
+        if (data.AI != null && !data.AI.GetBestWoundedAllyTarget(out _, out _))
+        {
+            return false;
         }
 
         return base.IsValid(agent, data);

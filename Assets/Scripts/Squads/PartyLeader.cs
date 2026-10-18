@@ -134,6 +134,18 @@ public class PartyLeader : MonoBehaviour
         }
     }
 
+    public CharacterStatsManager StatsManager
+    {
+        get
+        {
+            if (statsManager == null)
+            {
+                statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>();
+            }
+            return statsManager;
+        }
+    }
+
     public Vector3 MarchingForward
     {
         get => marchingForward.sqrMagnitude > 0.001f ? marchingForward.normalized : transform.up;

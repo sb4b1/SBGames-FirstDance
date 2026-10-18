@@ -45,7 +45,8 @@ public class CharacterClassStyleTableSO : ScriptableObject
         new CharacterClassStyleEntry(CharacterClass.Mage,    preferredRangeBand: 0.95f, skillReliance: 0.85f),
         new CharacterClassStyleEntry(CharacterClass.Rogue,   preferredRangeBand: 0.60f, skillReliance: 0.45f),
         new CharacterClassStyleEntry(CharacterClass.Scout,   preferredRangeBand: 0.85f, skillReliance: 0.50f),
-        new CharacterClassStyleEntry(CharacterClass.Cleric,  preferredRangeBand: 0.85f, skillReliance: 0.70f)
+        new CharacterClassStyleEntry(CharacterClass.Cleric,  preferredRangeBand: 0.85f, skillReliance: 0.70f),
+        new CharacterClassStyleEntry(CharacterClass.Ranger,  preferredRangeBand: 0.90f, skillReliance: 0.50f)
     };
 
     public CharacterClassStyleEntry FallbackStyle => fallbackStyle;

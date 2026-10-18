@@ -8,14 +8,14 @@ public class HealCapabilityFactory : CapabilityFactoryBase
         var builder = new CapabilityBuilder("HealCapability");
 
         builder.AddGoal<HealAllyGoal>()
-            .AddCondition<ThreatLevel>(Comparison.SmallerThanOrEqual, 0)
+            .AddCondition<AlliesNeedHealing>(Comparison.SmallerThanOrEqual, 0)
             .SetBaseCost(1);
 
         builder.AddAction<HealAllyAction>()
             .SetTarget<WoundedAllyTarget>()
             .AddCondition<IsSkillReady>(Comparison.GreaterThanOrEqual, 1)
             .AddCondition<AgentMana>(Comparison.GreaterThanOrEqual, 5)
-            .AddEffect<ThreatLevel>(EffectType.Decrease)
+            .AddEffect<AlliesNeedHealing>(EffectType.Decrease)
             .SetBaseCost(1)
             .SetValidateConditions(false)
             .SetValidateTarget(false);

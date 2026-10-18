@@ -239,6 +239,7 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     {
         CancelAttackTimer();
         OnCharacterDeath?.Invoke(this);
+        SBGames.Characters.AI.AdventurerEventHub.RaiseCharacterDied(this, gameObject);
 
         if (brain == null)
         {

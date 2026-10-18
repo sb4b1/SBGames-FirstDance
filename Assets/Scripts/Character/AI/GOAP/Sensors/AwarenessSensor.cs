@@ -44,6 +44,13 @@ public class AwarenessSensor : MultiSensorBase
             return data.HasAlertedAllies ? 1 : 0;
         });
 
+        this.AddLocalWorldSensor<AlliesNeedHealing>((agent, references) =>
+        {
+            var data = references?.GetCachedComponent<BaseAI>();
+            if (data == null) return 0;
+            return data.GetBestWoundedAllyTarget(out _, out _) ? 1 : 0;
+        });
+
         this.AddLocalTargetSensor<SelfTarget>((agent, references, target) =>
         {
             if (target is TransformTarget transformTarget)

@@ -516,7 +516,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CharacterIdentifier
   uniqueId: 
-  characterName: ADVENTURER_N002
+  characterName: ADVENTURER_N099
 --- !u!114 &5254396860403196409
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1015,7 +1015,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4308003283456528453}
   brain: {fileID: 8072826638222970858}
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
   factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
 --- !u!1 &8156641959742805057
 GameObject:
   m_ObjectHideFlags: 0
@@ -1127,6 +1129,15 @@ MonoBehaviour:
   skills:
   - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
   personality: {fileID: 0}
+  aiMemory: {fileID: 0}
+  adventurerProfile: {fileID: 0}
+  classStyleTable: {fileID: 0}
+  itemUseQualityTuning: {fileID: 0}
+  itemKitController: {fileID: 0}
+  statusEffectManager: {fileID: 0}
+  decisionThrottler: {fileID: 0}
+  doorwayStaging: {fileID: 0}
+  goalHysteresisBonus: 0.08
   agentType: MageAgent
   currentTarget: {fileID: 0}
   targetDistance: 0

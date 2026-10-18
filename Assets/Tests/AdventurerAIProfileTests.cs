@@ -334,6 +334,12 @@ namespace SBGames.Tests
             Assert.Less(warriorStandDist, mageStandDist, "Warrior should prefer standing closer as a fraction of AttackRange than Mage.");
             Assert.Greater(mageSkillReliance, warriorSkillReliance, "Mage should have higher skill reliance than Warrior.");
 
+            baseStat.characterClass = CharacterClass.Ranger;
+            float rangerStandDist = baseAI.GetPreferredStandingDistance(stats.AttackRange.Value);
+            float rangerSkillReliance = baseAI.SkillReliance;
+            Assert.AreEqual(9f, rangerStandDist, 0.0001f, "Ranger should have preferredRangeBand of 0.90.");
+            Assert.AreEqual(0.50f, rangerSkillReliance, 0.0001f, "Ranger should have skillReliance of 0.50.");
+
             var utilSkill = ScriptableObject.CreateInstance<UtilitySkill>();
             var soSkill = new SerializedObject(utilSkill);
             soSkill.FindProperty("useDistanceConsideration").boolValue = false;

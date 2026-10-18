@@ -258,7 +258,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 2231919898869705758}
   brain: {fileID: 7403585495123696128}
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
   factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
 --- !u!1 &205588281202305193
 GameObject:
   m_ObjectHideFlags: 0

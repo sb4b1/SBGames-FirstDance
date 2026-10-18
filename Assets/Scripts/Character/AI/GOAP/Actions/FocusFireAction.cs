@@ -86,9 +86,27 @@ public class FocusFireAction : GoapActionBase<FocusFireAction.Data>
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)
     {
-        float attackRange = data.Stats != null && data.Stats.AttackRange != null ? data.Stats.AttackRange.Value : 1f;
-        float standingDistance = data.AI != null ? data.AI.GetPreferredStandingDistance(attackRange) : attackRange;
-        return distance <= standingDistance;
+        float targetExtent = 0.25f;
+        if (data.Target is TransformTarget tt && tt.Transform != null)
+        {
+            var col = tt.Transform.GetComponentInChildren<Collider2D>();
+            if (col != null)
+            {
+                targetExtent = Mathf.Max(col.bounds.extents.x, col.bounds.extents.y);
+            }
+        }
+
+        float maxReachWithTarget = 0.85f;
+        if (data.Controller != null)
+        {
+            maxReachWithTarget = data.Controller.MaxEffectiveReach + targetExtent;
+        }
+
+        float statAttackRange = data.Stats != null && data.Stats.AttackRange != null ? data.Stats.AttackRange.Value : 1f;
+        float standingDistance = data.AI != null ? data.AI.GetPreferredStandingDistance(statAttackRange) : statAttackRange;
+
+        float effectiveAttackRange = Mathf.Min(standingDistance, maxReachWithTarget);
+        return distance <= effectiveAttackRange;
     }
 
     public class Data : IActionData

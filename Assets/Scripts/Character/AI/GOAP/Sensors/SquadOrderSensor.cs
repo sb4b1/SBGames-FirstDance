@@ -18,7 +18,13 @@ public class SquadOrderSensor : MultiSensorBase
         {
             var ai = references.GetCachedComponent<BaseAI>();
             if (ai == null) return 0;
-            return (int)ai.SquadOrder;
+            var order = ai.SquadOrder;
+            if (ai.Vision != null)
+            {
+                ai.Vision.NotifySquadOrderReceived(order);
+            }
+            return (int)order;
         });
     }
 }
+

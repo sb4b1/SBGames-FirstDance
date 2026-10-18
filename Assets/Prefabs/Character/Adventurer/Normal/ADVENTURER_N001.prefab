@@ -459,7 +459,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 8457554071161223669}
   brain: {fileID: 1557554046628484952}
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
   factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
 --- !u!1 &4281800539060150829
 GameObject:
   m_ObjectHideFlags: 0
@@ -517,8 +519,8 @@ GameObject:
   - component: {fileID: 2646423989894844455}
   - component: {fileID: 597551976975578583}
   - component: {fileID: 90170115302764826}
-  - component: {fileID: 2602271382702027217}
   - component: {fileID: 8976895334903765719}
+  - component: {fileID: 2602271382702027217}
   - component: {fileID: 1953644584550586157}
   - component: {fileID: 5332071494075097935}
   - component: {fileID: 530376432198926583}
@@ -549,11 +551,11 @@ Transform:
   m_LocalScale: {x: -0.8687878, y: 0.8687878, z: 0.8687878}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 6684727607727278478}
   - {fileID: 624977468916549620}
   - {fileID: 3127163178291784840}
   - {fileID: 3196813745378273168}
   - {fileID: 4822973512793935888}
-  - {fileID: 6684727607727278478}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &597551976975578583
@@ -605,6 +607,24 @@ NavMeshAgent:
   m_BaseOffset: 0.145
   m_WalkableMask: 9
   m_ObstacleAvoidanceType: 4
+--- !u!114 &8976895334903765719
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4555594661279472785}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
+  controlMode: 1
+  agentStatus: 1
+  aiAugment: {fileID: 8460278306584219054}
+  statsManager: {fileID: 2602271382702027217}
+  animController: {fileID: 4725481749160320180}
+  skillController: {fileID: 1427375474903197488}
 --- !u!114 &2602271382702027217
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -630,24 +650,6 @@ MonoBehaviour:
   attackTimeInterval: 0
   decisionInterval: 0
   intervalJitter: 0
---- !u!114 &8976895334903765719
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4555594661279472785}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5bed02bb45cfb454d94123ca18730315, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CharacterBrain
-  controlMode: 1
-  agentStatus: 1
-  aiAugment: {fileID: 8460278306584219054}
-  statsManager: {fileID: 2602271382702027217}
-  animController: {fileID: 4725481749160320180}
-  skillController: {fileID: 1427375474903197488}
 --- !u!114 &1953644584550586157
 MonoBehaviour:
   m_ObjectHideFlags: 0

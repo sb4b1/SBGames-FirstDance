@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class SkillHitResolver : MonoBehaviour
 {
+    public static event System.Action<SkillInstance, GameObject, float> OnSkillHealApplied;
+
     public void ResolveHit(SkillInstance skill, GameObject target)
     {
         if (target == null) return;
@@ -15,6 +17,7 @@ public class SkillHitResolver : MonoBehaviour
             if (stats != null)
             {
                 float healAmount = skill.CurrentDamage > 0f ? skill.CurrentDamage : skill.Data.baseDamage;
+                OnSkillHealApplied?.Invoke(skill, target, healAmount);
                 stats.RestoreLife(healAmount);
             }
             return;

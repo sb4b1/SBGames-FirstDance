@@ -662,7 +662,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisionController
   sensor: {fileID: 4220041162180980065}
   brain: {fileID: 3967720624424618889}
+  tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
   factionMember: {fileID: 0}
+  statsManager: {fileID: 0}
 --- !u!1 &8899575827743905027
 GameObject:
   m_ObjectHideFlags: 0
@@ -961,6 +963,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SquadMember
   currentLeader: {fileID: 0}
+  overrideIsScout: 0
 --- !u!114 &3991728856715629168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -990,6 +993,11 @@ MonoBehaviour:
     PeelingBonusMultiplier: 1
     LowHealthTargetPriority: 1
     BleedingTargetPriority: 1
+    HazardMemoryDurationMultiplier: 0.5
+    GrudgeWeightMultiplier: 2.5
+    BurstDamagePanicMultiplier: 0.2
+    HasTunnelVision: 1
+    TargetPruneDelayMultiplier: 1
 --- !u!1 &9097028675395075657
 GameObject:
   m_ObjectHideFlags: 0
@@ -1104,6 +1112,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
   skills: []
   personality: {fileID: 0}
+  aiMemory: {fileID: 0}
+  adventurerProfile: {fileID: 0}
+  classStyleTable: {fileID: 0}
+  itemUseQualityTuning: {fileID: 0}
+  itemKitController: {fileID: 0}
+  statusEffectManager: {fileID: 0}
+  decisionThrottler: {fileID: 0}
+  doorwayStaging: {fileID: 0}
+  goalHysteresisBonus: 0.08
   agentType: MinionAgent
   currentTarget: {fileID: 0}
   targetDistance: 0

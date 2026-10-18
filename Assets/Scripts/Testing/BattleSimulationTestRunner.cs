@@ -104,6 +104,8 @@ namespace SBGames.Testing
             public float DamageDealt { get; private set; }
             public float DamageTaken { get; private set; }
             public float HealingReceived { get; private set; }
+            public float SkillHealingReceived { get; private set; }
+            public float PotionHealingReceived { get; private set; }
             public int HealsCast { get; private set; }
             public float FirstHealTime { get; private set; } = -1f;
             public int FleeEvents { get; private set; }
@@ -121,7 +123,18 @@ namespace SBGames.Testing
 
             public void RecordDamageDealt(float dmg) => DamageDealt += dmg;
             public void RecordDamageTaken(float dmg) => DamageTaken += dmg;
-            public void RecordHealingReceived(float amount) => HealingReceived += amount;
+            public void RecordHealingReceived(float amount, bool isSkill)
+            {
+                HealingReceived += amount;
+                if (isSkill)
+                {
+                    SkillHealingReceived += amount;
+                }
+                else
+                {
+                    PotionHealingReceived += amount;
+                }
+            }
             public void AddIdleTime(float dt) => IdleTime += dt;
             public void IncrementFleeEvents()
             {
@@ -136,8 +149,10 @@ namespace SBGames.Testing
 
             public void OnLifeRestoredHandler(float amount)
             {
-                RecordHealingReceived(amount);
-                if (ownerRunner != null && ownerRunner.FirstHealElapsedTime < 0f && ownerRunner.State == SimulationState.Running)
+                // If SkillHitResolver resolved a skill heal this frame or just prior, it is skill healing; otherwise potion/consumable
+                bool isSkill = (ownerRunner != null && (Time.time - ownerRunner.LastSkillHealTimestamp) < 0.05f);
+                RecordHealingReceived(amount, isSkill);
+                if (ownerRunner != null && isSkill && ownerRunner.FirstHealElapsedTime < 0f && ownerRunner.State == SimulationState.Running)
                 {
                     ownerRunner.FirstHealElapsedTime = ownerRunner.ElapsedTime;
                 }
@@ -188,15 +203,21 @@ namespace SBGames.Testing
             public float healerDamageTaken;
             public int healsCast;
             public float totalHealingDone;
+            public float skillHealingDone;
+            public float potionHealingDone;
             public float timeToFirstHeal;
             public int tankFleeEvents;
             public int healerSurviveEvents;
             public float healerIdleTime;
+            public int totalSwingsAttempted;
+            public int totalSwingsHit;
+            public int totalSwingsMissed;
+            public string timeoutReason;
             public string summary;
 
             public override string ToString()
             {
-                return $"[Battle Report] Outcome: {outcome} | Duration: {duration:F2}s | Adv DPS: {adventurerDps:F1} | Mon DPS: {monsterDps:F1} | DmgTaken(T/D/H): {tankDamageTaken:F0}/{dpsDamageTaken:F0}/{healerDamageTaken:F0} | Heals: {healsCast} ({totalHealingDone:F0} HP, 1st: {(timeToFirstHeal >= 0f ? $"{timeToFirstHeal:F2}s" : "N/A")}) | TankFlees: {tankFleeEvents} | HealerSurvive: {healerSurviveEvents} | HealerIdle: {healerIdleTime:F2}s | Monsters: {survivingMonsters}/{initialMonsters} | Adventurers: {survivingAdventurers}/{initialAdventurers}";
+                return $"[Battle Report] Outcome: {outcome} | Duration: {duration:F2}s | Adv DPS: {adventurerDps:F1} | Mon DPS: {monsterDps:F1} | Swings(Hit/Miss): {totalSwingsHit}/{totalSwingsMissed} ({(totalSwingsAttempted > 0 ? (float)totalSwingsHit / totalSwingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDamageTaken:F0}/{dpsDamageTaken:F0}/{healerDamageTaken:F0} | Heals: {healsCast} (Skill: {skillHealingDone:F0} HP, Pot: {potionHealingDone:F0} HP, 1st: {(timeToFirstHeal >= 0f ? $"{timeToFirstHeal:F2}s" : "N/A")}) | TankFlees: {tankFleeEvents} | HealerSurvive: {healerSurviveEvents} | HealerIdle: {healerIdleTime:F2}s | Monsters: {survivingMonsters}/{initialMonsters} | Adventurers: {survivingAdventurers}/{initialAdventurers}";
             }
         }
 
@@ -216,7 +237,7 @@ namespace SBGames.Testing
         [SerializeField] private int currentTimeScaleIndex = 0;
 
         [Tooltip("Maximum allowed combat simulation time before declaring a timeout (<= 0 for unlimited).")]
-        [SerializeField] private float maxSimulationDuration = 180f;
+        [SerializeField] private float maxSimulationDuration = 60f;
 
         [Tooltip("Automatically pause Time.timeScale when a simulation concludes.")]
         [SerializeField] private bool pauseTimeScaleOnEnd = false;
@@ -236,6 +257,7 @@ namespace SBGames.Testing
         private float simulationElapsedTime = 0f;
         private float simulationStartTime = 0f;
         public float FirstHealElapsedTime { get; set; } = -1f;
+        public float LastSkillHealTimestamp { get; set; } = -100f;
         private BattleOutcome currentOutcome = BattleOutcome.None;
         private SimulationReport lastReport;
 
@@ -321,10 +343,21 @@ namespace SBGames.Testing
             }
         }
 
+        private void OnEnable()
+        {
+            SkillHitResolver.OnSkillHealApplied += HandleSkillHealApplied;
+        }
+
         private void OnDisable()
         {
+            SkillHitResolver.OnSkillHealApplied -= HandleSkillHealApplied;
             // Restore normal timeScale on exit to avoid persisting warped timeScale across editor scenes
             Time.timeScale = 1f;
+        }
+
+        private void HandleSkillHealApplied(SkillInstance skill, GameObject target, float amount)
+        {
+            LastSkillHealTimestamp = Time.time;
         }
 
         #endregion
@@ -426,6 +459,10 @@ namespace SBGames.Testing
             // 3. Initialize timing and state
             simulationElapsedTime = 0f;
             simulationStartTime = Time.time;
+            FirstHealElapsedTime = -1f;
+            CharacterCombatController.TotalSwingsAttempted = 0;
+            CharacterCombatController.TotalSwingsHit = 0;
+            CharacterCombatController.TotalSwingsMissed = 0;
             currentOutcome = BattleOutcome.None;
             currentState = SimulationState.Running;
 
@@ -594,6 +631,8 @@ namespace SBGames.Testing
             float healerDmg = 0f;
             int totalHealsCast = 0;
             float totalHealingDone = 0f;
+            float totalSkillHealingDone = 0f;
+            float totalPotionHealingDone = 0f;
             int tankFlees = 0;
             int healerSurvives = 0;
             float healerIdle = 0f;
@@ -604,6 +643,8 @@ namespace SBGames.Testing
                 totalAdvDamageTaken += adv.DamageTaken;
                 totalHealsCast += adv.HealsCast;
                 totalHealingDone += adv.HealingReceived;
+                totalSkillHealingDone += adv.SkillHealingReceived;
+                totalPotionHealingDone += adv.PotionHealingReceived;
 
                 AdventurerFunction func = adv.SourceSlot != null ? adv.SourceSlot.functionOverride : AdventurerFunction.None;
                 if (func == AdventurerFunction.Tank)
@@ -634,6 +675,13 @@ namespace SBGames.Testing
             float monDps = totalAdvDamageTaken / safeDuration;
             string firstHealStr = FirstHealElapsedTime >= 0f ? $"{FirstHealElapsedTime:F2}s" : "N/A";
 
+            int swingsAttempted = CharacterCombatController.TotalSwingsAttempted;
+            int swingsHit = CharacterCombatController.TotalSwingsHit;
+            int swingsMissed = CharacterCombatController.TotalSwingsMissed;
+            string timeoutReason = outcome == BattleOutcome.Timeout 
+                ? $"Stalemate at {simulationElapsedTime:F1}s: {survivingMonsters} monsters vs {survivingAdventurers} adventurers remain alive. Swings hit/missed: {swingsHit}/{swingsMissed}."
+                : string.Empty;
+
             lastReport = new SimulationReport
             {
                 outcome = outcome,
@@ -651,11 +699,17 @@ namespace SBGames.Testing
                 healerDamageTaken = healerDmg,
                 healsCast = totalHealsCast,
                 totalHealingDone = totalHealingDone,
+                skillHealingDone = totalSkillHealingDone,
+                potionHealingDone = totalPotionHealingDone,
                 timeToFirstHeal = FirstHealElapsedTime,
                 tankFleeEvents = tankFlees,
                 healerSurviveEvents = healerSurvives,
                 healerIdleTime = healerIdle,
-                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} ({totalHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}"
+                totalSwingsAttempted = swingsAttempted,
+                totalSwingsHit = swingsHit,
+                totalSwingsMissed = swingsMissed,
+                timeoutReason = timeoutReason,
+                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | Swings(Hit/Miss): {swingsHit}/{swingsMissed} ({(swingsAttempted > 0 ? (float)swingsHit / swingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} (Skill: {totalSkillHealingDone:F0} HP, Pot: {totalPotionHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}{(outcome == BattleOutcome.Timeout ? $" | Reason: {timeoutReason}" : "")}"
             };
 
             Debug.Log($"<b>[BattleSimulationTestRunner]</b> {lastReport.summary}");
@@ -885,21 +939,24 @@ namespace SBGames.Testing
                 int aliveMonsters = AliveMonstersCount;
                 int aliveAdventurers = AliveAdventurersCount;
 
-                // Victory / Wipeout Checks
-                if (aliveMonsters == 0 && aliveAdventurers == 0)
+                // Victory / Wipeout Checks (suppressed during controlled testing without monsters)
+                if (!isControlledTestRunning)
                 {
-                    EndSimulation(BattleOutcome.Draw);
-                    yield break;
-                }
-                else if (aliveMonsters == 0)
-                {
-                    EndSimulation(BattleOutcome.AdventurersWin);
-                    yield break;
-                }
-                else if (aliveAdventurers == 0)
-                {
-                    EndSimulation(BattleOutcome.MonstersWin);
-                    yield break;
+                    if (aliveMonsters == 0 && aliveAdventurers == 0)
+                    {
+                        EndSimulation(BattleOutcome.Draw);
+                        yield break;
+                    }
+                    else if (aliveMonsters == 0)
+                    {
+                        EndSimulation(BattleOutcome.AdventurersWin);
+                        yield break;
+                    }
+                    else if (aliveAdventurers == 0)
+                    {
+                        EndSimulation(BattleOutcome.MonstersWin);
+                        yield break;
+                    }
                 }
 
                 // Timeout Check
@@ -1195,10 +1252,16 @@ namespace SBGames.Testing
             public float healerDamageTaken;
             public int healsCast;
             public float totalHealingDone;
+            public float skillHealingDone;
+            public float potionHealingDone;
             public float timeToFirstHeal;
             public int tankFleeEvents;
             public int healerSurviveEvents;
             public float healerIdleTime;
+            public int totalSwingsAttempted;
+            public int totalSwingsHit;
+            public int totalSwingsMissed;
+            public string timeoutReason;
         }
 
         public readonly List<BatchScenarioResult> batchResults = new();
@@ -1264,15 +1327,21 @@ namespace SBGames.Testing
                             healerDamageTaken = rep.healerDamageTaken,
                             healsCast = rep.healsCast,
                             totalHealingDone = rep.totalHealingDone,
+                            skillHealingDone = rep.skillHealingDone,
+                            potionHealingDone = rep.potionHealingDone,
                             timeToFirstHeal = rep.timeToFirstHeal,
                             tankFleeEvents = rep.tankFleeEvents,
                             healerSurviveEvents = rep.healerSurviveEvents,
-                            healerIdleTime = rep.healerIdleTime
+                            healerIdleTime = rep.healerIdleTime,
+                            totalSwingsAttempted = rep.totalSwingsAttempted,
+                            totalSwingsHit = rep.totalSwingsHit,
+                            totalSwingsMissed = rep.totalSwingsMissed,
+                            timeoutReason = rep.timeoutReason
                         });
 
                         string firstHealStr = rep.timeToFirstHeal >= 0f ? $"{rep.timeToFirstHeal:F2}s" : "N/A";
                         int totalMon = sc.isBoss ? 1 : (sc.isLargeGroup ? 6 : 3);
-                        Debug.Log($"[BATCH] {sc.name} | Speed: {spd}x | Seed: {s} | Outcome: {rep.outcome} | Dur: {rep.duration:F2}s | AdvDPS: {rep.adventurerDps:F1} | MonDPS: {rep.monsterDps:F1} | DmgTaken(T/D/H): {rep.tankDamageTaken:F0}/{rep.dpsDamageTaken:F0}/{rep.healerDamageTaken:F0} | Heals: {rep.healsCast} ({rep.totalHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {rep.tankFleeEvents} | HealerSurvive: {rep.healerSurviveEvents} | HealerIdle: {rep.healerIdleTime:F2}s | AdvSurv: {rep.survivingAdventurers}/3 | MonSurv: {rep.survivingMonsters}/{totalMon}");
+                        Debug.Log($"[BATCH] {sc.name} | Speed: {spd}x | Seed: {s} | Outcome: {rep.outcome} | Dur: {rep.duration:F2}s | AdvDPS: {rep.adventurerDps:F1} | MonDPS: {rep.monsterDps:F1} | Swings(Hit/Miss): {rep.totalSwingsHit}/{rep.totalSwingsMissed} | DmgTaken(T/D/H): {rep.tankDamageTaken:F0}/{rep.dpsDamageTaken:F0}/{rep.healerDamageTaken:F0} | Heals: {rep.healsCast} (Skill: {rep.skillHealingDone:F0} HP, Pot: {rep.potionHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {rep.tankFleeEvents} | HealerSurvive: {rep.healerSurviveEvents} | HealerIdle: {rep.healerIdleTime:F2}s | AdvSurv: {rep.survivingAdventurers}/3 | MonSurv: {rep.survivingMonsters}/{totalMon}{(rep.outcome == BattleOutcome.Timeout ? $" | Reason: {rep.timeoutReason}" : "")}");
 
                         ResetSimulation(resetTimeScale: false);
                         yield return null;
@@ -1285,6 +1354,167 @@ namespace SBGames.Testing
             Time.fixedDeltaTime = 0.02f;
             Debug.Log($"<color=green>[BATCH] All {batchResults.Count} runs completed successfully!</color>");
             onAllComplete?.Invoke();
+        }
+
+        [Serializable]
+        public class ControlledHealTestResult
+        {
+            public string rank;
+            public int seed;
+            public float damageAppliedTime;
+            public float timeToFirstHeal;
+            public float hpHealed;
+            public float reactionDuration; // timeToFirstHeal - damageAppliedTime
+            public string details;
+        }
+
+        public readonly List<ControlledHealTestResult> controlledTestResults = new();
+        public bool isControlledTestRunning = false;
+
+        public void StartControlledHealerComparison(int[] seeds = null, Action onComplete = null)
+        {
+            if (seeds == null || seeds.Length == 0)
+            {
+                seeds = new int[] { 101, 102 };
+            }
+            StartCoroutine(ControlledHealerComparisonRoutine(seeds, onComplete));
+        }
+
+        public IEnumerator ControlledHealerComparisonRoutine(int[] seeds, Action onComplete = null)
+        {
+            isControlledTestRunning = true;
+            controlledTestResults.Clear();
+            string[] ranks = { "E", "D", "C" };
+            const float damageTime = 2.0f;
+            const float fixedDamage = 50f;
+            const float testTimeout = 15f;
+
+            Debug.Log("<color=cyan>[CONTROLLED HEAL TEST] Starting Deterministic E/D/C Healer Comparison...</color>");
+
+            foreach (var rank in ranks)
+            {
+                foreach (int s in seeds)
+                {
+                    // Setup quiet scenario: Adventurers only (no monsters)
+                    roster.Clear();
+                    AdventurerAIProfile profile = rank switch
+                    {
+                        "E" => defaultProfileRankE,
+                        "D" => defaultProfileRankD,
+                        "C" => defaultProfileRankC,
+                        _ => defaultProfileRankD
+                    };
+
+                    // Tank
+                    roster.Add(new UnitSpawnSlot
+                    {
+                        slotLabel = "Adventurer Tank",
+                        unitPrefab = defaultAdventurerPrefab,
+                        customSpawnPosition = new Vector3(0.5f, 0f, 0f),
+                        faction = BattleFaction.Adventurer,
+                        functionOverride = AdventurerFunction.Tank,
+                        profileOverride = profile,
+                        isPartyLeader = true,
+                        overrideStats = true,
+                        customMaxLife = 100f
+                    });
+
+                    // Healer
+                    roster.Add(new UnitSpawnSlot
+                    {
+                        slotLabel = "Adventurer Healer",
+                        unitPrefab = defaultAdventurerPrefab,
+                        customSpawnPosition = new Vector3(2.5f, 0f, 0f),
+                        faction = BattleFaction.Adventurer,
+                        functionOverride = AdventurerFunction.Healer,
+                        profileOverride = profile,
+                        isPartyLeader = false,
+                        overrideStats = true,
+                        customMaxLife = 100f
+                    });
+
+                    SetTimeScale(1f);
+                    UnityEngine.Random.InitState(s);
+                    StartSimulation();
+
+                    TrackedCombatant tankCombatant = null;
+                    TrackedCombatant healerCombatant = null;
+                    for (int i = 0; i < adventurerCombatants.Count; i++)
+                    {
+                        if (adventurerCombatants[i].SourceSlot.functionOverride == AdventurerFunction.Tank)
+                            tankCombatant = adventurerCombatants[i];
+                        else if (adventurerCombatants[i].SourceSlot.functionOverride == AdventurerFunction.Healer)
+                            healerCombatant = adventurerCombatants[i];
+
+                        // Clear potion kits in controlled healer comparison to ensure Tank does not self-heal
+                        var kitCtrl = adventurerCombatants[i].GameObject.GetComponent<AdventurerItemKitController>();
+                        if (kitCtrl != null)
+                        {
+                            kitCtrl.ClearKit();
+                        }
+                    }
+
+                    bool damageDealt = false;
+                    float damageAppliedTimestamp = -1f;
+                    float healRecordedTime = -1f;
+                    float healAmountRestored = 0f;
+
+                    float testStart = Time.time;
+                    while (Time.time - testStart < testTimeout)
+                    {
+                        float elapsed = Time.time - testStart;
+
+                        // Apply fixed damage to tank at exactly damageTime
+                        if (!damageDealt && elapsed >= damageTime && tankCombatant != null && tankCombatant.Stats != null)
+                        {
+                            damageDealt = true;
+                            damageAppliedTimestamp = elapsed;
+                            // Apply 50 damage -> brings 100 HP tank to 50 HP (50% HP)
+                            // For Rank E (threshold 0.50), D (0.50), C (0.50)
+                            // If threshold is 0.50, we deal 55 damage so HP is 45% (< 50% threshold)
+                            tankCombatant.Stats.TakeDamage(new DamageData(fixedDamage + 5f, DamageType.True));
+                            Debug.Log($"[CONTROLLED TEST] Tank took damage at t={elapsed:F2}s. Current HP: {tankCombatant.Stats.Life}/{tankCombatant.Stats.MaxLife.Value}");
+                        }
+
+                        // Check if tank received skill healing
+                        if (damageDealt && tankCombatant != null && tankCombatant.SkillHealingReceived > 0f)
+                        {
+                            healRecordedTime = elapsed;
+                            healAmountRestored = tankCombatant.SkillHealingReceived;
+                            break;
+                        }
+
+                        yield return null;
+                    }
+
+                    float reactionDuration = (healRecordedTime >= 0f && damageAppliedTimestamp >= 0f) 
+                        ? (healRecordedTime - damageAppliedTimestamp) 
+                        : -1f;
+
+                    var res = new ControlledHealTestResult
+                    {
+                        rank = rank,
+                        seed = s,
+                        damageAppliedTime = damageAppliedTimestamp,
+                        timeToFirstHeal = healRecordedTime,
+                        hpHealed = healAmountRestored,
+                        reactionDuration = reactionDuration,
+                        details = healRecordedTime >= 0f 
+                            ? $"Healed {healAmountRestored:F0} HP. Reaction duration: {reactionDuration:F2}s" 
+                            : "Did not heal within timeout"
+                    };
+                    controlledTestResults.Add(res);
+
+                    Debug.Log($"<b>[CONTROLLED TEST RESULT]</b> Rank {res.rank} | Seed: {res.seed} | DamageAt: {res.damageAppliedTime:F2}s | HealAt: {res.timeToFirstHeal:F2}s | ReactionTime: {res.reactionDuration:F2}s | Healed: {res.hpHealed:F0} HP");
+
+                    ResetSimulation(resetTimeScale: false);
+                    yield return null;
+                }
+            }
+
+            isControlledTestRunning = false;
+            Debug.Log("<color=green>[CONTROLLED HEAL TEST] Completed all E/D/C runs!</color>");
+            onComplete?.Invoke();
         }
 
         #endregion

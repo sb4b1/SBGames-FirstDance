@@ -9,6 +9,7 @@ public class CharacterSkillController : MonoBehaviour
     [SerializeField] private SkillTargeting skillTargeting;
 
     public SkillTargeting SkillTargeting => skillTargeting;
+    public CharacterBrain Brain => brain;
 
 
     [SerializeField] private List<Skill> skills = new();
@@ -455,10 +456,14 @@ public class CharacterSkillController : MonoBehaviour
 
                 if (controller != null)
                 {
+                    Transform casterRoot = controller.Brain != null 
+                        ? controller.Brain.transform 
+                        : (controller.transform.root != null ? controller.transform.root : controller.transform);
+
                     skill.SetupSkillCaster(
                         controller.SkillTargeting, 
                         controller.SpawnPoint != null ? controller.SpawnPoint.transform : null, 
-                        controller.transform.root
+                        casterRoot
                     );
                 }
             }

@@ -3,6 +3,20 @@ using UnityEngine;
 
 namespace SBGames.Characters.AI
 {
+    public readonly struct CharacterDiedEvent
+    {
+        public readonly CharacterStatsManager CharacterStats;
+        public readonly GameObject CharacterGameObject;
+        public readonly float Timestamp;
+
+        public CharacterDiedEvent(CharacterStatsManager characterStats, GameObject characterGameObject, float timestamp)
+        {
+            CharacterStats = characterStats;
+            CharacterGameObject = characterGameObject;
+            Timestamp = timestamp;
+        }
+    }
+
     public readonly struct LeaderDiedEvent
     {
         public readonly PartyLeader Leader;
@@ -16,6 +30,7 @@ namespace SBGames.Characters.AI
             Timestamp = timestamp;
         }
     }
+
 
     public readonly struct LeaderChangedEvent
     {
@@ -215,6 +230,7 @@ namespace SBGames.Characters.AI
     /// </summary>
     public static class AdventurerEventHub
     {
+        public static event Action<CharacterDiedEvent> OnCharacterDied;
         public static event Action<LeaderDiedEvent> OnLeaderDied;
         public static event Action<LeaderChangedEvent> OnLeaderChanged;
         public static event Action<CheckpointDecisionEvent> OnCheckpointDecision;
@@ -234,6 +250,7 @@ namespace SBGames.Characters.AI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticEvents()
         {
+            OnCharacterDied = null;
             OnLeaderDied = null;
             OnLeaderChanged = null;
             OnCheckpointDecision = null;
@@ -249,6 +266,11 @@ namespace SBGames.Characters.AI
             OnWarpCompleted = null;
             OnWarpInterrupted = null;
             OnWarpItemForfeited = null;
+        }
+
+        public static void RaiseCharacterDied(CharacterStatsManager characterStats, GameObject characterGameObject)
+        {
+            OnCharacterDied?.Invoke(new CharacterDiedEvent(characterStats, characterGameObject, Time.time));
         }
 
         public static void RaiseLeaderDied(PartyLeader leader, Vector3 position)

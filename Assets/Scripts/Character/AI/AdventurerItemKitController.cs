@@ -382,9 +382,30 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
             };
             activeSlotCount++;
             totalInitialCount += finalCount;
-            totalRemainingCount += finalCount;
         }
 
+        isKitResolved = true;
+    }
+
+    /// <summary>
+    /// Clears all runtime kit slots. Useful for controlled testing.
+    /// </summary>
+    public void ClearKit()
+    {
+        CancelCast("ClearKit");
+        for (int i = 0; i < MaxKitSlots; i++)
+        {
+            slots[i] = default;
+        }
+        for (int c = 0; c < CategoryCount; c++)
+        {
+            resolvedCategoryItems[c] = null;
+            resolvedCategoryCounts[c] = 0;
+        }
+        activeSlotCount = 0;
+        totalInitialCount = 0;
+        totalRemainingCount = 0;
+        itemsUsedInCurrentRoom = 0;
         isKitResolved = true;
     }
 
