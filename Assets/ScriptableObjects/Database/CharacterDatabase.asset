@@ -17,7 +17,8 @@ MonoBehaviour:
     characterName: Purple monster
     prefab: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
     baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
-    defaultSkillIds: []
+    defaultSkillIds:
+    - SKILL_WI001
     extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
@@ -45,7 +46,8 @@ MonoBehaviour:
     characterName: Blue Witch
     prefab: {fileID: 3252151753393515643, guid: fa9775d4213a0b24b84d68f9c1e650f9, type: 3}
     baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
-    defaultSkillIds: []
+    defaultSkillIds:
+    - SKILL_WI001
     extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
@@ -129,7 +131,8 @@ MonoBehaviour:
     characterName: ADVENTURER_N002
     prefab: {fileID: 987585163145237534, guid: 784a4cbc838b0014db8f88a40a8b4b9c, type: 3}
     baseStats: {fileID: 11400000, guid: bb3b633e0702e314791b0c35ee372e33, type: 2}
-    defaultSkillIds: []
+    defaultSkillIds:
+    - SKILL_WI001
     extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
@@ -143,7 +146,10 @@ MonoBehaviour:
     characterName: ADVENTURER_N003
     prefab: {fileID: 2447354082830911871, guid: 7b628a6ad8d0c7d418dde7e8ee9a0beb, type: 3}
     baseStats: {fileID: 11400000, guid: 81675e6e289581647a872db1a06db1ce, type: 2}
-    defaultSkillIds: []
+    defaultSkillIds:
+    - SKILL_F001
+    - SKILL_WA001
+    - SKILL_WA002
     extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}

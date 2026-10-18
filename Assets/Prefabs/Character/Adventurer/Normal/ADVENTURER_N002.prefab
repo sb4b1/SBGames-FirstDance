@@ -146,10 +146,13 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: bb3b633e0702e314791b0c35ee372e33, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -452,7 +455,8 @@ MonoBehaviour:
   baseAI: {fileID: 1209439134604486078}
   brain: {fileID: 2007427488104123625}
   skillTargeting: {fileID: 7345312453581364155}
-  skills: []
+  skills:
+  - skillPrefab: {fileID: 5385641829076378156}
   skillSpawnPoint: {fileID: 8937390240233674932}
 --- !u!1 &5271400403587000736
 GameObject:
@@ -1212,7 +1216,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 3365946670664599639}
   m_Father: {fileID: 7179478563049699399}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8937390240233674932
@@ -1567,3 +1572,78 @@ MonoBehaviour:
   tuning: {fileID: 11400000, guid: 3b9d529f777b5314cac10112a4bd3ecb, type: 2}
   factionMember: {fileID: 0}
   statsManager: {fileID: 0}
+--- !u!1001 &4548510723081920788
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 3985543171391908880}
+    m_Modifications:
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.47702
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.21916
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7139744567928438274, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: targeting
+      value: 
+      objectReference: {fileID: 7345312453581364155}
+    - target: {fileID: 7139744567928438274, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: skillSpawnPoint
+      value: 
+      objectReference: {fileID: 4031375132861728624}
+    - target: {fileID: 8476384533851095864, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+      propertyPath: m_Name
+      value: SKILL_WI001
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+--- !u!4 &3365946670664599639 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1272742770792278339, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+  m_PrefabInstance: {fileID: 4548510723081920788}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5385641829076378156 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8476384533851095864, guid: a38f7d43f7128624fa1d217c0e8c8b55, type: 3}
+  m_PrefabInstance: {fileID: 4548510723081920788}
+  m_PrefabAsset: {fileID: 0}

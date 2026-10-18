@@ -21,6 +21,8 @@ MonoBehaviour:
   extraItemIds: []
   MaxLife: 400
   MaxMana: 100
+  LifeRegen: 0
+  ManaRegen: 0
   Movespeed: 4.2
   Damage: 20
   AttackRange: 1.2

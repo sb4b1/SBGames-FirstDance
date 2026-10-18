@@ -688,6 +688,51 @@ namespace SBGames.Editor.Stats.Tabs
                         _selectedRow.Description = newDesc;
                         _selectedRow.MarkDirty();
                     }
+
+                    EditorGUILayout.Space(6);
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        string genReason = null;
+                        bool canGen = _selectedRow.Asset != null && SkillEffectPrefabGenerator.CanGenerate(_selectedRow.Asset, out genReason);
+                        using (new EditorGUI.DisabledScope(!canGen))
+                        {
+                            if (GUILayout.Button("⚡ Regenerate Prefab", EditorStyles.miniButton))
+                            {
+                                bool proceed = true;
+                                if (_selectedRow.Asset.skillPrefab != null)
+                                {
+                                    bool hasCustom = SkillEffectPrefabGenerator.HasCustomModifications(_selectedRow.Asset.skillPrefab, _selectedRow.Asset);
+                                    string warn = hasCustom
+                                        ? $"The existing prefab '{_selectedRow.Asset.skillPrefab.name}' has custom modifications (sprites/animators/scripts). Overwriting it will reset it to the template.\n\nDo you want to proceed?"
+                                        : $"Regenerate effect prefab for '{_selectedRow.Id}' from template?";
+                                    proceed = EditorUtility.DisplayDialog("Regenerate Skill Prefab", warn, "Regenerate", "Cancel");
+                                }
+
+                                if (proceed)
+                                {
+                                    var generated = SkillEffectPrefabGenerator.GenerateEffectPrefab(_selectedRow.Asset, overwrite: true);
+                                    if (generated != null)
+                                    {
+                                        _selectedRow.Prefab = generated;
+                                        _selectedRow.MarkDirty();
+                                        if (SkillEffectPrefabGenerator.ValidatePrefab(generated, _selectedRow.Asset, out var valErrors))
+                                        {
+                                            EditorUtility.DisplayDialog("Success", $"Regenerated prefab for '{_selectedRow.Id}' successfully.", "OK");
+                                        }
+                                        else
+                                        {
+                                            EditorUtility.DisplayDialog("Sanity Warning", $"Prefab generated with warnings:\n• " + string.Join("\n• ", valErrors), "OK");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!canGen && !string.IsNullOrEmpty(genReason))
+                        {
+                            EditorGUILayout.HelpBox(genReason, MessageType.Warning);
+                        }
+                    }
                 }
 
                 EditorGUILayout.Space(12);

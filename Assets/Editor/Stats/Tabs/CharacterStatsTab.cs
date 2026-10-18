@@ -6,6 +6,7 @@ using SBGames.Database;
 using SBGames.Database.Editor;
 using SBGames.Database.Editor.CSV;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace SBGames.Editor.Stats.Tabs
@@ -19,6 +20,8 @@ namespace SBGames.Editor.Stats.Tabs
         private CharacterRow _selectedRow;
         private Vector2 _tableScroll;
         private Vector2 _detailScroll;
+        private ReorderableList _skillList;
+        private CharacterRow _skillListRow;
 
         // Search & Filter
         private string _searchQuery = "";
@@ -42,7 +45,7 @@ namespace SBGames.Editor.Stats.Tabs
         private float _bulkValue = 10f; // e.g. +10%
 
         public bool HasUnsavedChanges => _rows.Any(r => r.IsDirty);
-        public int ValidationIssueCount => _rows.Count(r => !string.IsNullOrEmpty(r.ValidationError));
+        public int ValidationIssueCount => _rows.Count(r => r.HasAnyIssue);
 
         public class CharacterRow
         {
@@ -74,18 +77,32 @@ namespace SBGames.Editor.Stats.Tabs
             public float DecisionInterval = 0.3f;
             public float IntervalJitter = 0.05f;
 
-            // Skills
-            public List<string> DefaultSkillIds = new();
+            // Skills: Default Skill IDs are the source of truth; prefab skills are derived on Save All.
+            public PendingSkillEdits SkillEdits = new(null);
+            public List<string> DefaultSkillIds => SkillEdits.Ids;
 
             // State
             public bool IsSelected = false;
             public bool IsDirty = false;
             public string ValidationError = "";
 
+            /// <summary>Prefab/ID drift warning (Validation Badge). Reflects the saved prefab vs. the current IDs.</summary>
+            public string SkillSyncWarning = "";
+            public bool HasSkillSyncFixes;
+
+            public bool HasAnyIssue => !string.IsNullOrEmpty(ValidationError) || !string.IsNullOrEmpty(SkillSyncWarning);
+
             public void MarkDirty()
             {
                 IsDirty = true;
                 Validate();
+            }
+
+            public void RefreshSkillSync()
+            {
+                var issues = CharacterPrefabSkillSync.Analyze(Prefab, DefaultSkillIds, CharacterPrefabSkillSync.SkillExistsInDatabase);
+                SkillSyncWarning = CharacterPrefabSkillSync.Summarize(issues);
+                HasSkillSyncFixes = issues.Exists(i => i.IsFixableBySync);
             }
 
             public void Validate()
@@ -173,7 +190,7 @@ namespace SBGames.Editor.Stats.Tabs
                         Id = entry.id ?? "",
                         Name = entry.characterName ?? "",
                         Prefab = entry.GetPrefabDirect(),
-                        DefaultSkillIds = entry.defaultSkillIds != null ? new List<string>(entry.defaultSkillIds) : new List<string>()
+                        SkillEdits = new PendingSkillEdits(entry.defaultSkillIds)
                     };
 
                     if (row.BaseStatsSO != null)
@@ -196,6 +213,7 @@ namespace SBGames.Editor.Stats.Tabs
                     }
 
                     row.Validate();
+                    row.RefreshSkillSync();
                     _rows.Add(row);
                     if (!string.IsNullOrEmpty(row.Id)) indexedIds.Add(row.Id);
                 }
@@ -324,9 +342,55 @@ namespace SBGames.Editor.Stats.Tabs
             EditorUtility.SetDirty(charDb);
 
             AssetDatabase.SaveAssets();
+            CommitPendingPrefabSkills();
             AssetDatabase.Refresh();
             CheckForDuplicateIds();
         }
+
+        /// <summary>
+        /// Applies queued skill edits to each affected character prefab. Never throws; a failing
+        /// character is logged, left dirty for retry, and the remaining characters continue.
+        /// </summary>
+        private void CommitPendingPrefabSkills()
+        {
+            CharacterPrefabSkillSync.ClearCasterPrefabCache();
+            foreach (var row in _rows)
+            {
+                if (!row.SkillEdits.HasPrefabChanges)
+                {
+                    row.RefreshSkillSync();
+                    continue;
+                }
+
+                if (row.Prefab == null)
+                {
+                    Debug.LogWarning($"[CharacterStatsTab] '{row.Id}' has no prefab assigned; prefab skills were not synced.");
+                    row.SkillEdits.MarkSaved();
+                    row.RefreshSkillSync();
+                    continue;
+                }
+
+                var result = row.SkillEdits.Commit(row.Prefab, CharacterPrefabSkillSync.ResolveCasterPrefab, ConfirmSkillChildDelete);
+                string log = $"[CharacterStatsTab] Prefab skill sync for '{row.Id}':\n" + string.Join("\n", result.Messages.Select(m => "• " + m));
+                if (result.Success)
+                {
+                    if (result.Messages.Count > 0) Debug.Log(log, row.Prefab);
+                }
+                else
+                {
+                    Debug.LogError(log, row.Prefab);
+                    row.IsDirty = true;
+                }
+                row.RefreshSkillSync();
+            }
+        }
+
+        private static bool ConfirmSkillChildDelete(GameObject child, string reason) =>
+            EditorUtility.DisplayDialog(
+                "Delete Skill Object?",
+                $"The skill object '{child.name}' under {CharacterPrefabSkillSync.SkillListName} will be deleted, but {reason}.\n\nDelete it anyway?",
+                "Delete",
+                "Keep");
 
         public void DiscardChanges()
         {
@@ -390,6 +454,23 @@ namespace SBGames.Editor.Stats.Tabs
 
                 // Bulk Math Toggle
                 _showBulkMath = GUILayout.Toggle(_showBulkMath, "📐 Bulk Math", EditorStyles.toolbarButton, GUILayout.Width(90));
+
+                // Bulk prefab skill sync (selected rows)
+                int selectedCount = _rows.Count(r => r.IsSelected);
+                using (new EditorGUI.DisabledScope(selectedCount == 0))
+                {
+                    var syncContent = new GUIContent($"🔗 Sync Skills ({selectedCount})",
+                        "Queue prefab skill sync for selected rows. Applied to prefabs on Save All.");
+                    if (GUILayout.Button(syncContent, EditorStyles.toolbarButton, GUILayout.Width(115)))
+                    {
+                        foreach (var r in _rows)
+                        {
+                            if (!r.IsSelected) continue;
+                            r.SkillEdits.RequestSync();
+                            r.MarkDirty();
+                        }
+                    }
+                }
 
                 EditorGUILayout.Space(4);
 
@@ -512,7 +593,7 @@ namespace SBGames.Editor.Stats.Tabs
 
             if (_filterIssuesOnly)
             {
-                list = list.Where(r => !string.IsNullOrEmpty(r.ValidationError));
+                list = list.Where(r => r.HasAnyIssue);
             }
 
             return SortRows(list);
@@ -610,6 +691,13 @@ namespace SBGames.Editor.Stats.Tabs
                     if (!string.IsNullOrEmpty(row.ValidationError))
                     {
                         GUILayout.Label(new GUIContent("⚠️", row.ValidationError), GUILayout.Width(24));
+                    }
+                    else if (!string.IsNullOrEmpty(row.SkillSyncWarning))
+                    {
+                        var prev = GUI.contentColor;
+                        GUI.contentColor = new Color(1f, 0.65f, 0f);
+                        GUILayout.Label(new GUIContent("🔗", row.SkillSyncWarning), GUILayout.Width(24));
+                        GUI.contentColor = prev;
                     }
                     else if (row.IsDirty)
                     {
@@ -784,6 +872,7 @@ namespace SBGames.Editor.Stats.Tabs
                     {
                         _selectedRow.Prefab = newPrefab;
                         _selectedRow.MarkDirty();
+                        _selectedRow.RefreshSkillSync();
                     }
 
                     EditorGUI.BeginChangeCheck();
@@ -855,38 +944,101 @@ namespace SBGames.Editor.Stats.Tabs
                     }
 
                     EditorGUILayout.Space(4);
-                    EditorGUILayout.LabelField("Default Skill IDs", EditorStyles.boldLabel);
-
-                    for (int s = 0; s < _selectedRow.DefaultSkillIds.Count; s++)
-                    {
-                        using (new EditorGUILayout.HorizontalScope())
-                        {
-                            EditorGUI.BeginChangeCheck();
-                            string skillId = EditorGUILayout.TextField(_selectedRow.DefaultSkillIds[s]);
-                            if (EditorGUI.EndChangeCheck())
-                            {
-                                _selectedRow.DefaultSkillIds[s] = skillId;
-                                _selectedRow.MarkDirty();
-                            }
-
-                            if (GUILayout.Button("✕", EditorStyles.miniButton, GUILayout.Width(24)))
-                            {
-                                _selectedRow.DefaultSkillIds.RemoveAt(s);
-                                _selectedRow.MarkDirty();
-                                break;
-                            }
-                        }
-                    }
-
-                    if (GUILayout.Button("+ Add Skill ID", EditorStyles.miniButton, GUILayout.Width(110)))
-                    {
-                        _selectedRow.DefaultSkillIds.Add("SKILL_FIREBALL");
-                        _selectedRow.MarkDirty();
-                    }
+                    DrawSkillSection(_selectedRow);
                 }
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawSkillSection(CharacterRow row)
+        {
+            if (_skillList == null || _skillListRow != row)
+            {
+                _skillListRow = row;
+                _skillList = BuildSkillList(row);
+            }
+
+            _skillList.DoLayoutList();
+
+            if (row.SkillEdits.RemovedIds.Count > 0)
+            {
+                EditorGUILayout.LabelField("Pending removal: " + string.Join(", ", row.SkillEdits.RemovedIds), EditorStyles.miniLabel);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(row.Prefab == null))
+                {
+                    var content = new GUIContent(
+                        row.SkillEdits.SyncRequested ? "🔗 Sync queued (Save All)" : "🔗 Sync prefab skills",
+                        row.Prefab == null ? "No prefab assigned; cannot sync." : "Queue prefab fixes so Skills/SkillList and CharacterSkillController.skills match the IDs. Applied on Save All.");
+                    if (GUILayout.Button(content, EditorStyles.miniButton, GUILayout.Width(170)))
+                    {
+                        row.SkillEdits.RequestSync();
+                        row.MarkDirty();
+                    }
+                }
+                if (row.SkillEdits.HasPrefabChanges)
+                {
+                    var style = new GUIStyle(EditorStyles.miniLabel) { normal = { textColor = new Color(1f, 0.65f, 0f) } };
+                    GUILayout.Label("● pending prefab change", style);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(row.SkillSyncWarning))
+            {
+                EditorGUILayout.HelpBox(row.SkillSyncWarning, row.HasSkillSyncFixes ? MessageType.Warning : MessageType.Info);
+            }
+        }
+
+        private ReorderableList BuildSkillList(CharacterRow row)
+        {
+            var list = new ReorderableList(row.DefaultSkillIds, typeof(string), true, true, true, true);
+            list.drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Default Skill IDs (order = controller skill index)", EditorStyles.boldLabel);
+            list.drawElementCallback = (rect, index, active, focused) =>
+            {
+                if (index < 0 || index >= row.DefaultSkillIds.Count) return;
+                string id = row.DefaultSkillIds[index];
+                rect.height = EditorGUIUtility.singleLineHeight;
+                rect.y += 1;
+
+                EditorGUI.LabelField(new Rect(rect.x, rect.y, 24, rect.height), $"[{index}]", EditorStyles.miniLabel);
+                EditorGUI.LabelField(new Rect(rect.x + 28, rect.y, 170, rect.height), id);
+
+                var tagRect = new Rect(rect.x + 200, rect.y, rect.width - 200, rect.height);
+                if (!CharacterPrefabSkillSync.SkillExistsInDatabase(id))
+                {
+                    var red = new GUIStyle(EditorStyles.miniLabel) { normal = { textColor = new Color(1f, 0.4f, 0.4f) } };
+                    EditorGUI.LabelField(tagRect, new GUIContent("⚠️ not in Skill database", "This ID has no SkillData in the Skill database."), red);
+                }
+                else if (row.SkillEdits.IsPendingAdd(id))
+                {
+                    var orange = new GUIStyle(EditorStyles.miniLabel) { normal = { textColor = new Color(1f, 0.65f, 0f) } };
+                    EditorGUI.LabelField(tagRect, new GUIContent("● pending prefab change", "Added in memory; the prefab is updated on Save All."), orange);
+                }
+            };
+            list.onAddDropdownCallback = (buttonRect, l) =>
+            {
+                PopupWindow.Show(buttonRect, new SkillPickerPopup(row.SkillEdits.Contains, id =>
+                {
+                    if (row.SkillEdits.TryAdd(id)) OnSkillListChanged(row);
+                    _window.Repaint();
+                }));
+            };
+            list.onRemoveCallback = l =>
+            {
+                row.SkillEdits.RemoveAt(l.index);
+                OnSkillListChanged(row);
+            };
+            list.onReorderCallback = l => OnSkillListChanged(row);
+            return list;
+        }
+
+        private static void OnSkillListChanged(CharacterRow row)
+        {
+            row.MarkDirty();
+            row.RefreshSkillSync();
         }
 
         private void ExecuteCascadeRenameManualPrompt(CharacterRow row)
