@@ -16,16 +16,34 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [Header("Base Stats")]
     [SerializeField] private CharacterBaseStatSO baseStats;
     private AdventurerFunction? functionOverride;
+    private BasicAttackMode? basicAttackModeOverride;
     public CharacterBaseStatSO BaseStats => baseStats;
     public CharacterClass CharacterClass => baseStats != null ? baseStats.characterClass : CharacterClass.None;
     public AdventurerFunction CharacterFunction => functionOverride ?? (baseStats != null ? baseStats.characterFunction : AdventurerFunction.None);
     public AdventurerFunction EffectiveFunction => (functionOverride.HasValue && functionOverride.Value != AdventurerFunction.None) ? functionOverride.Value : ((baseStats != null && baseStats.characterFunction != AdventurerFunction.None) ? baseStats.characterFunction : AdventurerFunction.DPS);
     public AdventurerWealth CharacterWealth => baseStats != null ? baseStats.characterWealth : AdventurerWealth.Average;
+    public BasicAttackMode BasicAttackMode => basicAttackModeOverride ?? (baseStats != null ? baseStats.basicAttackMode : BasicAttackMode.Auto);
     public void SetFunctionOverride(AdventurerFunction func) => functionOverride = func;
+    public void SetBasicAttackModeOverride(BasicAttackMode mode) => basicAttackModeOverride = mode;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;
     public bool IsImmortal { get => isImmortal; set => isImmortal = value; }
+
+    [Header("Regeneration")]
+    [SerializeField] private RegenTuningSO regenTuning;
+    public RegenTuningSO RegenTuning => regenTuning;
+    public void SetRegenTuning(RegenTuningSO tuning) => regenTuning = tuning;
+
+    private float timeSinceLastDamageTakenOrDealt;
+    private bool isApplyingRegen;
+    private static SBGames.Loop.CoreGameLoop cachedGameLoop;
+    private static int cachedGameLoopFrame = -1;
+
+    public float TimeSinceLastDamageTakenOrDealt => timeSinceLastDamageTakenOrDealt;
+    public float EffectiveOutOfCombatDelay => regenTuning != null ? regenTuning.OutOfCombatDelay : RegenTuningSO.DefaultOutOfCombatDelay;
+    public float EffectiveOutOfCombatRegenMultiplier => regenTuning != null ? regenTuning.OutOfCombatRegenMultiplier : RegenTuningSO.DefaultOutOfCombatRegenMultiplier;
+    public bool IsOutOfCombat => timeSinceLastDamageTakenOrDealt >= EffectiveOutOfCombatDelay;
 
     private Coroutine attackCooldownCoroutine;
 
@@ -36,16 +54,20 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public int Level => level;
     public float Life { get => life; private set => life = value; }
     public float Mana { get => mana; private set => mana = value; }
+    public bool IsDead => Life <= 0;
 
     public event System.Action<int> OnLevelChanged;
     public event System.Action<DamageData> OnDamaged;
     public event System.Action<float> OnLifeRestored;
+    public event System.Action<float> OnRegenLifeRestored;
 
     // Core stats (private set = safer)
 
 #if UNITY_EDITOR
     [SerializeField, ReadOnly] private float maxLife;
     [SerializeField, ReadOnly] private float maxMana;
+    [SerializeField, ReadOnly] private float lifeRegen;
+    [SerializeField, ReadOnly] private float manaRegen;
     [SerializeField, ReadOnly] private float movespeed;
     [SerializeField, ReadOnly] private float damage;
     [SerializeField, ReadOnly] private float attackRange;
@@ -54,14 +76,16 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField, ReadOnly] private float intervalJitter;
 #endif
 
-    public Stat MaxLife { get; private set; } = new Stat();
-    public Stat MaxMana { get; private set; } = new Stat();
-    public Stat Movespeed { get; private set; } = new Stat();
-    public Stat Damage { get; private set; } = new Stat();
-    public Stat AttackRange { get; private set; } = new Stat();
-    public Stat AttackTimeInterval { get; private set; } = new Stat();
-    public Stat DecisionInterval { get; private set; } = new Stat();
-    public Stat IntervalJitter { get; private set; } = new Stat();
+    public Stat MaxLife { get; private set; } = new Stat(100f);
+    public Stat MaxMana { get; private set; } = new Stat(50f);
+    public Stat LifeRegen { get; private set; } = new Stat(0f);
+    public Stat ManaRegen { get; private set; } = new Stat(0f);
+    public Stat Movespeed { get; private set; } = new Stat(5f);
+    public Stat Damage { get; private set; } = new Stat(10f);
+    public Stat AttackRange { get; private set; } = new Stat(1f);
+    public Stat AttackTimeInterval { get; private set; } = new Stat(1f);
+    public Stat DecisionInterval { get; private set; } = new Stat(0.3f);
+    public Stat IntervalJitter { get; private set; } = new Stat(0.05f);
 
     public bool AttackReady { get; private set; } = true;
 
@@ -75,13 +99,23 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         InitializeStats();
     }
 
+    private void Update()
+    {
+        TickRegen(Time.deltaTime);
+    }
+
     // =========================
     // Initialization
     // =========================
     private void InitializeStats()
     {
+        timeSinceLastDamageTakenOrDealt = 0f;
+
         if (baseStats == null)
         {
+            Life = MaxLife.Value;
+            Mana = MaxMana.Value;
+            NotifyLifeChanged();
             ELogger.Log(this, nameof(InitializeStats), "Missing CharacterBaseStats");
             return;
         }
@@ -102,6 +136,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     {
         MaxLife.BaseValue = baseStats.MaxLife;
         MaxMana.BaseValue = baseStats.MaxMana;
+        LifeRegen.BaseValue = baseStats.LifeRegen;
+        ManaRegen.BaseValue = baseStats.ManaRegen;
         Movespeed.BaseValue = baseStats.Movespeed;
         Damage.BaseValue = baseStats.Damage;
         AttackRange.BaseValue = baseStats.AttackRange;
@@ -112,6 +148,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 #if UNITY_EDITOR
         maxLife = MaxLife.Value;
         maxMana = MaxMana.Value;
+        lifeRegen = LifeRegen.Value;
+        manaRegen = ManaRegen.Value;
         movespeed = Movespeed.Value;
         damage = Damage.Value;
         attackRange = AttackRange.Value;
@@ -136,8 +174,70 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     }
 
     // =========================
-    // Life Handling
+    // Life & Regen Handling
     // =========================
+    public void NotifyDamageDealt()
+    {
+        timeSinceLastDamageTakenOrDealt = 0f;
+    }
+
+    public void TickRegen(float dt)
+    {
+        if (dt <= 0f) return;
+        if (Life <= 0f) return;
+        if (!IsInBattlePhase()) return;
+
+        timeSinceLastDamageTakenOrDealt += dt;
+
+        float multiplier = timeSinceLastDamageTakenOrDealt >= EffectiveOutOfCombatDelay
+            ? EffectiveOutOfCombatRegenMultiplier
+            : 1f;
+
+        float lifeRegenRate = LifeRegen.Value;
+        if (lifeRegenRate > 0f && Life < MaxLife.Value)
+        {
+            float lifeGain = lifeRegenRate * multiplier * dt;
+            if (lifeGain > 0f)
+            {
+                isApplyingRegen = true;
+                RestoreLife(lifeGain);
+                isApplyingRegen = false;
+            }
+        }
+
+        float manaRegenRate = ManaRegen.Value;
+        if (manaRegenRate > 0f && Mana < MaxMana.Value)
+        {
+            float manaGain = manaRegenRate * multiplier * dt;
+            if (manaGain > 0f)
+            {
+                RestoreMana(manaGain);
+            }
+        }
+    }
+
+    private static bool IsInBattlePhase()
+    {
+        if (cachedGameLoop != null && cachedGameLoop.isActiveAndEnabled)
+        {
+            return cachedGameLoop.CurrentPhase == SBGames.Loop.GamePhase.Battle;
+        }
+
+        int frame = Time.frameCount;
+        if (!Application.isPlaying || cachedGameLoopFrame != frame || cachedGameLoop == null)
+        {
+            cachedGameLoopFrame = frame;
+            cachedGameLoop = FindAnyObjectByType<SBGames.Loop.CoreGameLoop>();
+        }
+
+        if (cachedGameLoop != null && cachedGameLoop.isActiveAndEnabled)
+        {
+            return cachedGameLoop.CurrentPhase == SBGames.Loop.GamePhase.Battle;
+        }
+
+        return true;
+    }
+
     public void RestoreLife(float value)
     {
         if (value <= 0) return;
@@ -148,7 +248,14 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         NotifyLifeChanged();
         if (actualRestored > 0f)
         {
-            OnLifeRestored?.Invoke(actualRestored);
+            if (isApplyingRegen)
+            {
+                OnRegenLifeRestored?.Invoke(actualRestored);
+            }
+            else
+            {
+                OnLifeRestored?.Invoke(actualRestored);
+            }
         }
 
         ELogger.Log(this, nameof(RestoreLife),
@@ -167,6 +274,9 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
 
     public bool TakeDamage(in DamageData damage)
     {
+        timeSinceLastDamageTakenOrDealt = 0f;
+        NotifySourceDamageDealt(damage.Source);
+
         float finalDamage = CalculateFinalDamage(damage);
 
         if (isImmortal)
@@ -191,6 +301,43 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         }
 
         return false;
+    }
+
+    private static void NotifySourceDamageDealt(object source)
+    {
+        if (source == null) return;
+
+        if (source is CharacterStatsManager dealerStats)
+        {
+            dealerStats.NotifyDamageDealt();
+        }
+        else if (source is SkillInstance skillInst && skillInst.CasterGameObject != null)
+        {
+            var casterStats = skillInst.CasterGameObject.GetComponent<CharacterStatsManager>()
+                ?? skillInst.CasterGameObject.GetComponentInParent<CharacterStatsManager>();
+            if (casterStats != null)
+            {
+                casterStats.NotifyDamageDealt();
+            }
+        }
+        else if (source is Component comp)
+        {
+            var compStats = comp.GetComponent<CharacterStatsManager>()
+                ?? comp.GetComponentInParent<CharacterStatsManager>();
+            if (compStats != null)
+            {
+                compStats.NotifyDamageDealt();
+            }
+        }
+        else if (source is GameObject go)
+        {
+            var goStats = go.GetComponent<CharacterStatsManager>()
+                ?? go.GetComponentInParent<CharacterStatsManager>();
+            if (goStats != null)
+            {
+                goStats.NotifyDamageDealt();
+            }
+        }
     }
 
     public bool TryConsumeMana(float amount)
@@ -306,6 +453,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
             StatType.Attack => Damage,
             StatType.MoveSpeed => Movespeed,
             StatType.AttackSpeed => AttackTimeInterval,
+            StatType.LifeRegen => LifeRegen,
+            StatType.ManaRegen => ManaRegen,
             _ => null
         };
     }
@@ -318,6 +467,8 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         if (Movespeed.Modifiers.Contains(modifier)) return Movespeed;
         if (AttackTimeInterval.Modifiers.Contains(modifier)) return AttackTimeInterval;
         if (MaxMana.Modifiers.Contains(modifier)) return MaxMana;
+        if (LifeRegen.Modifiers.Contains(modifier)) return LifeRegen;
+        if (ManaRegen.Modifiers.Contains(modifier)) return ManaRegen;
         if (AttackRange.Modifiers.Contains(modifier)) return AttackRange;
         if (DecisionInterval.Modifiers.Contains(modifier)) return DecisionInterval;
         if (IntervalJitter.Modifiers.Contains(modifier)) return IntervalJitter;

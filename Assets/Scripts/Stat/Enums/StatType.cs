@@ -9,5 +9,7 @@ public enum StatType
     CritChance,
     CritMultiplier,
     DamageOverTime,
-    ArmorPenetration
+    ArmorPenetration,
+    LifeRegen,
+    ManaRegen
 }

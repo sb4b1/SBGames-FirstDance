@@ -25,7 +25,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
     // State
     // =========================
     public bool CanMove { get; private set; } = true;
-    public bool CanAttack => statsManager != null && statsManager.AttackReady && !IsBusy;
+    public bool CanAttack => StatsManager != null && StatsManager.BasicAttackMode != BasicAttackMode.None && StatsManager.AttackReady && !IsBusy;
     public bool CanCastSkill => !IsBusy;
 
     public bool IsDashing { get; private set; }
@@ -37,6 +37,7 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     private Coroutine recoveryCoroutine;
     private Coroutine castFallbackCoroutine;
+    private Coroutine attackFallbackCoroutine;
 
     public CharacterStatsManager StatsManager => statsManager != null ? statsManager : (statsManager = GetComponent<CharacterStatsManager>() ?? GetComponentInChildren<CharacterStatsManager>());
     public AnimationObjectController AnimController => animController != null ? animController : (animController = GetComponent<AnimationObjectController>() ?? GetComponentInChildren<AnimationObjectController>());
@@ -237,7 +238,28 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         {
             animController.UpdateAttack(true);
         }
+
+        if (attackFallbackCoroutine != null)
+        {
+            StopCoroutine(attackFallbackCoroutine);
+            attackFallbackCoroutine = null;
+        }
+
+        float attackDuration = statsManager != null ? statsManager.AttackTimeInterval.Value + 0.5f : 1.5f;
+        if (attackDuration < 1.0f) attackDuration = 1.0f;
+        attackFallbackCoroutine = StartCoroutine(AttackFallbackCoroutine(attackDuration));
+
         return true;
+    }
+
+    private IEnumerator AttackFallbackCoroutine(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        attackFallbackCoroutine = null;
+        if (IsAttacking)
+        {
+            EndAttack();
+        }
     }
 
     // =========================
@@ -300,6 +322,12 @@ public class CharacterBrain : MonoBehaviour, IPoolable
 
     public void EndAttack(float customRecoveryDelay = -1f)
     {
+        if (attackFallbackCoroutine != null)
+        {
+            StopCoroutine(attackFallbackCoroutine);
+            attackFallbackCoroutine = null;
+        }
+
         CanMove = true;
         IsAttacking = false;
         if (animController != null)
@@ -421,6 +449,12 @@ public class CharacterBrain : MonoBehaviour, IPoolable
         {
             StopCoroutine(castFallbackCoroutine);
             castFallbackCoroutine = null;
+        }
+
+        if (attackFallbackCoroutine != null)
+        {
+            StopCoroutine(attackFallbackCoroutine);
+            attackFallbackCoroutine = null;
         }
 
         if (recoveryCoroutine != null)

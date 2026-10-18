@@ -15,6 +15,17 @@ public class CharacterCombatController : MonoBehaviour
 
     [SerializeField] private FactionMember factionMember;
 
+    [Header("Ranged Projectile Settings")]
+    [SerializeField] private GameObject projectilePrefab;
+    [SerializeField] private float projectileSpeed = 12f;
+    [SerializeField] private float projectileLifetime = 2f;
+    [SerializeField] private DamageType projectileDamageType = DamageType.Physical;
+
+    public GameObject ProjectilePrefab => projectilePrefab;
+    public bool HasRangedProjectile => projectilePrefab != null;
+
+    private SkillData runtimeArrowSkillData;
+
     private readonly Collider2D[] hitBuffer = new Collider2D[16];
     private readonly System.Collections.Generic.List<IDamageable> hitTargetsBuffer = new(16);
     public static readonly System.Collections.Generic.List<string> DiagnosticLogs = new();
@@ -50,17 +61,36 @@ public class CharacterCombatController : MonoBehaviour
         }
     }
 
-    public float MaxEffectiveReach => AttackOffset + AttackRadius;
+    public float MaxEffectiveReach => HasRangedProjectile
+        ? (stats != null && stats.AttackRange != null ? stats.AttackRange.Value : 6f)
+        : (AttackOffset + AttackRadius);
 
     private void Awake()
     {
         if (brain == null) brain = GetComponent<CharacterBrain>();
         if (stats == null) stats = GetComponent<CharacterStatsManager>();
         if (factionMember == null) factionMember = GetComponentInParent<FactionMember>();
+
+        if (HasRangedProjectile)
+        {
+            runtimeArrowSkillData = ScriptableObject.CreateInstance<SkillData>();
+            runtimeArrowSkillData.name = "BasicAttack_ArrowData";
+            runtimeArrowSkillData.skillID = "BASIC_ATTACK_ARROW";
+            runtimeArrowSkillData.skillName = "Arrow";
+            runtimeArrowSkillData.projectileSpeed = projectileSpeed;
+            runtimeArrowSkillData.projectileLifetime = projectileLifetime;
+            runtimeArrowSkillData.projectileForward = SkillData.ProjectileForward.Up;
+            runtimeArrowSkillData.projectileRotationOffset = 180f;
+            runtimeArrowSkillData.targetFilter = SkillData.SkillTargetFilter.EnemiesOnly;
+            runtimeArrowSkillData.damageType = projectileDamageType;
+        }
     } 
 
     public bool Attack()
     {
+        if (brain != null && !brain.CanAttack) return false;
+        if (stats != null && stats.BasicAttackMode == BasicAttackMode.None) return false;
+
         Transform target = brain != null && brain.BaseAI != null ? brain.BaseAI.CurrentTarget : null;
         if (target != null)
         {
@@ -111,6 +141,9 @@ public class CharacterCombatController : MonoBehaviour
 
     public void SearchForTargets()
     {
+        if (stats != null && stats.BasicAttackMode == BasicAttackMode.None) return;
+        if (stats != null && stats.IsDead) return;
+
         Transform currentTarget = brain != null && brain.BaseAI != null ? brain.BaseAI.CurrentTarget : null;
         if (currentTarget != null)
         {
@@ -127,6 +160,56 @@ public class CharacterCombatController : MonoBehaviour
         if (attackPoint != null)
         {
             attackPoint.position = hitCircleCenter;
+        }
+
+        if (HasRangedProjectile && projectilePrefab != null)
+        {
+            TotalSwingsAttempted++;
+            consecutiveMissCount = 0;
+
+            Vector3 spawnPos = attackPoint != null ? attackPoint.position : transform.position;
+            Vector3 shootDir = lastAimedDirection.sqrMagnitude > 0.0001f ? (Vector3)lastAimedDirection : (Vector3)Vector2.right;
+
+            GameObject spawnedProj = ObjectPoolManager.Instance != null
+                ? ObjectPoolManager.Instance.Spawn(projectilePrefab, spawnPos, Quaternion.identity)
+                : Instantiate(projectilePrefab, spawnPos, Quaternion.identity);
+
+            if (spawnedProj != null)
+            {
+                var skillInstance = spawnedProj.GetComponent<SkillInstance>();
+                if (skillInstance != null)
+                {
+                    if (runtimeArrowSkillData == null)
+                    {
+                        runtimeArrowSkillData = ScriptableObject.CreateInstance<SkillData>();
+                        runtimeArrowSkillData.name = "BasicAttack_ArrowData";
+                        runtimeArrowSkillData.skillID = "BASIC_ATTACK_ARROW";
+                        runtimeArrowSkillData.skillName = "Arrow";
+                        runtimeArrowSkillData.projectileSpeed = projectileSpeed;
+                        runtimeArrowSkillData.projectileLifetime = projectileLifetime;
+                        runtimeArrowSkillData.projectileForward = SkillData.ProjectileForward.Up;
+                        runtimeArrowSkillData.projectileRotationOffset = 180f;
+                        runtimeArrowSkillData.targetFilter = SkillData.SkillTargetFilter.EnemiesOnly;
+                        runtimeArrowSkillData.damageType = projectileDamageType;
+                    }
+
+                    string casterId = TryGetComponent<IIdentifier>(out var ident) ? ident.UniqueId : name;
+                    skillInstance.Initialize(runtimeArrowSkillData, shootDir, casterId, currentTarget != null ? currentTarget.gameObject : null, gameObject);
+
+                    float damageAmount = stats != null && stats.Damage != null && stats.Damage.Value > 0 ? stats.Damage.Value : 10f;
+                    skillInstance.CurrentDamage = damageAmount;
+                }
+            }
+
+            if (currentTarget != null)
+            {
+                float distToTarget = Vector3.Distance(transform.position, currentTarget.position);
+                float aiAttackRange = stats != null && stats.AttackRange != null ? stats.AttackRange.Value : 1f;
+                float aiStandingDist = brain != null && brain.BaseAI != null ? brain.BaseAI.GetPreferredStandingDistance(aiAttackRange) : aiAttackRange;
+                string diag = $"[PROJECTILE_ATTACK] Attacker={name} pos={transform.position:F2} | Target={currentTarget.name} pos={currentTarget.position:F2} | ShootDir={shootDir:F2} | TargetDist={distToTarget:F2} | AIRangeCheck(atkRange={aiAttackRange:F2}, standingDist={aiStandingDist:F2})";
+                DiagnosticLogs.Add(diag);
+            }
+            return;
         }
 
         float radius = AttackRadius;
@@ -159,7 +242,8 @@ public class CharacterCombatController : MonoBehaviour
             {
                 hitTargetsBuffer.Add(targetStats);
                 float damageAmount = stats != null && stats.Damage != null && stats.Damage.Value > 0 ? stats.Damage.Value : 10f;
-                targetStats.TakeDamage(new DamageData(damageAmount, DamageType.Physical));
+                stats?.NotifyDamageDealt();
+                targetStats.TakeDamage(new DamageData(damageAmount, DamageType.Physical, stats));
                 ELogger.Log(this, nameof(SearchForTargets), $"Hit {targetBrain.name} for {damageAmount} damage");
             }
         }

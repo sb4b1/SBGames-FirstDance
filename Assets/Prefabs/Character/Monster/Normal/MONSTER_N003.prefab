@@ -123,6 +123,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 0}
   doorwayStaging: {fileID: 0}
   goalHysteresisBonus: 0.08
+  isCannotCast: 0
   agentType: MinionAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -1007,10 +1008,13 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -1070,6 +1074,10 @@ MonoBehaviour:
   attackPoint: {fileID: 2787888326306639854}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &4874665318065577021
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1223,7 +1231,7 @@ Transform:
   m_GameObject: {fileID: 7458907024609058052}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.102, y: -0.038, z: 0}
+  m_LocalPosition: {x: 0.081, y: -0.059, z: 0}
   m_LocalScale: {x: 2.1238, y: 2.1238, z: 1.0619}
   m_ConstrainProportionsScale: 0
   m_Children: []

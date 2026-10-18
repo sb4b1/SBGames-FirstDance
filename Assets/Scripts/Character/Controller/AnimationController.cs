@@ -1,8 +1,8 @@
-using UnityEngine;
-using SB4b1.Logging;
 using System.Collections.Generic;
-using UnityEngine.AI;
 using ArtificeToolkit.Attributes;
+using SB4b1.Logging;
+using UnityEngine;
+using UnityEngine.AI;
 
 [RequireComponent(typeof(CharacterFlipRotator))]
 public class AnimationController : AnimationObjectController
@@ -13,10 +13,20 @@ public class AnimationController : AnimationObjectController
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private CharacterFlipRotator flipRotator;
 
+
+
+
+    private static readonly int HASH_ATTACK = Animator.StringToHash("Attack");
+    private static readonly int HASH_CAST_SKILL = Animator.StringToHash("CastSkill");
+    private static readonly int HASH_HIT = Animator.StringToHash("Hit");
+    private static readonly int HASH_IS_DEAD = Animator.StringToHash("IsDead");
+    private static readonly int HASH_IS_MOVING = Animator.StringToHash("IsMoving");
+
+    //TODO: Deprecated
     private static readonly int HASH_MOVE_X = Animator.StringToHash("MoveX");
     private static readonly int HASH_MOVE_Y = Animator.StringToHash("MoveY");
-    private static readonly int HASH_SPEED  = Animator.StringToHash("Speed");
-    private static readonly int HASH_ATTACK = Animator.StringToHash("IsAttacking");
+    private static readonly int HASH_SPEED = Animator.StringToHash("Speed");
+    private static readonly int HASH_IsATTACK = Animator.StringToHash("IsAttacking");
     private static readonly int HASH_CASTSkill = Animator.StringToHash("IsCastingSkill");
 
     private Vector2 lastMoveDir = Vector2.down;
@@ -57,17 +67,21 @@ public class AnimationController : AnimationObjectController
             animator.SetFloat(HASH_MOVE_X, lastMoveDir.x);
             animator.SetFloat(HASH_MOVE_Y, lastMoveDir.y);
             animator.SetFloat(HASH_SPEED, Mathf.Clamp01(velocity.magnitude));
+            if (velocity.sqrMagnitude > 0.01f) animator.SetBool(HASH_IS_MOVING, true);
+            else animator.SetBool(HASH_IS_MOVING, false);
         }
     }
 
     public override void UpdateAttack(bool isAttacking)
     {
-        SetBool(HASH_ATTACK, isAttacking);
+        SetBoolOrTrigger(HASH_ATTACK, isAttacking);
+        SetBoolOrTrigger(HASH_IsATTACK, isAttacking);
     }
 
     public override void UpdateCastSkill(bool isCasting)
     {
-        SetBool(HASH_CASTSkill, isCasting);
+        SetBoolOrTrigger(HASH_CASTSkill, isCasting);
+        SetBoolOrTrigger(HASH_CAST_SKILL, isCasting);
     }
 
     protected virtual void UpdateFlip()
@@ -107,9 +121,19 @@ public class AnimationController : AnimationObjectController
         if (brain != null) brain.EndAttack();
     }
 
+    public void AnimationEvent_AttackComplete()
+    {
+        OnAttackAnimationEnd();
+    }
+
     public void OnCastAnimationEnd()
     {
         if (brain != null) brain.EndCastSkill();
+    }
+
+    public void AnimationEvent_CastSkillComplete()
+    {
+        OnCastAnimationEnd();
     }
 
     // Generate parameters for animator
@@ -153,7 +177,7 @@ public class AnimationController : AnimationObjectController
             { "IdleDown", AnimatorControllerParameterType.Bool },
             { "IdleRight", AnimatorControllerParameterType.Bool },
             { "IdleLeft", AnimatorControllerParameterType.Bool },
-            { "IsWalking", AnimatorControllerParameterType.Bool },
+            { "IsMoving", AnimatorControllerParameterType.Bool },
             { "IsAttacking", AnimatorControllerParameterType.Bool },
             { "IsCastingSkill", AnimatorControllerParameterType.Bool },
             { "GetHit", AnimatorControllerParameterType.Trigger }

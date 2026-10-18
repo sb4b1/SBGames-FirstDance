@@ -26,14 +26,14 @@ namespace SBGames.Editor.Stats.Tabs
         private bool _filterIssuesOnly = false;
 
         // Sorting
-        public enum SortColumn { Id, Name, Rank, Level, MaxLife, MaxMana, Movespeed, Damage, AttackRange, AttackInterval }
+        public enum SortColumn { Id, Name, Rank, AtkMode, Level, MaxLife, MaxMana, LifeRegen, ManaRegen, Movespeed, Damage, AttackRange, AttackInterval }
         private SortColumn _currentSort = SortColumn.Id;
         private bool _sortAscending = true;
 
         // Bulk Math Panel
         private bool _showBulkMath = false;
         public enum BulkScope { Filtered, SelectedOnly }
-        public enum BulkTargetField { MaxLife, MaxMana, Movespeed, Damage, AttackRange, AttackInterval, DecisionInterval }
+        public enum BulkTargetField { MaxLife, MaxMana, LifeRegen, ManaRegen, Movespeed, Damage, AttackRange, AttackInterval, DecisionInterval }
         public enum BulkMathMode { PercentMultiply, FlatAdd }
 
         private BulkScope _bulkScope = BulkScope.Filtered;
@@ -58,8 +58,11 @@ namespace SBGames.Editor.Stats.Tabs
             // Stats
             public int Level = 1;
             public CharacterRank Rank = CharacterRank.D;
+            public BasicAttackMode BasicAttackMode = BasicAttackMode.Auto;
             public float MaxLife = 100f;
             public float MaxMana = 50f;
+            public float LifeRegen = 0f;
+            public float ManaRegen = 0f;
             public float Movespeed = 5f;
             public float Damage = 10f;
             public float AttackRange = 1f;
@@ -103,6 +106,16 @@ namespace SBGames.Editor.Stats.Tabs
                     ValidationError = "MaxLife must be greater than 0.";
                     return;
                 }
+                if (LifeRegen < 0f)
+                {
+                    ValidationError = "LifeRegen cannot be negative.";
+                    return;
+                }
+                if (ManaRegen < 0f)
+                {
+                    ValidationError = "ManaRegen cannot be negative.";
+                    return;
+                }
                 if (Movespeed < 0f)
                 {
                     ValidationError = "Movespeed cannot be negative.";
@@ -117,6 +130,18 @@ namespace SBGames.Editor.Stats.Tabs
                 {
                     ValidationError = "AttackTimeInterval must be greater than 0.";
                     return;
+                }
+                if (BasicAttackMode == BasicAttackMode.None)
+                {
+                    bool hasPrefabSkills = Prefab != null && Prefab.GetComponentInChildren<CharacterSkillController>() != null &&
+                                          Prefab.GetComponentInChildren<CharacterSkillController>().Skills != null &&
+                                          Prefab.GetComponentInChildren<CharacterSkillController>().Skills.Count > 0;
+                    bool hasConfiguredSkills = DefaultSkillIds != null && DefaultSkillIds.Any(s => !string.IsNullOrWhiteSpace(s));
+                    if (!hasPrefabSkills && !hasConfiguredSkills)
+                    {
+                        ValidationError = "BasicAttackMode is None but character has no usable skill.";
+                        return;
+                    }
                 }
             }
         }
@@ -155,8 +180,11 @@ namespace SBGames.Editor.Stats.Tabs
                     {
                         row.Level = row.BaseStatsSO.characterLevel;
                         row.Rank = row.BaseStatsSO.characterRank;
+                        row.BasicAttackMode = row.BaseStatsSO.basicAttackMode;
                         row.MaxLife = row.BaseStatsSO.MaxLife;
                         row.MaxMana = row.BaseStatsSO.MaxMana;
+                        row.LifeRegen = row.BaseStatsSO.LifeRegen;
+                        row.ManaRegen = row.BaseStatsSO.ManaRegen;
                         row.Movespeed = row.BaseStatsSO.Movespeed;
                         row.Damage = row.BaseStatsSO.Damage;
                         row.AttackRange = row.BaseStatsSO.AttackRange;
@@ -194,8 +222,11 @@ namespace SBGames.Editor.Stats.Tabs
                     Name = assetName,
                     Level = statAsset.characterLevel,
                     Rank = statAsset.characterRank,
+                    BasicAttackMode = statAsset.basicAttackMode,
                     MaxLife = statAsset.MaxLife,
                     MaxMana = statAsset.MaxMana,
+                    LifeRegen = statAsset.LifeRegen,
+                    ManaRegen = statAsset.ManaRegen,
                     Movespeed = statAsset.Movespeed,
                     Damage = statAsset.Damage,
                     AttackRange = statAsset.AttackRange,
@@ -260,8 +291,11 @@ namespace SBGames.Editor.Stats.Tabs
                 {
                     row.BaseStatsSO.characterLevel = row.Level;
                     row.BaseStatsSO.characterRank = row.Rank;
+                    row.BaseStatsSO.basicAttackMode = row.BasicAttackMode;
                     row.BaseStatsSO.MaxLife = row.MaxLife;
                     row.BaseStatsSO.MaxMana = row.MaxMana;
+                    row.BaseStatsSO.LifeRegen = Mathf.Max(0f, row.LifeRegen);
+                    row.BaseStatsSO.ManaRegen = Mathf.Max(0f, row.ManaRegen);
                     row.BaseStatsSO.Movespeed = row.Movespeed;
                     row.BaseStatsSO.Damage = row.Damage;
                     row.BaseStatsSO.AttackRange = row.AttackRange;
@@ -425,6 +459,12 @@ namespace SBGames.Editor.Stats.Tabs
                     case BulkTargetField.MaxMana:
                         row.MaxMana = CalculateAdjustedValue(row.MaxMana, _bulkValue, _bulkMode, 0f);
                         break;
+                    case BulkTargetField.LifeRegen:
+                        row.LifeRegen = CalculateAdjustedValue(row.LifeRegen, _bulkValue, _bulkMode, 0f);
+                        break;
+                    case BulkTargetField.ManaRegen:
+                        row.ManaRegen = CalculateAdjustedValue(row.ManaRegen, _bulkValue, _bulkMode, 0f);
+                        break;
                     case BulkTargetField.Movespeed:
                         row.Movespeed = CalculateAdjustedValue(row.Movespeed, _bulkValue, _bulkMode, 0.5f);
                         break;
@@ -485,9 +525,12 @@ namespace SBGames.Editor.Stats.Tabs
                 SortColumn.Id => _sortAscending ? rows.OrderBy(r => r.Id).ToList() : rows.OrderByDescending(r => r.Id).ToList(),
                 SortColumn.Name => _sortAscending ? rows.OrderBy(r => r.Name).ToList() : rows.OrderByDescending(r => r.Name).ToList(),
                 SortColumn.Rank => _sortAscending ? rows.OrderBy(r => r.Rank).ToList() : rows.OrderByDescending(r => r.Rank).ToList(),
+                SortColumn.AtkMode => _sortAscending ? rows.OrderBy(r => r.BasicAttackMode).ToList() : rows.OrderByDescending(r => r.BasicAttackMode).ToList(),
                 SortColumn.Level => _sortAscending ? rows.OrderBy(r => r.Level).ToList() : rows.OrderByDescending(r => r.Level).ToList(),
                 SortColumn.MaxLife => _sortAscending ? rows.OrderBy(r => r.MaxLife).ToList() : rows.OrderByDescending(r => r.MaxLife).ToList(),
                 SortColumn.MaxMana => _sortAscending ? rows.OrderBy(r => r.MaxMana).ToList() : rows.OrderByDescending(r => r.MaxMana).ToList(),
+                SortColumn.LifeRegen => _sortAscending ? rows.OrderBy(r => r.LifeRegen).ToList() : rows.OrderByDescending(r => r.LifeRegen).ToList(),
+                SortColumn.ManaRegen => _sortAscending ? rows.OrderBy(r => r.ManaRegen).ToList() : rows.OrderByDescending(r => r.ManaRegen).ToList(),
                 SortColumn.Movespeed => _sortAscending ? rows.OrderBy(r => r.Movespeed).ToList() : rows.OrderByDescending(r => r.Movespeed).ToList(),
                 SortColumn.Damage => _sortAscending ? rows.OrderBy(r => r.Damage).ToList() : rows.OrderByDescending(r => r.Damage).ToList(),
                 SortColumn.AttackRange => _sortAscending ? rows.OrderBy(r => r.AttackRange).ToList() : rows.OrderByDescending(r => r.AttackRange).ToList(),
@@ -512,9 +555,12 @@ namespace SBGames.Editor.Stats.Tabs
                 DrawSortHeader("ID", SortColumn.Id, 130);
                 DrawSortHeader("Name", SortColumn.Name, 120);
                 DrawSortHeader("Rank", SortColumn.Rank, 55);
+                DrawSortHeader("AtkMode", SortColumn.AtkMode, 65);
                 DrawSortHeader("Lvl", SortColumn.Level, 45);
                 DrawSortHeader("HP", SortColumn.MaxLife, 65);
                 DrawSortHeader("Mana", SortColumn.MaxMana, 55);
+                DrawSortHeader("LifeRegen", SortColumn.LifeRegen, 65);
+                DrawSortHeader("ManaRegen", SortColumn.ManaRegen, 65);
                 DrawSortHeader("Spd", SortColumn.Movespeed, 55);
                 DrawSortHeader("Dmg", SortColumn.Damage, 55);
                 DrawSortHeader("Range", SortColumn.AttackRange, 55);
@@ -602,6 +648,15 @@ namespace SBGames.Editor.Stats.Tabs
                         row.MarkDirty();
                     }
 
+                    // Basic Attack Mode
+                    EditorGUI.BeginChangeCheck();
+                    var newMode = (BasicAttackMode)EditorGUILayout.EnumPopup(row.BasicAttackMode, GUILayout.Width(65));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        row.BasicAttackMode = newMode;
+                        row.MarkDirty();
+                    }
+
                     // Level
                     EditorGUI.BeginChangeCheck();
                     int newLvl = EditorGUILayout.IntField(row.Level, GUILayout.Width(45));
@@ -626,6 +681,24 @@ namespace SBGames.Editor.Stats.Tabs
                     if (EditorGUI.EndChangeCheck())
                     {
                         row.MaxMana = Mathf.Max(0f, newMana);
+                        row.MarkDirty();
+                    }
+
+                    // Life Regen
+                    EditorGUI.BeginChangeCheck();
+                    float newLifeRegen = EditorGUILayout.FloatField(row.LifeRegen, GUILayout.Width(65));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        row.LifeRegen = newLifeRegen;
+                        row.MarkDirty();
+                    }
+
+                    // Mana Regen
+                    EditorGUI.BeginChangeCheck();
+                    float newManaRegen = EditorGUILayout.FloatField(row.ManaRegen, GUILayout.Width(65));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        row.ManaRegen = newManaRegen;
                         row.MarkDirty();
                     }
 
@@ -718,6 +791,14 @@ namespace SBGames.Editor.Stats.Tabs
                     if (EditorGUI.EndChangeCheck())
                     {
                         _selectedRow.BaseStatsSO = newSo;
+                        _selectedRow.MarkDirty();
+                    }
+
+                    EditorGUI.BeginChangeCheck();
+                    var newInspectorMode = (BasicAttackMode)EditorGUILayout.EnumPopup("Basic Attack Mode", _selectedRow.BasicAttackMode);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        _selectedRow.BasicAttackMode = newInspectorMode;
                         _selectedRow.MarkDirty();
                     }
 

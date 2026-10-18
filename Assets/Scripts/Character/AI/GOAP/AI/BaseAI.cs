@@ -64,6 +64,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     public AdventurerWealth CharacterWealth => StatsManager != null ? StatsManager.CharacterWealth : AdventurerWealth.Average;
     public TargetPriorityMode TargetPriorityMode => adventurerProfile != null ? adventurerProfile.TargetPriorityMode : profileTargetPriorityMode;
     public ItemUseQuality ItemUseQuality => adventurerProfile != null ? adventurerProfile.ItemUseQuality : profileItemUseQuality;
+    public BasicAttackMode BasicAttackMode => StatsManager != null ? StatsManager.BasicAttackMode : BasicAttackMode.Auto;
     public float PreferredRangeBand => classStyleTable != null ? classStyleTable.GetPreferredRangeBand(CharacterClass) : 1.0f;
     public float SkillReliance => classStyleTable != null ? classStyleTable.GetSkillReliance(CharacterClass) : 0.5f;
     public float SkillRelianceMultiplier => classStyleTable != null ? Mathf.Lerp(0.5f, 1.5f, SkillReliance) : 1.0f;
@@ -75,7 +76,49 @@ public class BaseAI : MonoBehaviour, IPoolable
     public void SetClassStyleTable(CharacterClassStyleTableSO table) => classStyleTable = table;
     public void SetTargetPriorityMode(TargetPriorityMode mode) => profileTargetPriorityMode = mode;
     public void SetItemUseQuality(ItemUseQuality quality) => profileItemUseQuality = quality;
-    public float GetPreferredStandingDistance(float attackRange) => Mathf.Max(0.1f, attackRange * PreferredRangeBand);
+
+    public float GetMainSkillRange()
+    {
+        if (skillController != null && skillController.Skills != null)
+        {
+            var sList = skillController.Skills;
+            bool isHealerRole = (EffectiveFunction & AdventurerFunction.Healer) != 0;
+
+            // Preferred matching skill by role
+            for (int i = 0; i < sList.Count; i++)
+            {
+                var s = sList[i];
+                if (s == null || s.Data == null) continue;
+                if (isHealerRole && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly)
+                {
+                    return s.Data.EffectiveRange;
+                }
+                if (!isHealerRole && s.Data.targetFilter != SkillData.SkillTargetFilter.AlliesOnly && s.Data.targetFilter != SkillData.SkillTargetFilter.SelfOnly)
+                {
+                    return s.Data.EffectiveRange;
+                }
+            }
+
+            // Fallback: any skill
+            if (sList.Count > 0 && sList[0] != null && sList[0].Data != null)
+            {
+                return sList[0].Data.EffectiveRange;
+            }
+        }
+
+        return 5f;
+    }
+
+    public float GetPreferredStandingDistance(float attackRange)
+    {
+        float baseRange = attackRange;
+        if (BasicAttackMode == BasicAttackMode.None)
+        {
+            baseRange = GetMainSkillRange();
+        }
+        return Mathf.Max(0.1f, baseRange * PreferredRangeBand);
+    }
+
     public Vector3 GetFormationTargetPosition() => SquadMember != null && SquadMember.HasLeader ? SquadMember.GetFormationTargetPosition() : (LeaderTransform != null ? LeaderTransform.position : transform.position);
 
     // --- Precomputed Zero-Alloc Personality Biases ---
@@ -110,6 +153,52 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     /// <summary>True when at least one skill in the SkillController is off cooldown.</summary>
     public bool IsSkillReady => skillController != null && skillController.HasReadySkill();
+
+    [SerializeField] private bool isCannotCast;
+    public bool CannotCast => isCannotCast;
+
+    /// <summary>
+    /// Returns true if this character has any offensive / damage skill.
+    /// </summary>
+    public bool HasUsableDamageSkill()
+    {
+        if (skillController == null || skillController.Skills == null) return false;
+        var list = skillController.Skills;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var s = list[i];
+            if (s != null && s.Data != null && s.Data.targetFilter != SkillData.SkillTargetFilter.AlliesOnly && s.Data.targetFilter != SkillData.SkillTargetFilter.SelfOnly)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Finds the cheapest mana cost among usable skills for this character.
+    /// </summary>
+    public float GetCheapestSkillManaCost()
+    {
+        if (skillController == null || skillController.Skills == null || skillController.Skills.Count == 0)
+            return 5f;
+
+        float minCost = float.MaxValue;
+        var list = skillController.Skills;
+        for (int i = 0; i < list.Count; i++)
+        {
+            var s = list[i];
+            if (s != null && s.Data != null)
+            {
+                if (s.Data.baseManaCost < minCost)
+                {
+                    minCost = s.Data.baseManaCost;
+                }
+            }
+        }
+
+        return minCost < float.MaxValue ? minCost : 5f;
+    }
 
     // This can be used to differentiate between different types of agents (e.g., "NormalAgent", "AggressiveAgent", etc.)
     // NormalAgent is the default type, and if no specific behavior is assigned in the GoapActionProvider, it will use the NormalAgent behavior
@@ -711,6 +800,23 @@ public class BaseAI : MonoBehaviour, IPoolable
             agentLife = s.Life;
             agentMana = s.Mana;
         }
+
+        // Cache cannot-cast status: mana below cheapest usable skill or all skills on cooldown
+        float cheapestMana = GetCheapestSkillManaCost();
+        bool outOfMana = agentMana < cheapestMana;
+        bool allOnCooldown = !IsSkillReady;
+
+        // Rank-based rationing check: C-rank backs off before hitting 0
+        if (adventurerProfile != null && !adventurerProfile.BurnManaCarelessly && s != null && s.MaxMana != null && s.MaxMana.Value > 0f)
+        {
+            float manaFrac = agentMana / s.MaxMana.Value;
+            if (manaFrac <= adventurerProfile.EmptyCasterRetreatManaThreshold)
+            {
+                outOfMana = true;
+            }
+        }
+
+        isCannotCast = outOfMana || allOnCooldown;
     }
 
     public void SetTarget(Transform target)

@@ -18,15 +18,20 @@ public class CharacterBaseStatSO : ScriptableObject
     public CharacterClass characterClass = CharacterClass.None;
     public AdventurerFunction characterFunction = AdventurerFunction.None;
     public AdventurerWealth characterWealth = AdventurerWealth.Average;
+    [Tooltip("Determines whether the character performs basic attacks automatically or relies solely on skills.")]
+    public BasicAttackMode basicAttackMode = BasicAttackMode.Auto;
     [SerializeField] public System.Collections.Generic.List<string> extraItemIds = new();
 
     public AdventurerFunction CharacterFunction => characterFunction;
     public AdventurerFunction EffectiveFunction => characterFunction != AdventurerFunction.None ? characterFunction : AdventurerFunction.DPS;
     public AdventurerWealth CharacterWealth => characterWealth;
+    public BasicAttackMode BasicAttackMode => basicAttackMode;
     public System.Collections.Generic.IReadOnlyList<string> ExtraItemIds => extraItemIds;
 
     [Min(1)] public float MaxLife = 100f;
     [Min(0)] public float MaxMana = 50f;
+    [Min(0f)] public float LifeRegen = 0f;
+    [Min(0f)] public float ManaRegen = 0f;
     [Min(0)] public float Movespeed = 5f;
     [Min(0)] public float Damage = 10f;
     [Min(0.1f)] public float AttackRange = 1f;

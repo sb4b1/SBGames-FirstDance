@@ -16,6 +16,18 @@ public class UtilityKillEnemyGoal : UtilityGoal
             return 0f;
         }
 
+        // A character with mode None and no damage skill (e.g. Healer) must never select KillEnemy
+        if (context.BasicAttackMode == BasicAttackMode.None && !context.HasUsableDamageSkill())
+        {
+            return 0f;
+        }
+
+        // Empty caster with mode None cannot cast right now (out of mana or all skills on cooldown) -> yield to kite/recover
+        if (context.BasicAttackMode == BasicAttackMode.None && context.CannotCast)
+        {
+            return 0f;
+        }
+
         // Suppress engaging enemies autonomously when held in Standby
         if (context.SquadOrder == SquadOrderType.Standby)
         {

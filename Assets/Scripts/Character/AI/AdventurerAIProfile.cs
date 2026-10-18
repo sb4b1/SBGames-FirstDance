@@ -110,6 +110,13 @@ public class AdventurerAIProfile : ScriptableObject
     [Tooltip("Reaction delay or interval for healing decisions in seconds.")]
     [SerializeField, Range(0.0f, 2.0f)] private float healReactionDelay = 0.3f;
 
+    [Header("Empty-Caster Heuristics")]
+    [Tooltip("Mana fraction threshold below which the caster considers rationing and retreating before reaching absolute zero mana.")]
+    [SerializeField, Range(0.0f, 0.5f)] private float emptyCasterRetreatManaThreshold = 0.10f;
+
+    [Tooltip("If true, caster burns mana carelessly until zero before retreating (Rank E).")]
+    [SerializeField] private bool burnManaCarelessly = false;
+
     public CharacterRank Rank => rank;
     public float DecisionInterval => decisionInterval;
     public float VisionRadius => visionRadius;
@@ -145,6 +152,16 @@ public class AdventurerAIProfile : ScriptableObject
         CharacterRank.C => 0.05f,
         _ => healReactionDelay
     };
+
+    public float EmptyCasterRetreatManaThreshold => emptyCasterRetreatManaThreshold > 0f ? emptyCasterRetreatManaThreshold : (rank switch
+    {
+        CharacterRank.E => 0.0f,
+        CharacterRank.D => 0.15f,
+        CharacterRank.C => 0.30f,
+        _ => 0.15f
+    });
+
+    public bool BurnManaCarelessly => rank == CharacterRank.E || burnManaCarelessly;
 
     /// <summary>
     /// Computes the individual flee HP threshold adjusted by a personality multiplier.

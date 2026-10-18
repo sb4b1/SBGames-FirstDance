@@ -106,6 +106,7 @@ namespace SBGames.Testing
             public float HealingReceived { get; private set; }
             public float SkillHealingReceived { get; private set; }
             public float PotionHealingReceived { get; private set; }
+            public float RegenHealingReceived { get; private set; }
             public int HealsCast { get; private set; }
             public float FirstHealTime { get; private set; } = -1f;
             public int FleeEvents { get; private set; }
@@ -135,6 +136,11 @@ namespace SBGames.Testing
                     PotionHealingReceived += amount;
                 }
             }
+            public void RecordRegenHealingReceived(float amount)
+            {
+                HealingReceived += amount;
+                RegenHealingReceived += amount;
+            }
             public void AddIdleTime(float dt) => IdleTime += dt;
             public void IncrementFleeEvents()
             {
@@ -156,6 +162,11 @@ namespace SBGames.Testing
                 {
                     ownerRunner.FirstHealElapsedTime = ownerRunner.ElapsedTime;
                 }
+            }
+
+            public void OnRegenLifeRestoredHandler(float amount)
+            {
+                RecordRegenHealingReceived(amount);
             }
 
             public void OnSkillCastHandler(SkillData skillData, GameObject target)
@@ -205,6 +216,7 @@ namespace SBGames.Testing
             public float totalHealingDone;
             public float skillHealingDone;
             public float potionHealingDone;
+            public float regenHealing;
             public float timeToFirstHeal;
             public int tankFleeEvents;
             public int healerSurviveEvents;
@@ -217,7 +229,7 @@ namespace SBGames.Testing
 
             public override string ToString()
             {
-                return $"[Battle Report] Outcome: {outcome} | Duration: {duration:F2}s | Adv DPS: {adventurerDps:F1} | Mon DPS: {monsterDps:F1} | Swings(Hit/Miss): {totalSwingsHit}/{totalSwingsMissed} ({(totalSwingsAttempted > 0 ? (float)totalSwingsHit / totalSwingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDamageTaken:F0}/{dpsDamageTaken:F0}/{healerDamageTaken:F0} | Heals: {healsCast} (Skill: {skillHealingDone:F0} HP, Pot: {potionHealingDone:F0} HP, 1st: {(timeToFirstHeal >= 0f ? $"{timeToFirstHeal:F2}s" : "N/A")}) | TankFlees: {tankFleeEvents} | HealerSurvive: {healerSurviveEvents} | HealerIdle: {healerIdleTime:F2}s | Monsters: {survivingMonsters}/{initialMonsters} | Adventurers: {survivingAdventurers}/{initialAdventurers}";
+                return $"[Battle Report] Outcome: {outcome} | Duration: {duration:F2}s | Adv DPS: {adventurerDps:F1} | Mon DPS: {monsterDps:F1} | Swings(Hit/Miss): {totalSwingsHit}/{totalSwingsMissed} ({(totalSwingsAttempted > 0 ? (float)totalSwingsHit / totalSwingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDamageTaken:F0}/{dpsDamageTaken:F0}/{healerDamageTaken:F0} | Heals: {healsCast} (Skill: {skillHealingDone:F0} HP, Pot: {potionHealingDone:F0} HP, Regen: {regenHealing:F0} HP, 1st: {(timeToFirstHeal >= 0f ? $"{timeToFirstHeal:F2}s" : "N/A")}) | TankFlees: {tankFleeEvents} | HealerSurvive: {healerSurviveEvents} | HealerIdle: {healerIdleTime:F2}s | Monsters: {survivingMonsters}/{initialMonsters} | Adventurers: {survivingAdventurers}/{initialAdventurers}";
             }
         }
 
@@ -530,6 +542,7 @@ namespace SBGames.Testing
                     combatant.Stats.CancelAttackTimer();
                     combatant.Stats.OnDamaged -= combatant.OnDamagedHandler;
                     combatant.Stats.OnLifeRestored -= combatant.OnLifeRestoredHandler;
+                    combatant.Stats.OnRegenLifeRestored -= combatant.OnRegenLifeRestoredHandler;
                 }
 
                 for (int c = 0; c < combatant.SubscribedCasters.Count; c++)
@@ -633,6 +646,7 @@ namespace SBGames.Testing
             float totalHealingDone = 0f;
             float totalSkillHealingDone = 0f;
             float totalPotionHealingDone = 0f;
+            float totalRegenHealingDone = 0f;
             int tankFlees = 0;
             int healerSurvives = 0;
             float healerIdle = 0f;
@@ -645,6 +659,7 @@ namespace SBGames.Testing
                 totalHealingDone += adv.HealingReceived;
                 totalSkillHealingDone += adv.SkillHealingReceived;
                 totalPotionHealingDone += adv.PotionHealingReceived;
+                totalRegenHealingDone += adv.RegenHealingReceived;
 
                 AdventurerFunction func = adv.SourceSlot != null ? adv.SourceSlot.functionOverride : AdventurerFunction.None;
                 if (func == AdventurerFunction.Tank)
@@ -668,6 +683,7 @@ namespace SBGames.Testing
             for (int i = 0; i < monsterCombatants.Count; i++)
             {
                 totalMonDamageTaken += monsterCombatants[i].DamageTaken;
+                totalRegenHealingDone += monsterCombatants[i].RegenHealingReceived;
             }
 
             float safeDuration = Mathf.Max(0.1f, simulationElapsedTime);
@@ -701,6 +717,7 @@ namespace SBGames.Testing
                 totalHealingDone = totalHealingDone,
                 skillHealingDone = totalSkillHealingDone,
                 potionHealingDone = totalPotionHealingDone,
+                regenHealing = totalRegenHealingDone,
                 timeToFirstHeal = FirstHealElapsedTime,
                 tankFleeEvents = tankFlees,
                 healerSurviveEvents = healerSurvives,
@@ -709,7 +726,7 @@ namespace SBGames.Testing
                 totalSwingsHit = swingsHit,
                 totalSwingsMissed = swingsMissed,
                 timeoutReason = timeoutReason,
-                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | Swings(Hit/Miss): {swingsHit}/{swingsMissed} ({(swingsAttempted > 0 ? (float)swingsHit / swingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} (Skill: {totalSkillHealingDone:F0} HP, Pot: {totalPotionHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}{(outcome == BattleOutcome.Timeout ? $" | Reason: {timeoutReason}" : "")}"
+                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | Swings(Hit/Miss): {swingsHit}/{swingsMissed} ({(swingsAttempted > 0 ? (float)swingsHit / swingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} (Skill: {totalSkillHealingDone:F0} HP, Pot: {totalPotionHealingDone:F0} HP, Regen: {totalRegenHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}{(outcome == BattleOutcome.Timeout ? $" | Reason: {timeoutReason}" : "")}"
             };
 
             Debug.Log($"<b>[BattleSimulationTestRunner]</b> {lastReport.summary}");
@@ -791,6 +808,11 @@ namespace SBGames.Testing
             // Healer function skill setup
             if (slot.functionOverride == AdventurerFunction.Healer || (slot.slotLabel != null && slot.slotLabel.Contains("Healer")))
             {
+                if (stats != null)
+                {
+                    stats.SetBasicAttackModeOverride(BasicAttackMode.None);
+                }
+
                 var skillCtrl = unitGo.GetComponentInChildren<CharacterSkillController>();
                 if (skillCtrl != null)
                 {
@@ -841,6 +863,7 @@ namespace SBGames.Testing
             {
                 stats.OnDamaged += combatant.OnDamagedHandler;
                 stats.OnLifeRestored += combatant.OnLifeRestoredHandler;
+                stats.OnRegenLifeRestored += combatant.OnRegenLifeRestoredHandler;
             }
 
             var casters = unitGo.GetComponentsInChildren<SkillCaster>(true);
@@ -1254,6 +1277,7 @@ namespace SBGames.Testing
             public float totalHealingDone;
             public float skillHealingDone;
             public float potionHealingDone;
+            public float regenHealing;
             public float timeToFirstHeal;
             public int tankFleeEvents;
             public int healerSurviveEvents;
@@ -1329,6 +1353,7 @@ namespace SBGames.Testing
                             totalHealingDone = rep.totalHealingDone,
                             skillHealingDone = rep.skillHealingDone,
                             potionHealingDone = rep.potionHealingDone,
+                            regenHealing = rep.regenHealing,
                             timeToFirstHeal = rep.timeToFirstHeal,
                             tankFleeEvents = rep.tankFleeEvents,
                             healerSurviveEvents = rep.healerSurviveEvents,
@@ -1341,7 +1366,7 @@ namespace SBGames.Testing
 
                         string firstHealStr = rep.timeToFirstHeal >= 0f ? $"{rep.timeToFirstHeal:F2}s" : "N/A";
                         int totalMon = sc.isBoss ? 1 : (sc.isLargeGroup ? 6 : 3);
-                        Debug.Log($"[BATCH] {sc.name} | Speed: {spd}x | Seed: {s} | Outcome: {rep.outcome} | Dur: {rep.duration:F2}s | AdvDPS: {rep.adventurerDps:F1} | MonDPS: {rep.monsterDps:F1} | Swings(Hit/Miss): {rep.totalSwingsHit}/{rep.totalSwingsMissed} | DmgTaken(T/D/H): {rep.tankDamageTaken:F0}/{rep.dpsDamageTaken:F0}/{rep.healerDamageTaken:F0} | Heals: {rep.healsCast} (Skill: {rep.skillHealingDone:F0} HP, Pot: {rep.potionHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {rep.tankFleeEvents} | HealerSurvive: {rep.healerSurviveEvents} | HealerIdle: {rep.healerIdleTime:F2}s | AdvSurv: {rep.survivingAdventurers}/3 | MonSurv: {rep.survivingMonsters}/{totalMon}{(rep.outcome == BattleOutcome.Timeout ? $" | Reason: {rep.timeoutReason}" : "")}");
+                        Debug.Log($"[BATCH] {sc.name} | Speed: {spd}x | Seed: {s} | Outcome: {rep.outcome} | Dur: {rep.duration:F2}s | AdvDPS: {rep.adventurerDps:F1} | MonDPS: {rep.monsterDps:F1} | Swings(Hit/Miss): {rep.totalSwingsHit}/{rep.totalSwingsMissed} | DmgTaken(T/D/H): {rep.tankDamageTaken:F0}/{rep.dpsDamageTaken:F0}/{rep.healerDamageTaken:F0} | Heals: {rep.healsCast} (Skill: {rep.skillHealingDone:F0} HP, Pot: {rep.potionHealingDone:F0} HP, Regen: {rep.regenHealing:F0} HP, 1st: {firstHealStr}) | TankFlees: {rep.tankFleeEvents} | HealerSurvive: {rep.healerSurviveEvents} | HealerIdle: {rep.healerIdleTime:F2}s | AdvSurv: {rep.survivingAdventurers}/3 | MonSurv: {rep.survivingMonsters}/{totalMon}{(rep.outcome == BattleOutcome.Timeout ? $" | Reason: {rep.timeoutReason}" : "")}");
 
                         ResetSimulation(resetTimeScale: false);
                         yield return null;

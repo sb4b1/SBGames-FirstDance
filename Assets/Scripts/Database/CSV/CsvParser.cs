@@ -167,7 +167,7 @@ namespace SBGames.Database.CSV
 
         public static readonly string[] CharacterHeaders =
         {
-            "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds"
+            "Id", "CharacterName", "MaxLife", "MaxMana", "LifeRegen", "ManaRegen", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds"
         };
 
         private const AdventurerFunction AllAdventurerFunctions =
@@ -219,6 +219,8 @@ namespace SBGames.Database.CSV
                 ["CharacterName"] = c?.characterName ?? string.Empty,
                 ["MaxLife"] = c?.baseStats != null ? c.baseStats.MaxLife.ToString("F1") : "100",
                 ["MaxMana"] = c?.baseStats != null ? c.baseStats.MaxMana.ToString("F1") : "50",
+                ["LifeRegen"] = c?.baseStats != null ? c.baseStats.LifeRegen.ToString("F1") : "0.0",
+                ["ManaRegen"] = c?.baseStats != null ? c.baseStats.ManaRegen.ToString("F1") : "0.0",
                 ["Movespeed"] = c?.baseStats != null ? c.baseStats.Movespeed.ToString("F1") : "5",
                 ["Damage"] = c?.baseStats != null ? c.baseStats.Damage.ToString("F1") : "10",
                 ["AttackRange"] = c?.baseStats != null ? c.baseStats.AttackRange.ToString("F1") : "1",
@@ -236,6 +238,8 @@ namespace SBGames.Database.CSV
 
             if (row.TryGetValue("MaxLife", out var hpStr) && float.TryParse(hpStr, out var hp)) baseStats.MaxLife = hp;
             if (row.TryGetValue("MaxMana", out var manaStr) && float.TryParse(manaStr, out var mana)) baseStats.MaxMana = mana;
+            if (row.TryGetValue("LifeRegen", out var lRegenStr) && float.TryParse(lRegenStr, out var lRegen)) baseStats.LifeRegen = UnityEngine.Mathf.Max(0f, lRegen);
+            if (row.TryGetValue("ManaRegen", out var mRegenStr) && float.TryParse(mRegenStr, out var mRegen)) baseStats.ManaRegen = UnityEngine.Mathf.Max(0f, mRegen);
             if (row.TryGetValue("Movespeed", out var spdStr) && float.TryParse(spdStr, out var spd)) baseStats.Movespeed = spd;
             if (row.TryGetValue("Damage", out var dmgStr) && float.TryParse(dmgStr, out var dmg)) baseStats.Damage = dmg;
             if (row.TryGetValue("AttackRange", out var rangeStr) && float.TryParse(rangeStr, out var range)) baseStats.AttackRange = range;

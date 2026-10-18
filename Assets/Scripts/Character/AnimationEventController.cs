@@ -41,8 +41,18 @@ public class AnimationEventController : MonoBehaviour
         brain?.EndCastSkill();
     }
 
+    public void OnCastAnimationEnd()
+    {
+        AnimationEvent_CastSkillComplete();
+    }
+
     public void AnimationEvent_AttackComplete()
     {
         brain?.EndAttack();
+    }
+
+    public void OnAttackAnimationEnd()
+    {
+        AnimationEvent_AttackComplete();
     }
 }

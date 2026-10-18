@@ -29,3 +29,5 @@ MonoBehaviour:
   leaderlessBehavior: 1
   startingItemKit: {fileID: 11400000, guid: 3d0ab627c4b120d4da3cbc3abd88d218, type: 2}
   roomLoopTuning: {fileID: 11400000, guid: 09d755c617fb5d04396219b7cac12341, type: 2}
+  emptyCasterRetreatManaThreshold: 0.15
+  burnManaCarelessly: 0

@@ -17,6 +17,7 @@ public class AnimationObjectController : MonoBehaviour
     protected static readonly int HASH_GET_HIT = Animator.StringToHash("GetHit");
 
     private readonly HashSet<int> parameterHashes = new();
+    private readonly Dictionary<int, AnimatorControllerParameterType> parameterTypes = new();
     protected bool hasGetHitParam;
 
     private float cachedCastDuration = -1f;
@@ -67,11 +68,13 @@ public class AnimationObjectController : MonoBehaviour
         if (animator == null) return;
 
         parameterHashes.Clear();
+        parameterTypes.Clear();
         hasGetHitParam = false;
 
         foreach (var parameter in animator.parameters)
         {
             parameterHashes.Add(parameter.nameHash);
+            parameterTypes[parameter.nameHash] = parameter.type;
             if (parameter.nameHash == HASH_GET_HIT)
             {
                 hasGetHitParam = true;
@@ -199,6 +202,35 @@ public class AnimationObjectController : MonoBehaviour
         if (parameterHashes.Count == 0) CacheAnimatorParameters();
         if (!HasParameter(paramHash)) return;
         animator.SetBool(paramHash, value);
+    }
+
+    public virtual void SetBoolOrTrigger(int paramHash, bool value)
+    {
+        if (animator == null) return;
+        if (parameterHashes.Count == 0) CacheAnimatorParameters();
+        if (!parameterTypes.TryGetValue(paramHash, out var type)) return;
+
+        if (type == AnimatorControllerParameterType.Bool)
+        {
+            animator.SetBool(paramHash, value);
+        }
+        else if (type == AnimatorControllerParameterType.Trigger)
+        {
+            if (value)
+            {
+                animator.SetTrigger(paramHash);
+            }
+            else
+            {
+                animator.ResetTrigger(paramHash);
+            }
+        }
+    }
+
+    public virtual void SetBoolOrTrigger(string paramName, bool value)
+    {
+        if (string.IsNullOrEmpty(paramName)) return;
+        SetBoolOrTrigger(Animator.StringToHash(paramName), value);
     }
 
     public virtual void SetFloat(string paramName, float value)

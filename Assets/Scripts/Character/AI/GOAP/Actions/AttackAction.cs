@@ -15,6 +15,11 @@ public class AttackAction : GoapActionBase<AttackAction.Data>
 
     public override IActionRunState Perform(IMonoAgent agent, Data data, IActionContext context)
     {
+        if (data.Stats != null && data.Stats.BasicAttackMode == BasicAttackMode.None)
+        {
+            return ActionRunState.Completed;
+        }
+
         if (!data.AttackInitiated)
         {
             // If attack is on cooldown or brain is busy/recovering, wait in action
@@ -67,6 +72,16 @@ public class AttackAction : GoapActionBase<AttackAction.Data>
             data.Brain.EndAttack();
         }
         data.AttackInitiated = false;
+    }
+
+    public override bool IsValid(IActionReceiver agent, Data data)
+    {
+        if (data.Stats != null && data.Stats.BasicAttackMode == BasicAttackMode.None)
+        {
+            return false;
+        }
+
+        return base.IsValid(agent, data);
     }
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)

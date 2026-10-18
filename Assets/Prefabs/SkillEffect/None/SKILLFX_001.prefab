@@ -27,8 +27,8 @@ Transform:
   m_GameObject: {fileID: 2509171955483209435}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: -0.026, z: 0}
+  m_LocalScale: {x: 0.0669889, y: 0.0669889, z: 0.0669889}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 8682120396518767747}
@@ -94,6 +94,7 @@ GameObject:
   - component: {fileID: 4264139603129380642}
   - component: {fileID: 3864528502815377488}
   - component: {fileID: 7778162000869948866}
+  - component: {fileID: -156964248631190561}
   m_Layer: 9
   m_Name: SKILLFX_001
   m_TagString: Untagged
@@ -111,7 +112,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 2.865905, y: 7.0474396, z: 2.865905}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 706263293805260591}
@@ -162,19 +163,19 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -65563385
-  m_SortingLayer: 2
+  m_SortingLayerID: 1230265923
+  m_SortingLayer: 4
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 3787356872904639099, guid: 2cf90e9af22b99c4b9223ae3906d293b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.09, y: 0.13}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 0
+  m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
 --- !u!95 &4264139603129380642
@@ -226,3 +227,15 @@ MonoBehaviour:
   animator: {fileID: 4264139603129380642}
   hitboxObject: {fileID: 2509171955483209435}
   currentTarget: {fileID: 0}
+--- !u!114 &-156964248631190561
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4586513395091411629}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ff50d7d090fef74ba4fff17a5b56ccf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LinearProjectileMovement

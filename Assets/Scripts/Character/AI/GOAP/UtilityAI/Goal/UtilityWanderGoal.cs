@@ -12,6 +12,12 @@ public class UtilityWanderGoal : UtilityGoal
             return 0;
         }
 
+        // Pure healer / None mode with no damage skill stays with party instead of wandering off
+        if (context.BasicAttackMode == BasicAttackMode.None && !context.HasUsableDamageSkill())
+        {
+            return 0;
+        }
+
         return score;
     }
 

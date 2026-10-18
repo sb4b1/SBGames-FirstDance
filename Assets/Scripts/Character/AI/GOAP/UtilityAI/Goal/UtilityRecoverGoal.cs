@@ -80,11 +80,18 @@ public class UtilityRecoverGoal : UtilityGoal
         if (stats.MaxMana != null && stats.MaxMana.Value > 0f)
         {
             float manaFrac = Mathf.Clamp01(stats.Mana / stats.MaxMana.Value);
-            if (manaFrac <= manaTriggerFrac && stats.Mana < stats.MaxMana.Value &&
-                kit.CanUse(ConsumableItemCategory.ManaPotion, perRoomQuota))
+            bool shouldDrinkMana = (manaFrac <= manaTriggerFrac && stats.Mana < stats.MaxMana.Value) || (context.CannotCast && context.BasicAttackMode == BasicAttackMode.None && stats.Mana < stats.MaxMana.Value);
+            if (shouldDrinkMana && kit.CanUse(ConsumableItemCategory.ManaPotion, perRoomQuota))
             {
                 float deficit = 1f - manaFrac;
                 float manaScore = manaDeficitCurve != null ? manaDeficitCurve.Evaluate(deficit) : Mathf.Lerp(0.5f, 0.9f, deficit);
+
+                // If caster cannot cast in combat, elevate urgency to recover mana promptly
+                if (context.CannotCast && context.BasicAttackMode == BasicAttackMode.None)
+                {
+                    manaScore = Mathf.Max(manaScore, 0.85f);
+                }
+
                 if (manaScore > bestUrgency)
                 {
                     bestUrgency = manaScore;

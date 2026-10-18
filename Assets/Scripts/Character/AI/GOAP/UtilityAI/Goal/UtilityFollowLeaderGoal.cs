@@ -25,9 +25,22 @@ public class UtilityFollowLeaderGoal : UtilityGoal
         float sqrDist = (context.transform.position - leaderTransform.position).sqrMagnitude;
         float sqrLeash = leashDistance * leashDistance;
 
-        // If within leash, do not pull away from combat or idle
+        // If within leash, do not pull away from combat or idle, UNLESS healer/empty-caster with no damage skill has nothing to engage
         if (sqrDist <= sqrLeash)
         {
+            // Healer / None mode with no damage skill and no wounded ally -> keep formation with leader
+            if (context.BasicAttackMode == BasicAttackMode.None && !context.HasUsableDamageSkill())
+            {
+                // Score moderate priority to stay near party rear
+                return sqrDist > 1.5f * 1.5f ? 0.45f : 0.1f;
+            }
+
+            // Empty-caster with no usable skills right now -> keep safe distance near party leader / tank
+            if (context.BasicAttackMode == BasicAttackMode.None && context.CannotCast)
+            {
+                return sqrDist > 2.0f * 2.0f ? 0.50f : 0.15f;
+            }
+
             return 0f;
         }
 

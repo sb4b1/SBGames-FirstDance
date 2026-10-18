@@ -17,6 +17,7 @@ MonoBehaviour:
   characterClass: 1
   characterFunction: 3
   characterWealth: 1
+  basicAttackMode: 0
   extraItemIds: []
   MaxLife: 120
   MaxMana: 40

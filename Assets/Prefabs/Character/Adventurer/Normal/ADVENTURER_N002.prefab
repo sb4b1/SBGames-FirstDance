@@ -75,11 +75,11 @@ Transform:
   m_LocalScale: {x: -0.32225195, y: 0.32225195, z: 0.32225195}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 8675712104862562502}
   - {fileID: 5518113711375250289}
   - {fileID: 4721962940884677826}
   - {fileID: 7179478563049699399}
   - {fileID: 6419345614085935340}
-  - {fileID: 8675712104862562502}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &8907593658711481717
@@ -209,6 +209,10 @@ MonoBehaviour:
   attackPoint: {fileID: 7681435798115147188}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 4586513395091411629, guid: 5c669f6b0d2be1e4e92a285a4059f8bd, type: 3}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &1611292133623120716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -577,6 +581,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 7717724894304873240}
   doorwayStaging: {fileID: 2073250768635310589}
   goalHysteresisBonus: 0.08
+  isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -1370,7 +1375,7 @@ MonoBehaviour:
     AllowedTags:
     - Adventurer
     - Monster
-  DetectionMode: 0
+  DetectionMode: 1
   Shape: 0
   Circle:
     Radius: 5
@@ -1381,7 +1386,7 @@ MonoBehaviour:
     Height: 1
   DetectsOnLayers:
     serializedVersion: 2
-    m_Bits: 65
+    m_Bits: 193
   IgnoreTriggerColliders: 0
   pulseRoutine:
     Mode:

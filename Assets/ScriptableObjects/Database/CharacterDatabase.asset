@@ -181,3 +181,17 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: MONSTER_BOSS_001
+    characterName: MONSTER_BOSS_001
+    prefab: {fileID: 0}
+    baseStats: {fileID: 11400000, guid: 4bf7cf344e73d4e439422727267726e4, type: 2}
+    defaultSkillIds: []
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

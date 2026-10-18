@@ -36,6 +36,12 @@ namespace SBGames.Inventory.Stats
 
                 case StatType.AttackSpeed:
                     return manager.AttackTimeInterval;
+
+                case StatType.LifeRegen:
+                    return manager.LifeRegen;
+
+                case StatType.ManaRegen:
+                    return manager.ManaRegen;
             }
 
             // Dynamic fallback for any additional StatType (Defense, CritChance, ArmorPenetration, etc.)
@@ -70,6 +76,8 @@ namespace SBGames.Inventory.Stats
             dict[StatType.Attack] = manager.Damage.Value;
             dict[StatType.MoveSpeed] = manager.Movespeed.Value;
             dict[StatType.AttackSpeed] = manager.AttackTimeInterval.Value;
+            dict[StatType.LifeRegen] = manager.LifeRegen.Value;
+            dict[StatType.ManaRegen] = manager.ManaRegen.Value;
 
             if (ExtraStatsRegistry.TryGetValue(manager, out var extraTable))
             {

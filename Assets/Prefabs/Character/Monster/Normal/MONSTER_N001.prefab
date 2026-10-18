@@ -78,7 +78,7 @@ Transform:
   m_GameObject: {fileID: 1260756780467848515}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.102, y: -0.038, z: 0}
+  m_LocalPosition: {x: 0.143, y: -0.041, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1004,10 +1004,13 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -1031,6 +1034,10 @@ MonoBehaviour:
   attackPoint: {fileID: 3843292984236393184}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &779946892532255747
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1109,10 +1116,10 @@ GameObject:
   - component: {fileID: 7690681229766653026}
   - component: {fileID: 8446831177810594064}
   - component: {fileID: 5427059989974091042}
-  - component: {fileID: 3967720624424618889}
   - component: {fileID: 590993200254740714}
+  - component: {fileID: 3967720624424618889}
   m_Layer: 0
-  m_Name: NormalAI
+  m_Name: CoreAI
   m_TagString: AI_Augment
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1182,6 +1189,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AgentMoveBehaviour
   agent: {fileID: 3967720624424618889}
   agentBehaviour: {fileID: 8446831177810594064}
+--- !u!114 &590993200254740714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9097028675395075657}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce1552f109be459419f06fdc62a111a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.AI.AIDecisionThrottler
+  baseAI: {fileID: 3967720624424618889}
+  characterBrain: {fileID: 5661646937458837832}
+  statsManager: {fileID: 7331921466431717763}
+  defaultDecisionInterval: 0.3
+  defaultIntervalJitter: 0.05
+  nextDecisionTime: 0
+  isDecisionLocked: 0
 --- !u!114 &3967720624424618889
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1195,8 +1221,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BaseAI
   agent: {fileID: 7031461656827861849}
-  agentBehaviour: {fileID: 0}
-  brain: {fileID: 0}
+  agentBehaviour: {fileID: 8446831177810594064}
+  brain: {fileID: 5661646937458837832}
   stats: {fileID: 7331921466431717763}
   motionController: {fileID: 5841761043065473055}
   skillController: {fileID: 9150011966489319026}
@@ -1217,6 +1243,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 0}
   doorwayStaging: {fileID: 0}
   goalHysteresisBonus: 0.08
+  isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -1238,25 +1265,6 @@ MonoBehaviour:
   currentSkillScore: 0
   skillScores:
     pairs: []
---- !u!114 &590993200254740714
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9097028675395075657}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce1552f109be459419f06fdc62a111a1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SBGames.AI.AIDecisionThrottler
-  baseAI: {fileID: 3967720624424618889}
-  characterBrain: {fileID: 5661646937458837832}
-  statsManager: {fileID: 7331921466431717763}
-  defaultDecisionInterval: 0.3
-  defaultIntervalJitter: 0.05
-  nextDecisionTime: 0
-  isDecisionLocked: 0
 --- !u!1001 &1590298078433876062
 PrefabInstance:
   m_ObjectHideFlags: 0

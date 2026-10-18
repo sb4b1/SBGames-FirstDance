@@ -287,7 +287,7 @@ namespace SBGames.Database.Editor.CSV
 
         public static readonly string[] CharacterHeaders =
         {
-            "Id", "CharacterName", "MaxLife", "MaxMana", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds"
+            "Id", "CharacterName", "MaxLife", "MaxMana", "LifeRegen", "ManaRegen", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds", "BasicAttackMode"
         };
 
         private const AdventurerFunction AllAdventurerFunctions =
@@ -321,6 +321,20 @@ namespace SBGames.Database.Editor.CSV
             return AdventurerWealth.Average;
         }
 
+        public static BasicAttackMode ParseBasicAttackMode(IReadOnlyDictionary<string, string> row)
+        {
+            if (row != null &&
+                row.TryGetValue("BasicAttackMode", out var modeStr) &&
+                !string.IsNullOrWhiteSpace(modeStr) &&
+                Enum.TryParse<BasicAttackMode>(modeStr.Trim(), true, out var parsedMode) &&
+                Enum.IsDefined(typeof(BasicAttackMode), parsedMode))
+            {
+                return parsedMode;
+            }
+
+            return BasicAttackMode.Auto;
+        }
+
         public static Dictionary<string, string> BuildCharacterCsvRow(CharacterEntry c)
         {
             string extraItems = string.Empty;
@@ -339,6 +353,8 @@ namespace SBGames.Database.Editor.CSV
                 ["CharacterName"] = c?.characterName ?? string.Empty,
                 ["MaxLife"] = c?.baseStats != null ? c.baseStats.MaxLife.ToString("F1") : "100",
                 ["MaxMana"] = c?.baseStats != null ? c.baseStats.MaxMana.ToString("F1") : "50",
+                ["LifeRegen"] = c?.baseStats != null ? c.baseStats.LifeRegen.ToString("F1") : "0.0",
+                ["ManaRegen"] = c?.baseStats != null ? c.baseStats.ManaRegen.ToString("F1") : "0.0",
                 ["Movespeed"] = c?.baseStats != null ? c.baseStats.Movespeed.ToString("F1") : "5",
                 ["Damage"] = c?.baseStats != null ? c.baseStats.Damage.ToString("F1") : "10",
                 ["AttackRange"] = c?.baseStats != null ? c.baseStats.AttackRange.ToString("F1") : "1",
@@ -346,7 +362,8 @@ namespace SBGames.Database.Editor.CSV
                 ["DefaultSkillIds"] = c?.defaultSkillIds != null ? string.Join(";", c.defaultSkillIds) : string.Empty,
                 ["Function"] = c?.baseStats != null ? c.baseStats.characterFunction.ToString() : AdventurerFunction.None.ToString(),
                 ["Wealth"] = c?.baseStats != null ? c.baseStats.characterWealth.ToString() : AdventurerWealth.Average.ToString(),
-                ["ExtraItemIds"] = extraItems
+                ["ExtraItemIds"] = extraItems,
+                ["BasicAttackMode"] = c?.baseStats != null ? c.baseStats.basicAttackMode.ToString() : BasicAttackMode.Auto.ToString()
             };
         }
 
@@ -356,12 +373,15 @@ namespace SBGames.Database.Editor.CSV
 
             if (row.TryGetValue("MaxLife", out var hpStr) && float.TryParse(hpStr, out var hp)) baseStats.MaxLife = hp;
             if (row.TryGetValue("MaxMana", out var manaStr) && float.TryParse(manaStr, out var mana)) baseStats.MaxMana = mana;
+            if (row.TryGetValue("LifeRegen", out var lRegenStr) && float.TryParse(lRegenStr, out var lRegen)) baseStats.LifeRegen = Mathf.Max(0f, lRegen);
+            if (row.TryGetValue("ManaRegen", out var mRegenStr) && float.TryParse(mRegenStr, out var mRegen)) baseStats.ManaRegen = Mathf.Max(0f, mRegen);
             if (row.TryGetValue("Movespeed", out var spdStr) && float.TryParse(spdStr, out var spd)) baseStats.Movespeed = spd;
             if (row.TryGetValue("Damage", out var dmgStr) && float.TryParse(dmgStr, out var dmg)) baseStats.Damage = dmg;
             if (row.TryGetValue("AttackRange", out var rangeStr) && float.TryParse(rangeStr, out var range)) baseStats.AttackRange = range;
             if (row.TryGetValue("AttackTimeInterval", out var atiStr) && float.TryParse(atiStr, out var ati)) baseStats.AttackTimeInterval = ati;
             baseStats.characterFunction = ParseAdventurerFunction(row);
             baseStats.characterWealth = ParseAdventurerWealth(row);
+            baseStats.basicAttackMode = ParseBasicAttackMode(row);
 
             if (row.TryGetValue("ExtraItemIds", out var extraStr))
             {

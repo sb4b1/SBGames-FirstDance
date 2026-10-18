@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.SkillDatabaseSO
   skills:
   - {fileID: 11400000, guid: a07936d0b9731c74ebd32072a6a4eda7, type: 2}
+  - {fileID: 11400000, guid: 046026fb98349a84faf1cd19695bb369, type: 2}
   - {fileID: 11400000, guid: c90689d6a14c7bd41a0c50cb71778b5c, type: 2}
   - {fileID: 11400000, guid: 09f6ddb453d52424096df20b08891417, type: 2}
   - {fileID: 11400000, guid: c6b8a673e2328964d9b3410056c9bee1, type: 2}
