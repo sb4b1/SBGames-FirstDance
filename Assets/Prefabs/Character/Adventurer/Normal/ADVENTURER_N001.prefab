@@ -273,7 +273,7 @@ MonoBehaviour:
   DetectionMode: 1
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -358,7 +358,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -640,7 +640,8 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: d134582e38ada194696acd18ef9459c9, type: 2}
   isImmortal: 0
-  regenTuning: {fileID: 0}
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
@@ -1222,6 +1223,7 @@ MonoBehaviour:
   skillController: {fileID: 1427375474903197488}
   vision: {fileID: 574458777565627565}
   squadMember: {fileID: 6830320874928979187}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 06134285544a56545af885284e6508ec, type: 2}
@@ -1243,6 +1245,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 4782270586631719008}
   doorwayStaging: {fileID: 3293261854236684651}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
   isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}

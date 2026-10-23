@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: afca9db28c5fe6241a91bdd904be84c6, type: 3}
+  m_Name: FightOutlookTuning_Default
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Character.AI.FightOutlookTuningSO
+  rankEErrorFactor: 0.4
+  rankDErrorFactor: 0.15
+  rankCErrorFactor: 0.02
+  noiseRerollInterval: 1.5
+  tankOutlookTolerance: 1.5
+  healerOutlookTolerance: 0.65
+  dpsOutlookTolerance: 1
+  courageWeight: 0.35
+  minimumGoalHoldTime: 1.5
+  sharpOutlookChangeThreshold: 0.45

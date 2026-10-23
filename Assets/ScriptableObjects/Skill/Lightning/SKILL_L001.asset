@@ -17,13 +17,17 @@ MonoBehaviour:
   description: 
   icon: {fileID: 0}
   skillPrefab: {fileID: 7051168925622118865, guid: 7ce779bdbb7944447a16ce425e44c43f, type: 3}
-  utilityData: {fileID: 0}
+  utilityData: {fileID: 11400000, guid: a3140a420a92792489a40990ca0010b2, type: 2}
   projectileForward: 0
   projectileRotationOffset: 0
   type: 2
+  targetFilter: 0
+  castRange: 0
   baseDamage: 10
   damageType: 1
   baseManaCost: 10
+  useCustomRecoveryDuration: 1
+  postCastRecoveryDuration: 0.35
   projectileSpeed: 10
   projectileLifetime: 5
   chain: 0

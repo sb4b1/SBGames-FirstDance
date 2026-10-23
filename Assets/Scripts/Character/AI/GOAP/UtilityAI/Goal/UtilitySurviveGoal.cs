@@ -78,6 +78,27 @@ public class UtilitySurviveGoal : UtilityGoal
 
         // When health deficit is critical, health urgency alone scales up to 1.0f to override orders
         float totalScore = Mathf.Max(urgency, urgency * 0.7f + fearFactor * 0.3f) * baseWeight;
+                // Modulate with Fight Outlook (kill vs survive decision):
+        // Survive wins only when a real escape exists (space to gain distance, ally to retreat toward, recovery item, warp).
+        // Losing with no escape (cornered): Survive score yields to KillEnemy / Recover so unit fights harder.
+        // Winning or even: Survive suppressed so unit presses the attack.
+        var outlook = context.CachedFightOutlook;
+        if (!context.HasEscapeRoute)
+        {
+            // Cornered: Survive yields to fight harder
+            totalScore *= 0.35f;
+        }
+        else if (outlook.IsLosing)
+        {
+            // Losing with a real escape available: Survive rises
+            totalScore = Mathf.Max(totalScore, 0.65f + 0.35f * Mathf.Abs(outlook.NormalizedOutlook));
+        }
+        else if (outlook.IsWinningOrEven && hpDeficit < 0.65f)
+        {
+            // Winning or even: suppress early flight unless HP is critically low
+            totalScore *= 0.50f;
+        }
+
         return Mathf.Clamp01(totalScore);
     }
 

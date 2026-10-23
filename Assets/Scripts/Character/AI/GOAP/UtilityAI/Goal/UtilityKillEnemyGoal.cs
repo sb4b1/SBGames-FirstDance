@@ -43,7 +43,27 @@ public class UtilityKillEnemyGoal : UtilityGoal
         float threatValue = threatCurve.Evaluate(normalizedThreat);
         float fearValue = fearCurve.Evaluate(normalizedFear);
 
-        return Mathf.Clamp01(threatValue - fearValue);
+                float baseScore = Mathf.Clamp01(threatValue - fearValue);
+
+        // Modulate with Fight Outlook (TTK vs TTD):
+        // Winning or even: Kill leads (+0.15f to +0.30f).
+        // Losing with escape: Kill suppressed (-0.25f to -0.40f) yielding to Survive / FallBack.
+        // Losing with NO escape (cornered): fights harder (+0.25f), ignoring comfort distance.
+        var outlook = context.CachedFightOutlook;
+        if (context.IsCornered)
+        {
+            baseScore += 0.25f;
+        }
+        else if (outlook.IsWinningOrEven)
+        {
+            baseScore += Mathf.Lerp(0.10f, 0.30f, Mathf.Max(0f, outlook.NormalizedOutlook));
+        }
+        else if (outlook.IsLosing)
+        {
+            baseScore -= Mathf.Lerp(0.15f, 0.40f, Mathf.Abs(outlook.NormalizedOutlook));
+        }
+
+        return Mathf.Clamp01(baseScore);
     }
 
     protected float Map(float value, float inMin, float inMax)

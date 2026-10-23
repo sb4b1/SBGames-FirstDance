@@ -1,14 +1,9 @@
-Id,CharacterName,MaxLife,MaxMana,LifeRegen,ManaRegen,Movespeed,Damage,AttackRange,AttackTimeInterval,DefaultSkillIds,Function,Wealth,ExtraItemIds,BasicAttackMode
-MONSTER_N001,Purple monster,100.0,50.0,0.0,0.0,5.0,10.0,2.5,1.0,,None,Average,,Auto
-DUMMY_TARGET_001,Training Dummy,99999.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,,None,Average,,Auto
-ADVENTURER_N099,Blue Witch,150.0,100.0,0.0,0.0,5.0,15.0,1.0,1.0,,None,Average,,None
-MONSTER_N002,MONSTER_N002,100.0,50.0,0.0,0.0,5.0,10.0,1.0,1.0,,None,Average,,Auto
-MONSTER_MINION_TEST_WIZARD,New Monster,100.0,50.0,0.0,0.0,5.0,10.0,1.0,1.0,,None,Average,,Auto
-MONSTER_MINION_AUTO_002,New Monster,100.0,50.0,0.0,0.0,5.0,10.0,1.0,1.0,,None,Average,,Auto
-MONSTER_N003,Axe Goblin,80.0,0.0,0.0,0.0,4.0,10.0,1.0,1.0,,None,Average,,Auto
-ADVENTURER_N001,ADVENTURER_N001,120.0,40.0,0.0,0.0,4.5,12.0,1.0,0.8,,"Tank, DPS",Poor,,Auto
-ADVENTURER_N002,ADVENTURER_N002,80.0,40.0,0.0,0.0,4.5,14.0,6.0,0.8,,DPS,Average,,Auto
-ADVENTURER_N003,ADVENTURER_N003,70.0,70.0,0.0,0.0,4.5,6.0,6.0,1.2,,DPS,Average,,None
-ADVENTURER_N004,ADVENTURER_N004,140.0,25.0,0.0,0.0,4.5,14.0,1.0,0.7,,"Tank, DPS",Average,,Auto
-ADVENTURER_N005,ADVENTURER_N005,80.0,35.0,0.0,0.0,4.5,8.0,2.0,0.4,,"DPS, Scout",Average,,Auto
-MONSTER_BOSS_001,MONSTER_BOSS_001,400.0,100.0,0.0,0.0,4.2,20.0,1.2,1.2,,None,Average,,Auto
+Id,CharacterName,MaxLife,MaxMana,LifeRegen,ManaRegen,Movespeed,Damage,AttackRange,AttackTimeInterval,DefaultSkillIds,Function,Wealth,ExtraItemIds,BasicAttackMode,KeepDistanceMode,ComfortDistanceOverride
+DUMMY_TARGET_001,Training Dummy,99999.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,,None,Average,,Auto,Auto,0.0
+ADVENTURER_N099,Blue Witch,150.0,100.0,0.0,0.0,5.0,15.0,1.0,1.0,SKILL_WI001,DPS,Average,,None,Auto,0.0
+MONSTER_N003,Axe Goblin,80.0,0.0,0.0,0.0,4.0,10.0,1.0,1.0,,None,Average,,Auto,Auto,0.0
+ADVENTURER_N001,ADVENTURER_N001,120.0,40.0,0.0,0.0,4.5,12.0,1.0,0.8,,"Tank, DPS",Poor,,Auto,Auto,0.0
+ADVENTURER_N002,ADVENTURER_N002,80.0,40.0,0.0,0.0,4.5,14.0,6.0,0.8,SKILL_WI001,DPS,Average,,Auto,Auto,0.0
+ADVENTURER_N003,ADVENTURER_N003,70.0,70.0,0.0,0.0,4.5,6.0,6.0,1.2,SKILL_F001;SKILL_WA001;SKILL_WA002,DPS,Average,,None,Auto,0.0
+ADVENTURER_N004,ADVENTURER_N004,140.0,25.0,0.0,0.0,4.5,14.0,1.0,0.7,,"Tank, DPS",Average,,Auto,Auto,0.0
+ADVENTURER_N005,ADVENTURER_N005,80.0,35.0,0.0,0.0,4.5,8.0,2.0,0.4,,"DPS, Scout",Average,,Auto,Auto,0.0

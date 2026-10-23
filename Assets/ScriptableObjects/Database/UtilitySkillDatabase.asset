@@ -15,3 +15,9 @@ MonoBehaviour:
   utilSkills:
   - id: SKILL_F002
     so: {fileID: 11400000, guid: 243af448085afbc4c925fbcdc251bf6c, type: 2}
+  - id: SKILL_F001
+    so: {fileID: 11400000, guid: 3ed6a2d3f9e16d04c8020a7840e7db0f, type: 2}
+  - id: SKILL_L001
+    so: {fileID: 11400000, guid: a3140a420a92792489a40990ca0010b2, type: 2}
+  - id: SKILL_WA001
+    so: {fileID: 11400000, guid: 6e113841839451a4885e55434a3ee141, type: 2}

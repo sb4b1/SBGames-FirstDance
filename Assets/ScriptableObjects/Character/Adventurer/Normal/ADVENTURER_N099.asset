@@ -15,7 +15,7 @@ MonoBehaviour:
   characterLevel: 1
   characterRank: 1
   characterClass: 2
-  characterFunction: 0
+  characterFunction: 2
   characterWealth: 0
   basicAttackMode: 1
   extraItemIds: []

@@ -58,6 +58,19 @@ public class UtilityRecoverGoal : UtilityGoal
                     hpScore = Mathf.Max(hpScore, surviveOverrideFloor);
                 }
 
+                // Fight Outlook modulation:
+                // Losing with no escape (cornered): Recovery items first (+0.10f).
+                // Winning decisively mid-melee: suppress drinking potions mid-melee when about to win (-0.30f).
+                var outlook = context.CachedFightOutlook;
+                if (context.IsCornered)
+                {
+                    hpScore += 0.10f;
+                }
+                else if (outlook.IsWinningOrEven && outlook.NormalizedOutlook > 0.40f && hpFrac > 0.25f)
+                {
+                    hpScore -= 0.30f;
+                }
+
                 if (hpScore > bestUrgency)
                 {
                     bestUrgency = hpScore;

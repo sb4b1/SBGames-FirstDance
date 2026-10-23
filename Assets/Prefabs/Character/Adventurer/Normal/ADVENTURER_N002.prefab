@@ -78,8 +78,8 @@ Transform:
   - {fileID: 8675712104862562502}
   - {fileID: 5518113711375250289}
   - {fileID: 4721962940884677826}
-  - {fileID: 7179478563049699399}
   - {fileID: 6419345614085935340}
+  - {fileID: 7179478563049699399}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &8907593658711481717
@@ -146,7 +146,8 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: bb3b633e0702e314791b0c35ee372e33, type: 2}
   isImmortal: 0
-  regenTuning: {fileID: 0}
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
@@ -565,6 +566,7 @@ MonoBehaviour:
   skillController: {fileID: 1007707827586305867}
   vision: {fileID: 5100964253176016884}
   squadMember: {fileID: 6536626902750085332}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 06134285544a56545af885284e6508ec, type: 2}
@@ -574,7 +576,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 26a318c9485a2d341b9decefd6b157e6, type: 2}
   - {fileID: 11400000, guid: 764a756b5ae23a44db23d5d835e4baa2, type: 2}
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
-  skills: []
+  skills:
+  - {fileID: 11400000, guid: b7a1ac675996f24449a5daacee284d95, type: 2}
   personality: {fileID: 8484814697010959022}
   aiMemory: {fileID: 8752340882416318124}
   adventurerProfile: {fileID: 11400000, guid: 3e9d0bf3f79e9d446b11b797e78737fe, type: 2}
@@ -585,6 +588,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 7717724894304873240}
   doorwayStaging: {fileID: 2073250768635310589}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
   isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}
@@ -1383,7 +1387,7 @@ MonoBehaviour:
   DetectionMode: 1
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -1468,7 +1472,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:

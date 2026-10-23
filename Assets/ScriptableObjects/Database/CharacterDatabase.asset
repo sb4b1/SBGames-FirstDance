@@ -13,21 +13,6 @@ MonoBehaviour:
   m_Name: CharacterDatabase
   m_EditorClassIdentifier: Assembly-CSharp::SBGames.Database.CharacterDatabaseSO
   characters:
-  - id: MONSTER_N001
-    characterName: Purple monster
-    prefab: {fileID: 8960087825022006478, guid: 96bd16c15a8fe0f4f978d636125712bb, type: 3}
-    baseStats: {fileID: 11400000, guid: 4d9348d5f598bb04a97e3474ae849358, type: 2}
-    defaultSkillIds:
-    - SKILL_WI001
-    extraItemIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
   - id: DUMMY_TARGET_001
     characterName: Training Dummy
     prefab: {fileID: 3331147636676233856, guid: d0271d9b1b49b59468e7ba4652aceb7d, type: 3}
@@ -48,48 +33,6 @@ MonoBehaviour:
     baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
     defaultSkillIds:
     - SKILL_WI001
-    extraItemIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
-  - id: MONSTER_N002
-    characterName: MONSTER_N002
-    prefab: {fileID: 0}
-    baseStats: {fileID: 11400000, guid: 20a00816c9394e746bbfba817047529c, type: 2}
-    defaultSkillIds: []
-    extraItemIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
-  - id: MONSTER_MINION_TEST_WIZARD
-    characterName: New Monster
-    prefab: {fileID: 0}
-    baseStats: {fileID: 11400000, guid: 039f270f8176ad74fb257d7e914d5af7, type: 2}
-    defaultSkillIds: []
-    extraItemIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
-  - id: MONSTER_MINION_AUTO_002
-    characterName: New Monster
-    prefab: {fileID: 0}
-    baseStats: {fileID: 11400000, guid: 8f8d016f628caed4da1bcebca3d4e75a, type: 2}
-    defaultSkillIds: []
     extraItemIds: []
     hybridPrefab:
       directAsset: {fileID: 0}
@@ -177,20 +120,6 @@ MonoBehaviour:
     characterName: ADVENTURER_N005
     prefab: {fileID: 2413717049819899333, guid: 3b7d5d87926fa0a4786ae4c73960b1eb, type: 3}
     baseStats: {fileID: 11400000, guid: 99a6aaa0718b9444db6a8e5a54f44a30, type: 2}
-    defaultSkillIds: []
-    extraItemIds: []
-    hybridPrefab:
-      directAsset: {fileID: 0}
-      addressableAsset:
-        m_AssetGUID: 
-        m_SubObjectName: 
-        m_SubObjectType: 
-        m_SubObjectGUID: 
-        m_EditorAssetChanged: 0
-  - id: MONSTER_BOSS_001
-    characterName: MONSTER_BOSS_001
-    prefab: {fileID: 0}
-    baseStats: {fileID: 11400000, guid: 4bf7cf344e73d4e439422727267726e4, type: 2}
     defaultSkillIds: []
     extraItemIds: []
     hybridPrefab:

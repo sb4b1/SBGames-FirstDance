@@ -104,7 +104,7 @@ MonoBehaviour:
   DetectionMode: 0
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -189,7 +189,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -694,7 +694,8 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: 81675e6e289581647a872db1a06db1ce, type: 2}
   isImmortal: 0
-  regenTuning: {fileID: 0}
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
@@ -1233,6 +1234,7 @@ MonoBehaviour:
   skillController: {fileID: 5144489367772206936}
   vision: {fileID: 7436439159581810593}
   squadMember: {fileID: 7785654189318291762}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 06134285544a56545af885284e6508ec, type: 2}
@@ -1242,7 +1244,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 26a318c9485a2d341b9decefd6b157e6, type: 2}
   - {fileID: 11400000, guid: 764a756b5ae23a44db23d5d835e4baa2, type: 2}
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
-  skills: []
+  skills:
+  - {fileID: 11400000, guid: 3ed6a2d3f9e16d04c8020a7840e7db0f, type: 2}
+  - {fileID: 11400000, guid: 6e113841839451a4885e55434a3ee141, type: 2}
+  - {fileID: 11400000, guid: e75ad09f10382464d97cc6f60e181f53, type: 2}
   personality: {fileID: 8146849734880841257}
   aiMemory: {fileID: 1153508196580444185}
   adventurerProfile: {fileID: 11400000, guid: 3e9d0bf3f79e9d446b11b797e78737fe, type: 2}
@@ -1253,6 +1258,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 209763876044068114}
   doorwayStaging: {fileID: 1573665869688366888}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
   isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}

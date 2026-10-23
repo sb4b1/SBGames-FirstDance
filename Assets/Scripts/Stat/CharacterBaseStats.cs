@@ -20,12 +20,18 @@ public class CharacterBaseStatSO : ScriptableObject
     public AdventurerWealth characterWealth = AdventurerWealth.Average;
     [Tooltip("Determines whether the character performs basic attacks automatically or relies solely on skills.")]
     public BasicAttackMode basicAttackMode = BasicAttackMode.Auto;
+    [Tooltip("Kiting / Keep Distance behavior mode.")]
+    public KeepDistanceMode keepDistanceMode = KeepDistanceMode.Auto;
+    [Tooltip("Optional override for comfort distance (0 or negative means derive from range).")]
+    public float comfortDistanceOverride = 0f;
     [SerializeField] public System.Collections.Generic.List<string> extraItemIds = new();
 
     public AdventurerFunction CharacterFunction => characterFunction;
     public AdventurerFunction EffectiveFunction => characterFunction != AdventurerFunction.None ? characterFunction : AdventurerFunction.DPS;
     public AdventurerWealth CharacterWealth => characterWealth;
     public BasicAttackMode BasicAttackMode => basicAttackMode;
+    public KeepDistanceMode KeepDistanceMode => keepDistanceMode;
+    public float ComfortDistanceOverride => comfortDistanceOverride;
     public System.Collections.Generic.IReadOnlyList<string> ExtraItemIds => extraItemIds;
 
     [Min(1)] public float MaxLife = 100f;
@@ -51,4 +57,3 @@ public class CharacterBaseStatSO : ScriptableObject
     [Tooltip("Random interval variance (+/-) to stagger evaluations across frames and prevent CPU spikes.")]
     [Range(0f, 0.5f)] public float IntervalJitter = 0.05f;
 }
-

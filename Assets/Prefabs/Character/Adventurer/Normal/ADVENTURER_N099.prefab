@@ -349,6 +349,9 @@ GameObject:
   - component: {fileID: 584137540111647113}
   - component: {fileID: 5254396860403196409}
   - component: {fileID: 6315216640608003175}
+  - component: {fileID: 4872825122825462649}
+  - component: {fileID: 4416897099631885179}
+  - component: {fileID: 3204502699645211594}
   m_Layer: 6
   m_Name: ADVENTURER_N099
   m_TagString: Adventurer
@@ -440,10 +443,14 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: 81b75be88ff86e6489c81b202ba989f1, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -503,6 +510,10 @@ MonoBehaviour:
   attackPoint: {fileID: 0}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &584137540111647113
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -569,6 +580,52 @@ MonoBehaviour:
   previewInscribedRunes: 0
   previewHasArtifact: 0
   previewTotalModifiers: 0
+--- !u!114 &4872825122825462649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3252151753393515643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 271a8d36e70b76544868d492a7011e7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FactionMember
+  faction: 1
+--- !u!114 &4416897099631885179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3252151753393515643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c163d999cd567d64c9af767564355e5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SquadMember
+  currentLeader: {fileID: 0}
+  overrideIsScout: 0
+--- !u!114 &3204502699645211594
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3252151753393515643}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a4f021cbb0643c4e8f77a48acb2d32b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AdventurerItemKitController
+  overrideStartingKit: {fileID: 0}
+  kitModifiers: {fileID: 0}
+  qualityTuning: {fileID: 11400000, guid: 3b8fdcb84fcff3848ae44fe29e38c409, type: 2}
+  itemDatabase: {fileID: 11400000, guid: 30a5277af0036b0478e3ae017b19305d, type: 2}
+  castDuration: 0.75
+  itemCooldown: 6
+  forfeitBonusEnergy: 15
 --- !u!1 &3834232481003622272
 GameObject:
   m_ObjectHideFlags: 0
@@ -829,7 +886,7 @@ MonoBehaviour:
   DetectionMode: 1
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -914,7 +971,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -1032,6 +1089,8 @@ GameObject:
   - component: {fileID: 4237154377942574498}
   - component: {fileID: 8072826638222970858}
   - component: {fileID: 1810567172314739955}
+  - component: {fileID: 4922276494587761333}
+  - component: {fileID: 1425647343650342724}
   m_Layer: 0
   m_Name: MageAI
   m_TagString: AI_Augment
@@ -1123,6 +1182,7 @@ MonoBehaviour:
   skillController: {fileID: 8058071398215529301}
   vision: {fileID: 858829395588064072}
   squadMember: {fileID: 0}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 03dee94ad2ffa954bae3344c666f762b, type: 2}
@@ -1138,6 +1198,8 @@ MonoBehaviour:
   decisionThrottler: {fileID: 0}
   doorwayStaging: {fileID: 0}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
+  isCannotCast: 0
   agentType: MageAgent
   currentTarget: {fileID: 0}
   targetDistance: 0
@@ -1178,6 +1240,210 @@ MonoBehaviour:
   defaultIntervalJitter: 0.05
   nextDecisionTime: 0
   isDecisionLocked: 0
+--- !u!114 &4922276494587761333
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8156641959742805057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be4e84b55031e484e9ea5a7485e69dd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterAIMemory
+  baseAI: {fileID: 0}
+  statsManager: {fileID: 0}
+  characterBrain: {fileID: 0}
+  lastAttackerId: 0
+  lastAttackerTransform: {fileID: 0}
+  retaliationTimer: 0
+  baseRetaliationDuration: 4
+  damageHistory:
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  - SourceId: 0
+    Amount: 0
+    Timestamp: 0
+  damageHistoryHead: 0
+  damageHistoryCount: 0
+  grudgeRecords:
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  - EntityId: 0
+    TargetTransform: {fileID: 0}
+    GrudgeScore: 0
+    LastUpdatedTime: 0
+  grudgeCount: 0
+  grudgeDecayRate: 2.5
+  lastKnownTarget:
+    Target: {fileID: 0}
+    Position: {x: 0, y: 0, z: 0}
+    FadeTimer: 0
+    Duration: 0
+    HasValue: 0
+  hazardRecords:
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  - GridPos: {x: 0, y: 0}
+    WorldPos: {x: 0, y: 0, z: 0}
+    DangerLevel: 0
+    ExpirationTime: 0
+  hazardCount: 0
+  defaultHazardDuration: 30
+  visitedTiles:
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  - {x: 0, y: 0}
+  visitedTilesHead: 0
+  visitedTilesCount: 0
+--- !u!114 &1425647343650342724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8156641959742805057}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81d9b854e512f624ca34725699399cbe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SBGames.Characters.AI.DoorwayStagingController
+  checkDistance: 1.5
+  obstacleLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  speedReductionMultiplier: 0.6
+  minHesitationDuration: 0.6
+  maxHesitationDuration: 1.2
+  baseAI: {fileID: 0}
+  navAgent: {fileID: 0}
 --- !u!1001 &2917829557105247359
 PrefabInstance:
   m_ObjectHideFlags: 0

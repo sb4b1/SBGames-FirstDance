@@ -226,13 +226,13 @@ namespace SBGames.Editor.Validation
                     }
                 }
 
-                // Check CapsuleCollider2D on root
-                var capsuleCol = go.GetComponent<CapsuleCollider2D>();
-                if (capsuleCol == null)
+                // Check non-trigger body collider anywhere in hierarchy
+                var nonTriggerCol = go.GetComponentsInChildren<Collider2D>(true).FirstOrDefault(c => !c.isTrigger);
+                if (nonTriggerCol == null)
                 {
                     findings.Add(new ValidationBadge(ValidationSeverity.Warning, "Character Prefab", unitName, path,
-                        "Root GameObject is missing 'CapsuleCollider2D'. Root physics relies on nested Trigger/Collision BoxCollider2D instead.",
-                        "Add CapsuleCollider2D to root or document intentional use of BoxCollider2D on child objects."));
+                        "Character prefab has no non-trigger body collider anywhere in hierarchy.",
+                        "Add a non-trigger BoxCollider2D or CapsuleCollider2D (on root or Collision child) to provide physical body presence."));
                 }
 
                 // Layer check (Layer 6 = Character)
@@ -252,11 +252,11 @@ namespace SBGames.Editor.Validation
                 }
                 else
                 {
-                    if (aiAug.name != "AI_Augment")
+                    if (!aiAug.CompareTag("AI_Augment"))
                     {
-                        findings.Add(new ValidationBadge(ValidationSeverity.Info, "Character Prefab", unitName, path,
-                            $"AI Augment child has name '{aiAug.name}' instead of standardized 'AI_Augment'.",
-                            "Rename child GameObject to 'AI_Augment' for consistency."));
+                        findings.Add(new ValidationBadge(ValidationSeverity.Error, "Character Prefab", unitName, path,
+                            $"AI child '{aiAug.name}' is missing the 'AI_Augment' tag.",
+                            "Set AI child tag to 'AI_Augment'."));
                     }
 
                     var baseAI = aiAug.GetComponent<BaseAI>();
@@ -380,12 +380,33 @@ namespace SBGames.Editor.Validation
                             findings.Add(new ValidationBadge(ValidationSeverity.Error, "Character Prefab", unitName, path,
                                 $"BaseStats Movespeed is {bs.Movespeed} (must be > 0).", "Configure Movespeed in CharacterBaseStatSO and Characters.csv."));
 
-                        // BasicAttackMode vs Role
-                        if (bs.basicAttackMode == BasicAttackMode.None && bs.Damage > 0)
+                        // BasicAttackMode vs Role: only warn/info if unit has NO usable skills; otherwise stay silent
+                        var skillCtrlCheck = go.GetComponentInChildren<CharacterSkillController>(true);
+                        bool hasUsableSkills = skillCtrlCheck != null && skillCtrlCheck.Skills != null && skillCtrlCheck.Skills.Count > 0;
+                        if (bs.basicAttackMode == BasicAttackMode.None && !hasUsableSkills)
                         {
                             findings.Add(new ValidationBadge(ValidationSeverity.Info, "Character Prefab", unitName, path,
-                                "BasicAttackMode is None (mage/healer mode). Unit cannot perform standard basic attacks and relies entirely on GOAP skills.",
-                                "Verify unit has usable offensive or support skills assigned."));
+                                "BasicAttackMode is None (mage/healer mode) and unit has no usable skills assigned.",
+                                "Assign usable offensive or support skills to the unit."));
+                        }
+
+                        // Keep Distance check: warned if KeepDistanceMode resolves to enabled but has no usable range
+                        float longestSkillRange = 0f;
+                        if (skillCtrlCheck != null && skillCtrlCheck.Skills != null)
+                        {
+                            foreach (var sk in skillCtrlCheck.Skills)
+                            {
+                                if (sk != null && sk.Data != null && sk.Data.EffectiveRange > longestSkillRange)
+                                    longestSkillRange = sk.Data.EffectiveRange;
+                            }
+                        }
+                        float refRange = SBGames.Character.KeepDistanceResolver.ResolveReferenceRange(bs.AttackRange, bs.basicAttackMode, longestSkillRange);
+                        bool keepDistanceEnabled = SBGames.Character.KeepDistanceResolver.ResolveIsEnabled(bs.keepDistanceMode, refRange);
+                        if (keepDistanceEnabled && refRange <= 1.5f && bs.comfortDistanceOverride <= 0f)
+                        {
+                            findings.Add(new ValidationBadge(ValidationSeverity.Warning, "Character Prefab", unitName, path,
+                                $"Unit '{unitName}' has Keep Distance enabled (mode {bs.keepDistanceMode}) but has no usable range (refRange={refRange:F1}).",
+                                "Provide a ranged basic attack, a ranged skill, set comfortDistanceOverride, or set KeepDistanceMode to Off."));
                         }
                     }
 
@@ -579,6 +600,10 @@ namespace SBGames.Editor.Validation
                 if (baseName.EndsWith("Goal")) baseName = baseName.Substring(0, baseName.Length - 4);
 
                 bool hasMatchingUtil = utilGoalTypes.Any(u => u.Name.Contains(baseName));
+                if (!hasMatchingUtil && gb.Name == "DebriefLeaderGoal")
+                {
+                    hasMatchingUtil = utilGoalTypes.Any(u => u.Name == "UtilityDebriefGoal");
+                }
                 if (!hasMatchingUtil && gb.Name != "IdleGoal")
                 {
                     findings.Add(new ValidationBadge(ValidationSeverity.Warning, "GOAP Architecture", gb.Name, "Assets/Scripts/Character/AI/GOAP/Goals/",
@@ -666,9 +691,29 @@ namespace SBGames.Editor.Validation
                             if (cols.Length > defSkillsIdx && string.IsNullOrWhiteSpace(cols[defSkillsIdx]))
                             {
                                 string charId = cols[0];
-                                findings.Add(new ValidationBadge(ValidationSeverity.Info, "Data Table", charId, charCsvPath,
-                                    $"Characters.csv row '{charId}' has an empty DefaultSkillIds column.",
-                                    "Populate DefaultSkillIds or sync from character prefab."));
+                                // Legitimate units without skills (dummy target, boss, etc.) do not warn
+                                if (charId.IndexOf("DUMMY", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    charId.IndexOf("BOSS", StringComparison.OrdinalIgnoreCase) >= 0)
+                                {
+                                    continue;
+                                }
+
+                                var masterCharDb = masterDb != null ? masterDb.Characters : null;
+                                var charEntry = masterCharDb != null && masterCharDb.Characters != null ? masterCharDb.Characters.FirstOrDefault(e => e != null && string.Equals(e.id, charId, StringComparison.OrdinalIgnoreCase)) : null;
+                                var prefabObj = charEntry != null ? charEntry.GetPrefabDirect() : null;
+                                bool prefabHasSkills = false;
+                                if (prefabObj != null)
+                                {
+                                    var sc = prefabObj.GetComponentInChildren<CharacterSkillController>(true);
+                                    prefabHasSkills = sc != null && sc.Skills != null && sc.Skills.Count > 0;
+                                }
+
+                                if (prefabHasSkills)
+                                {
+                                    findings.Add(new ValidationBadge(ValidationSeverity.Warning, "Data Table", charId, charCsvPath,
+                                        $"Characters.csv row '{charId}' has an empty DefaultSkillIds column but its prefab has skills configured.",
+                                        "Export Characters.csv from Stats & Balance tool or populate DefaultSkillIds."));
+                                }
                             }
                         }
                     }

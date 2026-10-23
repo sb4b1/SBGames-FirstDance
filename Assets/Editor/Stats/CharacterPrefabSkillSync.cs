@@ -29,7 +29,11 @@ namespace SBGames.Editor.Stats
             ExtraChild,
             MissingFromDatabase,
             NoController,
-            NoPrefab
+            NoPrefab,
+            MissingUtilityAsset,
+            OrphanedUtilityAsset,
+            NoUtilityTemplate,
+            IncompatibleAgentType
         }
 
         public readonly struct Issue
@@ -47,7 +51,8 @@ namespace SBGames.Editor.Stats
 
             /// <summary>True for issues that a Sync can resolve on the prefab.</summary>
             public bool IsFixableBySync => Kind == IssueKind.MissingChild || Kind == IssueKind.ChildNotInController ||
-                                           Kind == IssueKind.ControllerEntryNotInIds || Kind == IssueKind.OrderMismatch;
+                                           Kind == IssueKind.ControllerEntryNotInIds || Kind == IssueKind.OrderMismatch ||
+                                           Kind == IssueKind.MissingUtilityAsset || Kind == IssueKind.NoUtilityTemplate;
         }
 
         public class SyncResult
@@ -298,6 +303,73 @@ namespace SBGames.Editor.Stats
             foreach (var extra in extras)
                 issues.Add(new Issue(IssueKind.ExtraChild, extra.name, $"Extra child '{extra.name}' under {SkillListName} is not in the ID list (left untouched)."));
 
+            // Utility Skill and Capability Validations
+            var skillDb = DatabaseAutoIndexer.GetOrCreateCatalog<SkillDatabaseSO>("SkillDatabase");
+            var baseAI = prefabRoot.GetComponentInChildren<BaseAI>(true);
+            string agentType = "NormalAgent";
+            if (baseAI != null)
+            {
+                var aiSo = new SerializedObject(baseAI);
+                var agentTypeProp = aiSo.FindProperty("agentType");
+                if (agentTypeProp != null && !string.IsNullOrWhiteSpace(agentTypeProp.stringValue))
+                {
+                    agentType = agentTypeProp.stringValue;
+                }
+            }
+
+            for (int i = 0; i < ids.Count; i++)
+            {
+                string id = ids[i];
+                SkillData skillData = null;
+                if (skillDb != null) skillDb.TryGet(id, out skillData);
+
+                if (skillData != null)
+                {
+                    // Check template existence
+                    var template = UtilitySkillGenerator.DetermineTemplate(skillData);
+                    if (template == UtilitySkillTemplate.None)
+                    {
+                        issues.Add(new Issue(IssueKind.NoUtilityTemplate, id, $"Skill '{id}' has no matching UtilitySkill template (neither Damage nor Heal)."));
+                    }
+
+                    // Check agent capability compatibility
+                    if (!UtilitySkillGenerator.CanAgentPlanSkill(agentType, skillData, out string reason))
+                    {
+                        issues.Add(new Issue(IssueKind.IncompatibleAgentType, id, $"Skill '{id}' cannot be planned by {agentType}: {reason}"));
+                    }
+
+                    // Check Utility asset assignment
+                    var utilAsset = UtilitySkillGenerator.ResolveUtilityAsset(id);
+                    if (utilAsset == null)
+                    {
+                        issues.Add(new Issue(IssueKind.MissingUtilityAsset, id, $"Skill '{id}' is missing a UtilitySkill asset."));
+                    }
+                }
+            }
+
+            // Check for orphaned Utility assets assigned on character's BaseAI that are not in ID list
+            if (baseAI != null)
+            {
+                var aiSo = new SerializedObject(baseAI);
+                var aiSkillsProp = aiSo.FindProperty("skills");
+                if (aiSkillsProp != null && aiSkillsProp.isArray)
+                {
+                    var idSet = new HashSet<string>(ids, StringComparer.OrdinalIgnoreCase);
+                    for (int i = 0; i < aiSkillsProp.arraySize; i++)
+                    {
+                        var util = aiSkillsProp.GetArrayElementAtIndex(i).objectReferenceValue as UtilitySkill;
+                        if (util != null)
+                        {
+                            string utilSkillId = util.GetID();
+                            if (!string.IsNullOrWhiteSpace(utilSkillId) && !idSet.Contains(utilSkillId))
+                            {
+                                issues.Add(new Issue(IssueKind.OrphanedUtilityAsset, utilSkillId, $"Utility asset '{util.name}' (ID: '{utilSkillId}') is assigned on BaseAI but has no matching skill in controller."));
+                            }
+                        }
+                    }
+                }
+            }
+
             return issues;
         }
 
@@ -454,6 +526,36 @@ namespace SBGames.Editor.Stats
                 ordered.Add(child);
             }
 
+            // Ensure UtilitySkill assets exist and are linked to each SkillData
+            var skillDb = DatabaseAutoIndexer.GetOrCreateCatalog<SkillDatabaseSO>("SkillDatabase");
+            var utilSkillsInOrder = new List<UtilitySkill>();
+            for (int i = 0; i < ids.Count; i++)
+            {
+                string id = ids[i];
+                SkillData skillData = null;
+                if (skillDb != null) skillDb.TryGet(id, out skillData);
+
+                // Also check if child caster has Data directly
+                if (skillData == null && i < ordered.Count && ordered[i] != null)
+                {
+                    var caster = ordered[i].GetComponent<SkillCaster>();
+                    if (caster != null && caster.Data != null) skillData = caster.Data;
+                }
+
+                if (skillData != null)
+                {
+                    var utilAsset = UtilitySkillGenerator.EnsureUtilityAssetExists(skillData, out bool createdNew);
+                    if (createdNew)
+                    {
+                        result.Messages.Add($"Generated new UtilitySkill asset '{utilAsset.name}' for '{id}'.");
+                    }
+                    if (utilAsset != null)
+                    {
+                        utilSkillsInOrder.Add(utilAsset);
+                    }
+                }
+            }
+
             // Controller list, in ID order
             var current = ReadControllerEntries(controller);
             bool same = current.Count == ordered.Count;
@@ -470,6 +572,35 @@ namespace SBGames.Editor.Stats
                 so.ApplyModifiedPropertiesWithoutUndo();
                 result.PrefabModified = true;
                 result.Messages.Add("Rebuilt CharacterSkillController.skills in Default Skill ID order.");
+            }
+
+            // Sync BaseAI.skills in matching controller order
+            var baseAI = root.GetComponentInChildren<BaseAI>(true);
+            if (baseAI != null)
+            {
+                var aiSo = new SerializedObject(baseAI);
+                var aiSkillsProp = aiSo.FindProperty("skills");
+                if (aiSkillsProp != null && aiSkillsProp.isArray)
+                {
+                    bool aiSkillsSame = aiSkillsProp.arraySize == utilSkillsInOrder.Count;
+                    for (int i = 0; aiSkillsSame && i < utilSkillsInOrder.Count; i++)
+                    {
+                        if (aiSkillsProp.GetArrayElementAtIndex(i).objectReferenceValue != utilSkillsInOrder[i])
+                            aiSkillsSame = false;
+                    }
+
+                    if (!aiSkillsSame)
+                    {
+                        aiSkillsProp.arraySize = utilSkillsInOrder.Count;
+                        for (int i = 0; i < utilSkillsInOrder.Count; i++)
+                        {
+                            aiSkillsProp.GetArrayElementAtIndex(i).objectReferenceValue = utilSkillsInOrder[i];
+                        }
+                        aiSo.ApplyModifiedPropertiesWithoutUndo();
+                        result.PrefabModified = true;
+                        result.Messages.Add("Synced BaseAI.skills with UtilitySkill assets in controller order.");
+                    }
+                }
             }
 
             return result;

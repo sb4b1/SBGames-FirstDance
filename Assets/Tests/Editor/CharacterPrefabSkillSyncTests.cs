@@ -244,5 +244,134 @@ namespace SBGames.Tests
             });
             Assert.IsTrue(edits.HasPrefabChanges, "Failed commits keep the queue for retry.");
         }
+
+        [Test]
+        public void AddSkill_AutoGeneratesUtilityAssetAndAssignsInMatchingOrder()
+        {
+            // SKILL_F001 has no utility asset initially
+            var skillDb = SBGames.Database.Editor.DatabaseAutoIndexer.GetOrCreateCatalog<SBGames.Database.SkillDatabaseSO>("SkillDatabase");
+            Assert.IsNotNull(skillDb);
+            Assert.IsTrue(skillDb.TryGet("SKILL_F001", out var f001Data));
+
+            string expectedPath = UtilitySkillGenerator.ResolveUtilityAssetPath(f001Data);
+            if (File.Exists(expectedPath)) AssetDatabase.DeleteAsset(expectedPath);
+            f001Data.utilityData = null;
+
+            var edits = new PendingSkillEdits(null);
+            edits.TryAdd("SKILL_F001");
+            Assert.IsTrue(edits.HasPrefabChanges);
+
+            var result = edits.Commit(LoadCharacter(), CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+            Assert.IsTrue(result.Success, string.Join("\n", result.Messages));
+
+            // Verify utility asset was generated at the canonical path
+            Assert.IsTrue(File.Exists(expectedPath), $"Expected utility asset at {expectedPath}");
+            var generatedAsset = AssetDatabase.LoadAssetAtPath<UtilitySkill>(expectedPath);
+            Assert.IsNotNull(generatedAsset);
+            Assert.AreEqual("SKILL_F001", generatedAsset.GetID());
+
+            // Verify BaseAI.skills has it in matching order
+            var ai = LoadCharacter().GetComponentInChildren<BaseAI>(true);
+            if (ai != null)
+            {
+                var aiSo = new SerializedObject(ai);
+                var aiSkills = aiSo.FindProperty("skills");
+                Assert.AreEqual(1, aiSkills.arraySize);
+                Assert.AreSame(generatedAsset, aiSkills.GetArrayElementAtIndex(0).objectReferenceValue);
+            }
+        }
+
+        [Test]
+        public void RemoveSkill_RemovesAssignmentFromCharacter_UtilityAssetFileRemains()
+        {
+            var edits = new PendingSkillEdits(new[] { "SKILL_F001" });
+            edits.Commit(LoadCharacter(), CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+
+            var skillDb = SBGames.Database.Editor.DatabaseAutoIndexer.GetOrCreateCatalog<SBGames.Database.SkillDatabaseSO>("SkillDatabase");
+            skillDb.TryGet("SKILL_F001", out var f001Data);
+            string assetPath = UtilitySkillGenerator.ResolveUtilityAssetPath(f001Data);
+            Assert.IsTrue(File.Exists(assetPath));
+
+            // Now remove
+            edits.RemoveAt(0);
+            Assert.IsTrue(edits.HasPrefabChanges);
+            var result = edits.Commit(LoadCharacter(), CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+            Assert.IsTrue(result.Success, string.Join("\n", result.Messages));
+
+            // Assignment removed from controller
+            Assert.AreEqual(0, ControllerEntries().Count);
+
+            // BaseAI skills empty
+            var ai = LoadCharacter().GetComponentInChildren<BaseAI>(true);
+            if (ai != null)
+            {
+                var aiSo = new SerializedObject(ai);
+                Assert.AreEqual(0, aiSo.FindProperty("skills").arraySize);
+            }
+
+            // Asset file MUST still exist on disk
+            Assert.IsTrue(File.Exists(assetPath), "Utility asset file must remain when skill is removed from character.");
+        }
+
+        [Test]
+        public void RevertBeforeSave_LeavesEverythingUntouched()
+        {
+            var edits = new PendingSkillEdits(new[] { SkillA });
+            edits.TryAdd("SKILL_F001");
+            Assert.AreEqual(2, edits.Ids.Count);
+            Assert.IsTrue(edits.HasPrefabChanges);
+
+            // Revert / Discard
+            edits.Discard();
+            Assert.IsFalse(edits.HasPrefabChanges);
+            Assert.AreEqual(1, edits.Ids.Count);
+            Assert.AreEqual(SkillA, edits.Ids[0]);
+        }
+
+        [Test]
+        public void SaveAllTwiceWithGeneratedUtility_IsIdempotent()
+        {
+            var edits = new PendingSkillEdits(new[] { "SKILL_F001" });
+            var res1 = edits.Commit(LoadCharacter(), CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+            Assert.IsTrue(res1.Success);
+
+            // Second commit
+            edits.RequestSync();
+            var res2 = edits.Commit(LoadCharacter(), CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+            Assert.IsTrue(res2.Success);
+            Assert.IsFalse(res2.PrefabModified, "Second save with unchanged edits must not modify the prefab.");
+            Assert.AreEqual(1, ControllerEntries().Count);
+        }
+
+        [Test]
+        public void Sync_FixesADVENTURER_N002()
+        {
+            var n002Prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Adventurer/Normal/ADVENTURER_N002.prefab");
+            Assert.IsNotNull(n002Prefab);
+
+            var db = SBGames.Database.Editor.DatabaseAutoIndexer.GetOrCreateCatalog<SBGames.Database.CharacterDatabaseSO>("CharacterDatabase");
+            var entry = db.Get("ADVENTURER_N002");
+            Assert.IsNotNull(entry);
+
+            // Request sync and commit
+            var edits = new PendingSkillEdits(entry.defaultSkillIds);
+            edits.RequestSync();
+            var result = edits.Commit(n002Prefab, CharacterPrefabSkillSync.ResolveCasterPrefab, AlwaysConfirm);
+            Assert.IsTrue(result.Success, string.Join("\n", result.Messages));
+
+            var issues = CharacterPrefabSkillSync.Analyze(n002Prefab, entry.defaultSkillIds, CharacterPrefabSkillSync.SkillExistsInDatabase);
+            Assert.AreEqual(0, issues.Count, string.Join("\n", issues.ConvertAll(i => i.Message)));
+        }
+
+        [Test]
+        public void Validation_WarnsWhenMageAgentCannotPlanHealSkill()
+        {
+            var n099Prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Adventurer/Normal/ADVENTURER_N099.prefab");
+            Assert.IsNotNull(n099Prefab);
+
+            var issues = CharacterPrefabSkillSync.Analyze(n099Prefab, new[] { "SKILL_HEAL_001" }, CharacterPrefabSkillSync.SkillExistsInDatabase);
+            Assert.IsTrue(issues.Exists(i => i.Kind == CharacterPrefabSkillSync.IssueKind.IncompatibleAgentType),
+                "Analyze must flag IncompatibleAgentType when MageAgent is assigned a heal skill.");
+        }
     }
 }

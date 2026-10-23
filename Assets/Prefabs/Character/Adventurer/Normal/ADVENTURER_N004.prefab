@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 2451453609999030683}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.373, y: -0.187, z: 0}
+  m_LocalPosition: {x: -0.446, y: -0.144, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AttackPointGizmo
   attackPoint: {fileID: 4113572694791228460}
-  attackRadius: 0.88
+  attackRadius: 0.51
 --- !u!1 &2484832861785974508
 GameObject:
   m_ObjectHideFlags: 0
@@ -332,15 +332,15 @@ Transform:
   m_GameObject: {fileID: 3908054586235029584}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: -1, y: 1, z: 1}
+  m_LocalPosition: {x: 0.191, y: -0.103, z: 0}
+  m_LocalScale: {x: -0.34360406, y: 0.34360406, z: 0.34360406}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 9123475087356498415}
   - {fileID: 5008752746928861009}
   - {fileID: 174042597692027851}
-  - {fileID: 1227564874639149830}
   - {fileID: 3242828158310861994}
-  - {fileID: 9123475087356498415}
+  - {fileID: 1227564874639149830}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &4720487203679971569
@@ -407,10 +407,14 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: 019464b743efac54ba57bee6c956fb2d, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -470,6 +474,10 @@ MonoBehaviour:
   attackPoint: {fileID: 4113572694791228460}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &1623164495324222089
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -699,7 +707,7 @@ MonoBehaviour:
   DetectionMode: 0
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -784,7 +792,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -992,7 +1000,7 @@ Transform:
   m_GameObject: {fileID: 5332228582002757497}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.4, y: -0.89, z: 0}
+  m_LocalPosition: {x: -1.85, y: -0.82, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1011,7 +1019,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkillSpawnPointGizmo
   skillSpawnPoint: {fileID: 3241360223034338486}
-  spawnRadius: 0.44
+  spawnRadius: 0.32
 --- !u!1 &6402958812785894024
 GameObject:
   m_ObjectHideFlags: 0
@@ -1298,6 +1306,7 @@ MonoBehaviour:
   skillController: {fileID: 7262561693635606610}
   vision: {fileID: 3454122867563807864}
   squadMember: {fileID: 5792024018542375232}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 06134285544a56545af885284e6508ec, type: 2}
@@ -1318,6 +1327,8 @@ MonoBehaviour:
   decisionThrottler: {fileID: 7623738017931133341}
   doorwayStaging: {fileID: 1890501060287980417}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
+  isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0

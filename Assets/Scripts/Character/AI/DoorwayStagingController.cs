@@ -71,6 +71,13 @@ namespace SBGames.Characters.AI
                 return;
             }
 
+            // Combat gate: cancel and skip hesitation if in combat or actively targeting an enemy
+            if (baseAI != null && (baseAI.ThreatLevel > 0 || baseAI.CurrentTarget != null))
+            {
+                if (isStaging) EndStaging();
+                return;
+            }
+
             if (isStaging)
             {
                 hesitationTimer -= Time.deltaTime;
@@ -178,9 +185,15 @@ namespace SBGames.Characters.AI
             if (!isStaging) return;
             isStaging = false;
 
-            if (navAgent != null && originalSpeed > 0f)
+            if (navAgent != null)
             {
-                navAgent.speed = originalSpeed;
+                float targetSpeed = (baseAI != null && baseAI.StatsManager != null && baseAI.StatsManager.Movespeed != null)
+                    ? baseAI.StatsManager.Movespeed.Value
+                    : originalSpeed;
+                if (targetSpeed > 0f)
+                {
+                    navAgent.speed = targetSpeed;
+                }
             }
 
             OnStagingCompleted?.Invoke();

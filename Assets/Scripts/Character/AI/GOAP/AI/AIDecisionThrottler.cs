@@ -116,6 +116,16 @@ public class AIDecisionThrottler : MonoBehaviour
     }
 
     /// <summary>
+    /// Requests an immediate strategic decision cycle, bypassing the remaining interval wait.
+    /// Used on combat entry transitions (e.g. threatLevel 0 -> >0).
+    /// </summary>
+    public void RequestImmediateDecision()
+    {
+        if (IsActionLocked) return;
+        nextDecisionTime = Time.time;
+    }
+
+    /// <summary>
     /// Immediately resets decision timing and interrupts current active plan.
     /// Triggered by combat events like stuns, knockbacks, or interruptions.
     /// </summary>

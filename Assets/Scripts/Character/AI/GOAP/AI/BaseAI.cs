@@ -1,3 +1,5 @@
+using SBGames.Character.AI;
+using SB4b1.GameMath;
 using System.Collections.Generic;
 using CrashKonijn.Agent.Runtime;
 using CrashKonijn.Goap.Runtime;
@@ -18,6 +20,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     [SerializeField] private CharacterSkillController skillController;
     [SerializeField] private VisionController vision;
     [SerializeField] private SquadMember squadMember;
+    [SerializeField] private PartyLeader partyLeader;
     [SerializeField] private List<UtilityGoal> goals;
 
     // Automatically populated from CharacterSkillController.Skills at runtime.
@@ -49,6 +52,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     public CharacterSkillController SkillController => skillController;
     public VisionController Vision => vision ??= (GetComponent<VisionController>() ?? GetComponentInChildren<VisionController>() ?? GetComponentInParent<VisionController>() ?? (transform.root != null ? transform.root.GetComponentInChildren<VisionController>() : null));
     public SquadMember SquadMember => squadMember ??= (GetComponent<SquadMember>() ?? GetComponentInParent<SquadMember>() ?? GetComponentInChildren<SquadMember>());
+    public PartyLeader PartyLeader => partyLeader ??= (GetComponent<PartyLeader>() ?? GetComponentInParent<PartyLeader>() ?? GetComponentInChildren<PartyLeader>());
     public CharacterPersonality Personality => personality ??= (GetComponent<CharacterPersonality>() ?? GetComponentInParent<CharacterPersonality>() ?? GetComponentInChildren<CharacterPersonality>());
     public CharacterAIMemory AIMemory => aiMemory ??= (GetComponent<CharacterAIMemory>() ?? GetComponentInChildren<CharacterAIMemory>() ?? GetComponentInParent<CharacterAIMemory>());
     public AIDecisionThrottler DecisionThrottler => decisionThrottler ??= (GetComponent<AIDecisionThrottler>() ?? GetComponentInChildren<AIDecisionThrottler>() ?? GetComponentInParent<AIDecisionThrottler>());
@@ -70,6 +74,25 @@ public class BaseAI : MonoBehaviour, IPoolable
     public float SkillRelianceMultiplier => classStyleTable != null ? Mathf.Lerp(0.5f, 1.5f, SkillReliance) : 1.0f;
     public float GoalHysteresisBonus { get => goalHysteresisBonus; set => goalHysteresisBonus = Mathf.Clamp(value, 0f, 0.5f); }
     public EnumUtilGoal ActiveGoal => activeGoal;
+    public EnumUtilGoal CurrentActiveGoalKey => activeGoal;
+    public bool IsCornered => CheckIsCornered();
+
+    [Header("Fight Outlook (Phase 6)")]
+    [SerializeField] private FightOutlookTuningSO fightOutlookTuning;
+    private FightOutlookCalculator.CalculationResult cachedFightOutlook;
+    private float lastOutlookUpdateTime = -999f;
+    private float lastNoiseRerollTime = -999f;
+    private float rankTtkNoiseFactor;
+    private float rankTtdNoiseFactor;
+    private GameRng fightRng = new GameRng(12345);
+    private bool fightRngInitialized;
+    private float goalSwitchTimestamp;
+    private float previousOutlookScore;
+
+    public FightOutlookTuningSO FightOutlookTuning { get => fightOutlookTuning; set => fightOutlookTuning = value; }
+    public FightOutlookCalculator.CalculationResult CachedFightOutlook => cachedFightOutlook;
+    public float GoalSwitchTimestamp => goalSwitchTimestamp;
+    public bool HasEscapeRoute => !IsCornered;
     public List<UtilityGoal> Goals { get => goals; set => goals = value; }
     public List<UtilitySkill> Skills => skills;
 
@@ -247,6 +270,10 @@ public class BaseAI : MonoBehaviour, IPoolable
             {
                 return SquadMember.Leader.Blackboard.KnownEnemies;
             }
+            if (PartyLeader != null && PartyLeader.Blackboard != null)
+            {
+                return PartyLeader.Blackboard.KnownEnemies;
+            }
             return localKnownEnemies;
         }
     }
@@ -260,6 +287,10 @@ public class BaseAI : MonoBehaviour, IPoolable
             if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
             {
                 return SquadMember.Leader.Blackboard.HasKnownEnemies;
+            }
+            if (PartyLeader != null && PartyLeader.Blackboard != null)
+            {
+                return PartyLeader.Blackboard.HasKnownEnemies;
             }
             return localKnownEnemies.Count > 0;
         }
@@ -410,6 +441,10 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     public void OnSpawn()
     {
+        threatLevel = 0;
+        fearLevel = 0;
+        currentTarget = null;
+        targetDistance = 0f;
         if (adventurerProfile != null)
         {
             ApplyAdventurerProfile(adventurerProfile);
@@ -418,6 +453,10 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     public void OnDespawn()
     {
+        threatLevel = 0;
+        fearLevel = 0;
+        currentTarget = null;
+        targetDistance = 0f;
     }
 
     public void SetSurvivalHpThreshold(float threshold)
@@ -556,8 +595,15 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     public void SenseEnemy()
     {
+        bool wasZeroThreat = threatLevel <= 0;
+
         // Increase threat level when sensing an enemy, scaled by trait/race
         threatLevel += Mathf.RoundToInt(10 * EffectiveThreatMultiplier);
+
+        if (wasZeroThreat && threatLevel > 0 && DecisionThrottler != null)
+        {
+            DecisionThrottler.RequestImmediateDecision();
+        }
 
         if (IsFearLocked)
         {
@@ -627,6 +673,10 @@ public class BaseAI : MonoBehaviour, IPoolable
                 {
                     SquadMember.Leader.Blackboard.ReportEnemy(enemy, enemy.position, currentTime);
                 }
+                else if (PartyLeader != null && PartyLeader.Blackboard != null)
+                {
+                    PartyLeader.Blackboard.ReportEnemy(enemy, enemy.position, currentTime);
+                }
             }
 
             // If we have spotted enemies and shout cooldown has elapsed, mark unalerted to allow alert shout
@@ -689,9 +739,16 @@ public class BaseAI : MonoBehaviour, IPoolable
             localKnownEnemies.Add(new KnownEnemyRecord(enemy, lastKnownPosition, currentTime, duration));
         }
 
-        if (!IsScoutingActive && HasSquadLeader && SquadMember.Leader.Blackboard != null)
+        if (!IsScoutingActive)
         {
-            SquadMember.Leader.Blackboard.ReportEnemy(enemy, lastKnownPosition, currentTime, duration);
+            if (HasSquadLeader && SquadMember.Leader.Blackboard != null)
+            {
+                SquadMember.Leader.Blackboard.ReportEnemy(enemy, lastKnownPosition, currentTime, duration);
+            }
+            else if (PartyLeader != null && PartyLeader.Blackboard != null)
+            {
+                PartyLeader.Blackboard.ReportEnemy(enemy, lastKnownPosition, currentTime, duration);
+            }
         }
 
         // Elevate ThreatLevel to enter combat readiness stance
@@ -746,6 +803,26 @@ public class BaseAI : MonoBehaviour, IPoolable
             }
 
             var members = leader.Members;
+            if (members != null)
+            {
+                for (int i = 0; i < members.Count; i++)
+                {
+                    var m = members[i];
+                    if (m != null && m.IsAlive && m.BaseAI != null && m.BaseAI != this)
+                    {
+                        m.BaseAI.ReceiveAlert(primaryTarget, targetPos);
+                    }
+                }
+            }
+        }
+        else if (PartyLeader != null)
+        {
+            if (primaryTarget != null && PartyLeader.Blackboard != null)
+            {
+                PartyLeader.Blackboard.ReportEnemy(primaryTarget, targetPos, lastAlertShoutTime);
+            }
+
+            var members = PartyLeader.Members;
             if (members != null)
             {
                 for (int i = 0; i < members.Count; i++)
@@ -1360,7 +1437,7 @@ public class BaseAI : MonoBehaviour, IPoolable
         return diff.sqrMagnitude <= (positionTolerance * positionTolerance);
     }
 
-    private Transform GetNearestThreatTransform(out float nearestDistance)
+    public Transform GetNearestThreatTransform(out float nearestDistance)
     {
         Transform best = null;
         float bestSqr = float.MaxValue;
@@ -1395,7 +1472,7 @@ public class BaseAI : MonoBehaviour, IPoolable
         return best;
     }
 
-    private Transform FindLivingPartyTankTransform(PartyLeader leader)
+    public Transform FindLivingPartyTankTransform(PartyLeader leader)
     {
         if (leader == null) return null;
 
@@ -1429,7 +1506,194 @@ public class BaseAI : MonoBehaviour, IPoolable
         return candidate;
     }
 
+        /// <summary>
+    /// Checks whether the unit cannot gain distance from the nearest threat (e.g. cornered against obstacle or enemy is faster).
+    /// Zero allocations.
+    /// </summary>
+    public bool CheckIsCornered()
+    {
+        Transform threat = currentTarget != null ? currentTarget : GetNearestThreatTransform(out _);
+        if (threat == null) return false;
+
+        float mySpeed = StatsManager != null && StatsManager.Movespeed != null ? StatsManager.Movespeed.Value : 3.5f;
+
+        // Check if enemy speed > my speed
+        if (threat.TryGetComponent<CharacterStatsManager>(out var threatStats) || (threat.parent != null && threat.parent.TryGetComponent<CharacterStatsManager>(out threatStats)))
+        {
+            float threatSpeed = threatStats.Movespeed != null ? threatStats.Movespeed.Value : 0f;
+            if (threatSpeed > mySpeed * 1.05f)
+            {
+                return true;
+            }
+        }
+
+        // Test if space away from threat is walkable on NavMesh
+        Vector3 myPos = transform.position;
+        Vector3 away = myPos - threat.position;
+        away.z = 0f;
+        Vector3 awayDir = away.sqrMagnitude > 0.001f ? away.normalized : -transform.right;
+        Vector3 probePos = myPos + awayDir * 1.5f;
+
+        // Only perform NavMesh boundary check if NavMesh is present / active at agent position
+        if (NavMesh.SamplePosition(myPos, out _, 1.0f, NavMesh.AllAreas))
+        {
+            if (!NavMesh.SamplePosition(probePos, out _, 0.8f, NavMesh.AllAreas))
+            {
+                // Direct retreat is blocked, try perpendicular checks
+                Vector3 perp1 = myPos + new Vector3(-awayDir.y, awayDir.x, 0f) * 1.5f;
+                Vector3 perp2 = myPos + new Vector3(awayDir.y, -awayDir.x, 0f) * 1.5f;
+                if (!NavMesh.SamplePosition(perp1, out _, 0.8f, NavMesh.AllAreas) &&
+                    !NavMesh.SamplePosition(perp2, out _, 0.8f, NavMesh.AllAreas))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    #region Fight Outlook
+
+    public void InitializeFightRngForTesting(uint seed)
+    {
+        fightRng = new GameRng(seed == 0 ? 1u : seed);
+        fightRngInitialized = true;
+    }
+
+    public void UpdateFightOutlook(float currentTime)
+    {
+        if (currentTime - lastOutlookUpdateTime < 0.2f && lastOutlookUpdateTime > 0f)
+        {
+            return;
+        }
+
+        lastOutlookUpdateTime = currentTime;
+
+        if (!fightRngInitialized)
+        {
+            uint seed = (uint)Mathf.Abs(GetEntityId().GetHashCode() ^ 0x3F1A7C5);
+            fightRng = new GameRng(seed == 0 ? 1u : seed);
+            fightRngInitialized = true;
+        }
+
+        var tuning = fightOutlookTuning;
+        float rerollInterval = tuning != null ? tuning.NoiseRerollInterval : 1.5f;
+        if (currentTime - lastNoiseRerollTime >= rerollInterval || lastNoiseRerollTime < 0f)
+        {
+            lastNoiseRerollTime = currentTime;
+            CharacterRank rank = CharacterRank.D;
+            if (AdventurerProfile != null) rank = AdventurerProfile.Rank;
+            else if (StatsManager != null && StatsManager.BaseStats != null) rank = StatsManager.BaseStats.characterRank;
+
+            float maxError = tuning != null ? tuning.GetRankErrorFactor(rank) : (rank == CharacterRank.E ? 0.4f : (rank == CharacterRank.D ? 0.15f : 0.02f));
+            if (maxError > 0.001f)
+            {
+                rankTtkNoiseFactor = fightRng.Range(-maxError, maxError);
+                rankTtdNoiseFactor = fightRng.Range(-maxError, maxError);
+            }
+            else
+            {
+                rankTtkNoiseFactor = 0f;
+                rankTtdNoiseFactor = 0f;
+            }
+        }
+
+        // Aggregate self and target stats
+        float selfLife = StatsManager != null && StatsManager.Life > 0f ? StatsManager.Life : 100f;
+        float selfMaxLife = StatsManager != null && StatsManager.MaxLife != null ? StatsManager.MaxLife.Value : 100f;
+        float selfDamage = StatsManager != null && StatsManager.Damage != null ? StatsManager.Damage.Value : 10f;
+        float selfAtkInterval = StatsManager != null && StatsManager.AttackTimeInterval != null ? Mathf.Max(0.1f, StatsManager.AttackTimeInterval.Value) : 1f;
+        float selfDps = selfDamage / selfAtkInterval;
+
+        float targetLife = 50f;
+        float targetMaxLife = 50f;
+        if (currentTarget != null)
+        {
+            if (currentTarget.TryGetComponent<CharacterStatsManager>(out var tStats) || (currentTarget.parent != null && currentTarget.parent.TryGetComponent<CharacterStatsManager>(out tStats)))
+            {
+                targetLife = tStats.Life;
+                targetMaxLife = tStats.MaxLife != null ? tStats.MaxLife.Value : 50f;
+            }
+        }
+
+        // Aggregate nearby allies DPS vs target
+        float alliesDps = 0f;
+        if (allyTargets != null && allyTargets.Count > 0)
+        {
+            Vector3 myPos = transform.position;
+            for (int i = 0; i < allyTargets.Count; i++)
+            {
+                var a = allyTargets[i];
+                if (a == null || a == transform) continue;
+                if ((a.position - myPos).sqrMagnitude <= 64f) // within 8m
+                {
+                    if (a.TryGetComponent<CharacterStatsManager>(out var aStats) || (a.parent != null && a.parent.TryGetComponent<CharacterStatsManager>(out aStats)))
+                    {
+                        float aDmg = aStats.Damage != null ? aStats.Damage.Value : 10f;
+                        float aInt = aStats.AttackTimeInterval != null ? Mathf.Max(0.2f, aStats.AttackTimeInterval.Value) : 1f;
+                        alliesDps += (aDmg / aInt);
+                    }
+                }
+            }
+        }
+
+        // Aggregate nearby enemies incoming DPS
+        float incomingDps = 0f;
+        if (enemyTargets != null && enemyTargets.Count > 0)
+        {
+            Vector3 myPos = transform.position;
+            for (int i = 0; i < enemyTargets.Count; i++)
+            {
+                var e = enemyTargets[i];
+                if (e == null) continue;
+                if ((e.position - myPos).sqrMagnitude <= 64f)
+                {
+                    if (e.TryGetComponent<CharacterStatsManager>(out var eStats) || (e.parent != null && e.parent.TryGetComponent<CharacterStatsManager>(out eStats)))
+                    {
+                        float eDmg = eStats.Damage != null ? eStats.Damage.Value : 10f;
+                        float eInt = eStats.AttackTimeInterval != null ? Mathf.Max(0.2f, eStats.AttackTimeInterval.Value) : 1f;
+                        incomingDps += (eDmg / eInt);
+                    }
+                }
+            }
+        }
+
+        if (incomingDps < 0.5f) incomingDps = 0.5f;
+
+        float courageBias = 0f;
+        if (Personality != null && Personality.ActiveTrait != null)
+        {
+            courageBias = Personality.ActiveTrait.NeverFlee ? 1.0f : (Personality.ActiveTrait.FearMultiplier < 0.5f ? 0.5f : (Personality.ActiveTrait.FearMultiplier > 1.5f ? -0.8f : 0f));
+        }
+
+        float functionTolerance = tuning != null ? tuning.GetFunctionTolerance(EffectiveFunction) : (EffectiveFunction == AdventurerFunction.Tank ? 1.5f : (EffectiveFunction == AdventurerFunction.Healer ? 0.65f : 1.0f));
+
+        float hpFrac = selfMaxLife > 0f ? selfLife / selfMaxLife : 1f;
+        bool isHardSafety = hpFrac <= 0.20f || hpFrac <= SurvivalHpThreshold;
+
+        var input = new FightOutlookCalculator.CalculationInput
+        {
+            SelfLife = selfLife,
+            SelfMaxLife = selfMaxLife,
+            SelfDps = selfDps,
+            TargetLife = targetLife,
+            TargetMaxLife = targetMaxLife,
+            NearbyAlliesDps = alliesDps,
+            IncomingEnemiesDps = incomingDps,
+            CourageBias = courageBias,
+            FunctionTolerance = functionTolerance,
+            RankTtkNoiseFactor = rankTtkNoiseFactor,
+            RankTtdNoiseFactor = rankTtdNoiseFactor,
+            IsHardSafetyTrigger = isHardSafety
+        };
+
+        cachedFightOutlook = FightOutlookCalculator.Calculate(input, tuning);
+    }
+
     #endregion
+
+#endregion
 
     /// <summary>
     /// Computes a trait-weighted and profile-priority-weighted target utility score for a given target transform

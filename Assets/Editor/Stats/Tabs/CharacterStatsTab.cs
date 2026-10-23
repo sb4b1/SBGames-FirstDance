@@ -62,6 +62,8 @@ namespace SBGames.Editor.Stats.Tabs
             public int Level = 1;
             public CharacterRank Rank = CharacterRank.D;
             public BasicAttackMode BasicAttackMode = BasicAttackMode.Auto;
+            public KeepDistanceMode KeepDistanceMode = KeepDistanceMode.Auto;
+            public float ComfortDistanceOverride = 0f;
             public float MaxLife = 100f;
             public float MaxMana = 50f;
             public float LifeRegen = 0f;
@@ -198,6 +200,8 @@ namespace SBGames.Editor.Stats.Tabs
                         row.Level = row.BaseStatsSO.characterLevel;
                         row.Rank = row.BaseStatsSO.characterRank;
                         row.BasicAttackMode = row.BaseStatsSO.basicAttackMode;
+                        row.KeepDistanceMode = row.BaseStatsSO.keepDistanceMode;
+                        row.ComfortDistanceOverride = row.BaseStatsSO.comfortDistanceOverride;
                         row.MaxLife = row.BaseStatsSO.MaxLife;
                         row.MaxMana = row.BaseStatsSO.MaxMana;
                         row.LifeRegen = row.BaseStatsSO.LifeRegen;
@@ -241,6 +245,8 @@ namespace SBGames.Editor.Stats.Tabs
                     Level = statAsset.characterLevel,
                     Rank = statAsset.characterRank,
                     BasicAttackMode = statAsset.basicAttackMode,
+                    KeepDistanceMode = statAsset.keepDistanceMode,
+                    ComfortDistanceOverride = statAsset.comfortDistanceOverride,
                     MaxLife = statAsset.MaxLife,
                     MaxMana = statAsset.MaxMana,
                     LifeRegen = statAsset.LifeRegen,
@@ -310,6 +316,8 @@ namespace SBGames.Editor.Stats.Tabs
                     row.BaseStatsSO.characterLevel = row.Level;
                     row.BaseStatsSO.characterRank = row.Rank;
                     row.BaseStatsSO.basicAttackMode = row.BasicAttackMode;
+                    row.BaseStatsSO.keepDistanceMode = row.KeepDistanceMode;
+                    row.BaseStatsSO.comfortDistanceOverride = row.ComfortDistanceOverride;
                     row.BaseStatsSO.MaxLife = row.MaxLife;
                     row.BaseStatsSO.MaxMana = row.MaxMana;
                     row.BaseStatsSO.LifeRegen = Mathf.Max(0f, row.LifeRegen);
@@ -470,6 +478,17 @@ namespace SBGames.Editor.Stats.Tabs
                             r.MarkDirty();
                         }
                     }
+
+                    var prevColor = GUI.backgroundColor;
+                    GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
+                    var deleteContent = new GUIContent($"🗑️ Delete ({selectedCount})",
+                        "Delete selected characters from database and delete their linked prefab/BaseStats assets from disk.");
+                    if (GUILayout.Button(deleteContent, EditorStyles.toolbarButton, GUILayout.Width(105)))
+                    {
+                        var selectedRows = _rows.Where(r => r.IsSelected).ToList();
+                        DeleteCharacters(selectedRows);
+                    }
+                    GUI.backgroundColor = prevColor;
                 }
 
                 EditorGUILayout.Space(4);
@@ -648,7 +667,7 @@ namespace SBGames.Editor.Stats.Tabs
                 DrawSortHeader("Interval", SortColumn.AttackInterval, 60);
 
                 GUILayout.FlexibleSpace();
-                GUILayout.Label("Actions", EditorStyles.boldLabel, GUILayout.Width(60));
+                GUILayout.Label("Actions", EditorStyles.boldLabel, GUILayout.Width(88));
             }
         }
 
@@ -829,7 +848,7 @@ namespace SBGames.Editor.Stats.Tabs
                     GUILayout.FlexibleSpace();
 
                     // Inspect / Select button
-                    if (GUILayout.Button(isSelectedRow ? "▼ Inspect" : "▶ Select", EditorStyles.miniButton, GUILayout.Width(60)))
+                    if (GUILayout.Button(isSelectedRow ? "▼ Inspect" : "▶ Select", EditorStyles.miniButtonLeft, GUILayout.Width(60)))
                     {
                         _selectedRow = isSelectedRow ? null : row;
                         if (_selectedRow != null && _selectedRow.BaseStatsSO != null)
@@ -837,6 +856,16 @@ namespace SBGames.Editor.Stats.Tabs
                             EditorGUIUtility.PingObject(_selectedRow.BaseStatsSO);
                         }
                     }
+
+                    // Delete button
+                    var prevBg = GUI.backgroundColor;
+                    GUI.backgroundColor = new Color(1f, 0.45f, 0.45f);
+                    if (GUILayout.Button("✕", EditorStyles.miniButtonRight, GUILayout.Width(24)))
+                    {
+                        DeleteCharacters(new List<CharacterRow> { row });
+                        GUIUtility.ExitGUI();
+                    }
+                    GUI.backgroundColor = prevBg;
                 }
             }
 
@@ -890,6 +919,40 @@ namespace SBGames.Editor.Stats.Tabs
                         _selectedRow.BasicAttackMode = newInspectorMode;
                         _selectedRow.MarkDirty();
                     }
+
+                    EditorGUI.BeginChangeCheck();
+                    var newKeepMode = (KeepDistanceMode)EditorGUILayout.EnumPopup("Keep Distance Mode", _selectedRow.KeepDistanceMode);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        _selectedRow.KeepDistanceMode = newKeepMode;
+                        _selectedRow.MarkDirty();
+                    }
+
+                    EditorGUI.BeginChangeCheck();
+                    float newComfortOverride = EditorGUILayout.FloatField("Comfort Distance Override", _selectedRow.ComfortDistanceOverride);
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        _selectedRow.ComfortDistanceOverride = Mathf.Max(0f, newComfortOverride);
+                        _selectedRow.MarkDirty();
+                    }
+
+                    // Display resolved Auto status
+                    float longestSkillRange = 0f;
+                    if (_selectedRow.Prefab != null)
+                    {
+                        var skCtrl = _selectedRow.Prefab.GetComponentInChildren<CharacterSkillController>(true);
+                        if (skCtrl != null && skCtrl.Skills != null)
+                        {
+                            foreach (var sk in skCtrl.Skills)
+                            {
+                                if (sk != null && sk.Data != null && sk.Data.EffectiveRange > longestSkillRange)
+                                    longestSkillRange = sk.Data.EffectiveRange;
+                            }
+                        }
+                    }
+                    float resolvedRefRange = SBGames.Character.KeepDistanceResolver.ResolveReferenceRange(_selectedRow.AttackRange, _selectedRow.BasicAttackMode, longestSkillRange);
+                    bool resolvedAutoEnabled = SBGames.Character.KeepDistanceResolver.ResolveIsEnabled(_selectedRow.KeepDistanceMode, resolvedRefRange, 3.0f);
+                    EditorGUILayout.LabelField("Resolved Keep Distance", resolvedAutoEnabled ? $"Enabled (Ref Range: {resolvedRefRange:F1}m)" : $"Disabled (Ref Range: {resolvedRefRange:F1}m)", EditorStyles.miniBoldLabel);
 
                     if (!string.IsNullOrEmpty(_selectedRow.Id) &&
                         !string.IsNullOrEmpty(_selectedRow.OriginalId) &&
@@ -1022,7 +1085,16 @@ namespace SBGames.Editor.Stats.Tabs
             {
                 PopupWindow.Show(buttonRect, new SkillPickerPopup(row.SkillEdits.Contains, id =>
                 {
-                    if (row.SkillEdits.TryAdd(id)) OnSkillListChanged(row);
+                    if (row.SkillEdits.TryAdd(id))
+                    {
+                        // Auto-wire / ensure the UtilitySkill asset exists so missing-utility warning stops recurring
+                        var skillDb = DatabaseAutoIndexer.GetOrCreateCatalog<SkillDatabaseSO>("SkillDatabase");
+                        if (skillDb != null && skillDb.TryGet(id, out var skillData) && skillData != null)
+                        {
+                            UtilitySkillGenerator.EnsureUtilityAssetExists(skillData, out _);
+                        }
+                        OnSkillListChanged(row);
+                    }
                     _window.Repaint();
                 }));
             };
@@ -1290,6 +1362,89 @@ namespace SBGames.Editor.Stats.Tabs
                     }
                 }
             }
+        }
+
+        private void DeleteCharacters(List<CharacterRow> rowsToDelete)
+        {
+            if (rowsToDelete == null || rowsToDelete.Count == 0) return;
+
+            string idListStr = string.Join("\n", rowsToDelete.Take(10).Select(r => $"• {r.Id} ({r.Name})"));
+            if (rowsToDelete.Count > 10) idListStr += $"\n... and {rowsToDelete.Count - 10} more";
+
+            bool confirm = EditorUtility.DisplayDialog(
+                "Delete Character(s)?",
+                $"Are you sure you want to delete {rowsToDelete.Count} character(s)?\n\n" +
+                $"{idListStr}\n\n" +
+                "This will remove them from CharacterDatabase and permanently delete their linked Prefab and BaseStats ScriptableObject from disk.",
+                "Delete",
+                "Cancel");
+
+            if (!confirm) return;
+
+            try
+            {
+                AssetDatabase.StartAssetEditing();
+
+                var deletedAssets = new List<string>();
+                var idsToDelete = new HashSet<string>(rowsToDelete.Select(r => r.Id), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var row in rowsToDelete)
+                {
+                    // 1. Delete Prefab if present
+                    if (row.Prefab != null)
+                    {
+                        string prefabPath = AssetDatabase.GetAssetPath(row.Prefab);
+                        if (!string.IsNullOrEmpty(prefabPath))
+                        {
+                            if (AssetDatabase.DeleteAsset(prefabPath))
+                            {
+                                deletedAssets.Add(prefabPath);
+                            }
+                        }
+                    }
+
+                    // 2. Delete BaseStats SO if present
+                    if (row.BaseStatsSO != null)
+                    {
+                        string statsPath = AssetDatabase.GetAssetPath(row.BaseStatsSO);
+                        if (!string.IsNullOrEmpty(statsPath))
+                        {
+                            if (AssetDatabase.DeleteAsset(statsPath))
+                            {
+                                deletedAssets.Add(statsPath);
+                            }
+                        }
+                    }
+
+                    if (_selectedRow == row)
+                    {
+                        _selectedRow = null;
+                    }
+                }
+
+                // 3. Remove entries from CharacterDatabase catalog
+                var charDb = DatabaseAutoIndexer.GetOrCreateCatalog<CharacterDatabaseSO>("CharacterDatabase");
+                if (charDb != null && charDb.characters != null)
+                {
+                    charDb.characters.RemoveAll(entry => entry != null && idsToDelete.Contains(entry.id));
+                    EditorUtility.SetDirty(charDb);
+                }
+
+                // Remove from in-memory row list
+                _rows.RemoveAll(r => idsToDelete.Contains(r.Id));
+
+                // Log outcome
+                Debug.Log($"[CharacterStatsTab] Successfully deleted {rowsToDelete.Count} character(s). Deleted {deletedAssets.Count} linked asset file(s).");
+            }
+            finally
+            {
+                AssetDatabase.StopAssetEditing();
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+            }
+
+            CheckForDuplicateIds();
+            _window?.Repaint();
         }
     }
 }

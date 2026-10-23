@@ -406,11 +406,11 @@ Transform:
   m_LocalScale: {x: -0.32012323, y: 0.32012323, z: 0.32012323}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 3846978223711335471}
   - {fileID: 7429895958046266473}
   - {fileID: 4726701587038243235}
-  - {fileID: 1344340666105320189}
   - {fileID: 9174762477760179091}
-  - {fileID: 3846978223711335471}
+  - {fileID: 1344340666105320189}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &8081658140742626574
@@ -477,10 +477,14 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: 99a6aaa0718b9444db6a8e5a54f44a30, type: 2}
   isImmortal: 0
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0
   maxMana: 0
+  lifeRegen: 0
+  manaRegen: 0
   movespeed: 0
   damage: 0
   attackRange: 0
@@ -540,6 +544,10 @@ MonoBehaviour:
   attackPoint: {fileID: 6336286849263395853}
   attackRadius: 0.4
   factionMember: {fileID: 0}
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 12
+  projectileLifetime: 2
+  projectileDamageType: 0
 --- !u!114 &2307823551819062252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -769,7 +777,7 @@ MonoBehaviour:
   DetectionMode: 0
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -854,7 +862,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -1298,6 +1306,7 @@ MonoBehaviour:
   skillController: {fileID: 4473942381643326332}
   vision: {fileID: 1909393160565090966}
   squadMember: {fileID: 4518325552919994184}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 6089ce3efa2c61b46bb76116ed16f8dc, type: 2}
   - {fileID: 11400000, guid: 06134285544a56545af885284e6508ec, type: 2}
@@ -1318,6 +1327,8 @@ MonoBehaviour:
   decisionThrottler: {fileID: 6916018912375049304}
   doorwayStaging: {fileID: 8879019500829819714}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
+  isCannotCast: 0
   agentType: NormalAgent
   currentTarget: {fileID: 0}
   targetDistance: 0

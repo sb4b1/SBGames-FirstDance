@@ -20,11 +20,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 96bd16c15a8fe0f4f978d636125712bb
-    m_Address: Assets/Prefabs/Characters/Monsters/Normal/NC001.prefab
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 846188ba22afdf64090fdfb191f15527, type: 2}
   m_SchemaSet:

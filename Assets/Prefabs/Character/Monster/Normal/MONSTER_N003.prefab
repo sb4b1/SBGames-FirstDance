@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 8506153992226806661}
   - component: {fileID: 2076495269755198092}
   m_Layer: 0
-  m_Name: AI
+  m_Name: CoreAI
   m_TagString: AI_Augment
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -105,6 +105,7 @@ MonoBehaviour:
   skillController: {fileID: 3600893691429238899}
   vision: {fileID: 702092201881385082}
   squadMember: {fileID: 125464081212712908}
+  partyLeader: {fileID: 0}
   goals:
   - {fileID: 11400000, guid: 764a756b5ae23a44db23d5d835e4baa2, type: 2}
   - {fileID: 11400000, guid: 26a318c9485a2d341b9decefd6b157e6, type: 2}
@@ -123,6 +124,7 @@ MonoBehaviour:
   decisionThrottler: {fileID: 0}
   doorwayStaging: {fileID: 0}
   goalHysteresisBonus: 0.08
+  fightOutlookTuning: {fileID: 11400000, guid: b293229d643751942b53772a79afbd92, type: 2}
   isCannotCast: 0
   agentType: MinionAgent
   currentTarget: {fileID: 0}
@@ -676,7 +678,7 @@ MonoBehaviour:
   DetectionMode: 1
   Shape: 0
   Circle:
-    Radius: 5
+    Radius: 10
   Box:
     HalfExtents: {x: 0.5, y: 0.5}
   Capsule:
@@ -761,7 +763,7 @@ MonoBehaviour:
   MovingAverageEnabled: 0
   MovingAverageWindowSize: 10
   LimitDistance: 1
-  MaxDistance: 5
+  MaxDistance: 10
   VisibilityByDistance:
     Mode: 0
     Curve:
@@ -1008,7 +1010,8 @@ MonoBehaviour:
   level: 1
   baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}
   isImmortal: 0
-  regenTuning: {fileID: 0}
+  regenTuning: {fileID: 11400000, guid: 1f8065b61dc271446bc186f906f8f77c, type: 2}
+  keepDistanceTuning: {fileID: 0}
   life: 0
   mana: 0
   maxLife: 0

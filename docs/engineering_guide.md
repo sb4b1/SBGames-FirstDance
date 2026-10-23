@@ -227,7 +227,7 @@ All code executing in `Update()`, `FixedUpdate()`, GOAP `Sense()`, `Perform()`, 
    - Set attributes (`MaxLife`, `Damage`, `AttackRange`, `Movespeed`, `AttackTimeInterval`).
    - Sync values with `Assets/DataTables/CharacterStats.csv` via `StatBalanceManagerWindow`.
 2. **Construct Prefab**:
-   - Root GameObject: Add `CharacterBrain`, `CharacterStatsManager`, `CharacterCombatController`, `AnimationObjectController`, `FactionMember`, and `CapsuleCollider2D`.
+   - Root GameObject: Add `CharacterBrain`, `CharacterStatsManager`, `CharacterCombatController`, `AnimationObjectController`, and `FactionMember`. Body collision uses a non-trigger collider (conventionally a nested `BoxCollider2D` under Collision/Hitbox, or a root collider).
    - Set Layer to `Character` (6). Set Tag to `Monster` or `Adventurer`.
 3. **Attach `AI_Augment` Child**:
    - Create child named `AI_Augment` with Tag `AI_Augment`.

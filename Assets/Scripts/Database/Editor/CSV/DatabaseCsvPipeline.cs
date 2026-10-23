@@ -287,7 +287,7 @@ namespace SBGames.Database.Editor.CSV
 
         public static readonly string[] CharacterHeaders =
         {
-            "Id", "CharacterName", "MaxLife", "MaxMana", "LifeRegen", "ManaRegen", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds", "BasicAttackMode"
+            "Id", "CharacterName", "MaxLife", "MaxMana", "LifeRegen", "ManaRegen", "Movespeed", "Damage", "AttackRange", "AttackTimeInterval", "DefaultSkillIds", "Function", "Wealth", "ExtraItemIds", "BasicAttackMode", "KeepDistanceMode", "ComfortDistanceOverride"
         };
 
         private const AdventurerFunction AllAdventurerFunctions =
@@ -335,6 +335,33 @@ namespace SBGames.Database.Editor.CSV
             return BasicAttackMode.Auto;
         }
 
+        public static KeepDistanceMode ParseKeepDistanceMode(IReadOnlyDictionary<string, string> row)
+        {
+            if (row != null &&
+                row.TryGetValue("KeepDistanceMode", out var modeStr) &&
+                !string.IsNullOrWhiteSpace(modeStr) &&
+                Enum.TryParse<KeepDistanceMode>(modeStr.Trim(), true, out var parsedMode) &&
+                Enum.IsDefined(typeof(KeepDistanceMode), parsedMode))
+            {
+                return parsedMode;
+            }
+
+            return KeepDistanceMode.Auto;
+        }
+
+        public static float ParseComfortDistanceOverride(IReadOnlyDictionary<string, string> row)
+        {
+            if (row != null &&
+                row.TryGetValue("ComfortDistanceOverride", out var distStr) &&
+                !string.IsNullOrWhiteSpace(distStr) &&
+                float.TryParse(distStr.Trim(), out var parsedDist))
+            {
+                return Mathf.Max(0f, parsedDist);
+            }
+
+            return 0f;
+        }
+
         public static Dictionary<string, string> BuildCharacterCsvRow(CharacterEntry c)
         {
             string extraItems = string.Empty;
@@ -345,6 +372,42 @@ namespace SBGames.Database.Editor.CSV
             else if (c?.baseStats != null && c.baseStats.ExtraItemIds != null && c.baseStats.ExtraItemIds.Count > 0)
             {
                 extraItems = string.Join(";", c.baseStats.ExtraItemIds);
+            }
+
+            // Derive DefaultSkillIds: from entry if present, otherwise fallback to prefab's CharacterSkillController
+            string defaultSkillIdsStr = string.Empty;
+            if (c?.defaultSkillIds != null && c.defaultSkillIds.Count > 0)
+            {
+                defaultSkillIdsStr = string.Join(";", c.defaultSkillIds);
+            }
+            else
+            {
+                var prefab = c?.GetPrefabDirect();
+                if (prefab != null)
+                {
+                    var skillCtrl = prefab.GetComponentInChildren<CharacterSkillController>(true);
+                    if (skillCtrl != null && skillCtrl.Skills != null && skillCtrl.Skills.Count > 0)
+                    {
+                        var ids = new List<string>();
+                        foreach (var s in skillCtrl.Skills)
+                        {
+                            if (s == null) continue;
+                            if (s.SkillPrefab != null)
+                            {
+                                var caster = s.SkillPrefab.GetComponent<SkillCaster>();
+                                if (caster != null && caster.Data != null && !string.IsNullOrWhiteSpace(caster.Data.skillID))
+                                    ids.Add(caster.Data.skillID);
+                                else if (!string.IsNullOrWhiteSpace(s.SkillPrefab.name))
+                                    ids.Add(s.SkillPrefab.name);
+                            }
+                            else if (s.Data != null && !string.IsNullOrWhiteSpace(s.Data.skillID))
+                            {
+                                ids.Add(s.Data.skillID);
+                            }
+                        }
+                        if (ids.Count > 0) defaultSkillIdsStr = string.Join(";", ids);
+                    }
+                }
             }
 
             return new Dictionary<string, string>
@@ -359,11 +422,13 @@ namespace SBGames.Database.Editor.CSV
                 ["Damage"] = c?.baseStats != null ? c.baseStats.Damage.ToString("F1") : "10",
                 ["AttackRange"] = c?.baseStats != null ? c.baseStats.AttackRange.ToString("F1") : "1",
                 ["AttackTimeInterval"] = c?.baseStats != null ? c.baseStats.AttackTimeInterval.ToString("F1") : "1",
-                ["DefaultSkillIds"] = c?.defaultSkillIds != null ? string.Join(";", c.defaultSkillIds) : string.Empty,
+                ["DefaultSkillIds"] = defaultSkillIdsStr,
                 ["Function"] = c?.baseStats != null ? c.baseStats.characterFunction.ToString() : AdventurerFunction.None.ToString(),
                 ["Wealth"] = c?.baseStats != null ? c.baseStats.characterWealth.ToString() : AdventurerWealth.Average.ToString(),
                 ["ExtraItemIds"] = extraItems,
-                ["BasicAttackMode"] = c?.baseStats != null ? c.baseStats.basicAttackMode.ToString() : BasicAttackMode.Auto.ToString()
+                ["BasicAttackMode"] = c?.baseStats != null ? c.baseStats.basicAttackMode.ToString() : BasicAttackMode.Auto.ToString(),
+                ["KeepDistanceMode"] = c?.baseStats != null ? c.baseStats.keepDistanceMode.ToString() : KeepDistanceMode.Auto.ToString(),
+                ["ComfortDistanceOverride"] = c?.baseStats != null ? c.baseStats.comfortDistanceOverride.ToString("F1") : "0.0"
             };
         }
 
@@ -382,6 +447,8 @@ namespace SBGames.Database.Editor.CSV
             baseStats.characterFunction = ParseAdventurerFunction(row);
             baseStats.characterWealth = ParseAdventurerWealth(row);
             baseStats.basicAttackMode = ParseBasicAttackMode(row);
+            baseStats.keepDistanceMode = ParseKeepDistanceMode(row);
+            baseStats.comfortDistanceOverride = ParseComfortDistanceOverride(row);
 
             if (row.TryGetValue("ExtraItemIds", out var extraStr))
             {

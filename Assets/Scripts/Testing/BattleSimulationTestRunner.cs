@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using SBGames.Dungeon.Markers;
 using UnityEngine;
 
 namespace SBGames.Testing
@@ -151,6 +152,37 @@ namespace SBGames.Testing
             public void OnDamagedHandler(DamageData dmg)
             {
                 RecordDamageTaken(dmg.Amount);
+
+                if (ownerRunner != null && dmg.Amount > 0f && dmg.Source != null)
+                {
+                    var all = ownerRunner.activeCombatants;
+                    for (int i = 0; i < all.Count; i++)
+                    {
+                        var c = all[i];
+                        if (c == null) continue;
+
+                        if (dmg.Source is CharacterStatsManager statsSource && c.Stats == statsSource)
+                        {
+                            c.RecordDamageDealt(dmg.Amount);
+                            break;
+                        }
+                        else if (dmg.Source is SkillInstance skillInst && skillInst.CasterGameObject == c.GameObject)
+                        {
+                            c.RecordDamageDealt(dmg.Amount);
+                            break;
+                        }
+                        else if (dmg.Source is GameObject goSource && c.GameObject == goSource)
+                        {
+                            c.RecordDamageDealt(dmg.Amount);
+                            break;
+                        }
+                        else if (dmg.Source is Component compSource && c.GameObject == compSource.gameObject)
+                        {
+                            c.RecordDamageDealt(dmg.Amount);
+                            break;
+                        }
+                    }
+                }
             }
 
             public void OnLifeRestoredHandler(float amount)
@@ -454,6 +486,12 @@ namespace SBGames.Testing
 
             if (leader != null)
             {
+                var evaluator = leader.GetComponent<SquadTacticalEvaluator>();
+                if (evaluator == null)
+                {
+                    evaluator = leader.gameObject.AddComponent<SquadTacticalEvaluator>();
+                }
+
                 for (int i = 0; i < adventurerCombatants.Count; i++)
                 {
                     var combatant = adventurerCombatants[i];
@@ -465,6 +503,21 @@ namespace SBGames.Testing
                         member = combatant.GameObject.AddComponent<SquadMember>();
                     }
                     leader.RegisterMember(member);
+                }
+
+                // If sandbox has no dungeon rooms, ensure blackboard starts in FocusFire / Engage mode
+                if (DungeonRoomRegistry.Rooms.Count == 0 && monsterCombatants.Count > 0)
+                {
+                    Transform initialTarget = null;
+                    for (int m = 0; m < monsterCombatants.Count; m++)
+                    {
+                        if (monsterCombatants[m] != null && monsterCombatants[m].GameObject != null)
+                        {
+                            initialTarget = monsterCombatants[m].GameObject.transform;
+                            break;
+                        }
+                    }
+                    leader.Blackboard.SetOrder(SquadOrderType.FocusFire, initialTarget, initialTarget != null ? initialTarget.position : Vector3.zero);
                 }
             }
 

@@ -25,6 +25,10 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     public BasicAttackMode BasicAttackMode => basicAttackModeOverride ?? (baseStats != null ? baseStats.basicAttackMode : BasicAttackMode.Auto);
     public void SetFunctionOverride(AdventurerFunction func) => functionOverride = func;
     public void SetBasicAttackModeOverride(BasicAttackMode mode) => basicAttackModeOverride = mode;
+    private KeepDistanceMode? keepDistanceModeOverride;
+    public KeepDistanceMode KeepDistanceMode => keepDistanceModeOverride ?? (baseStats != null ? baseStats.keepDistanceMode : KeepDistanceMode.Auto);
+    public float ComfortDistanceOverride => baseStats != null ? baseStats.comfortDistanceOverride : 0f;
+    public void SetKeepDistanceModeOverride(KeepDistanceMode mode) => keepDistanceModeOverride = mode;
 
     [Header("Immortality / Training")]
     [SerializeField] private bool isImmortal;
@@ -34,6 +38,10 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
     [SerializeField] private RegenTuningSO regenTuning;
     public RegenTuningSO RegenTuning => regenTuning;
     public void SetRegenTuning(RegenTuningSO tuning) => regenTuning = tuning;
+    [Header("Keep Distance")]
+    [SerializeField] private KeepDistanceTuningSO keepDistanceTuning;
+    public KeepDistanceTuningSO KeepDistanceTuning => keepDistanceTuning;
+    public void SetKeepDistanceTuning(KeepDistanceTuningSO tuning) => keepDistanceTuning = tuning;
 
     private float timeSinceLastDamageTakenOrDealt;
     private bool isApplyingRegen;
