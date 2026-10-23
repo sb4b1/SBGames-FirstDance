@@ -47,6 +47,7 @@ namespace SBGames.Testing
             public float damageDealt;
             public float damageTaken;
             public float healingReceived;
+            public float overhealReceived;
             public float healingDone;
 
             // Positioning metrics
@@ -694,6 +695,7 @@ namespace SBGames.Testing
                     roleTelemetries[i].damageDealt = c.DamageDealt;
                     roleTelemetries[i].damageTaken = c.DamageTaken;
                     roleTelemetries[i].healingReceived = c.HealingReceived;
+                    roleTelemetries[i].overhealReceived = c.OverhealReceived;
                     roleTelemetries[i].healingDone = c.SkillHealingReceived; // tracked per receiver or caster
                 }
 

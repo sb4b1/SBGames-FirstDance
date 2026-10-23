@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "command": "command eval_file",
+  "data": {
+    "command": "eval_file",
+    "parameters": {
+      "file": "C:\\Users\\Admin\\AppData\\Local\\Temp\\heal_final_config.cs"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "skill": {
+          "id": "SKILL_HEAL_001",
+          "cooldown": 1,
+          "mana": 10,
+          "range": 6,
+          "windup": 0.5,
+          "baseHeal": 25,
+          "anchor": "Feet"
+        },
+        "character": {
+          "life": 80,
+          "mana": 60,
+          "damage": 8,
+          "moveSpeed": 4.5,
+          "rank": "E",
+          "function": "Healer",
+          "characterClass": "Cleric"
+        },
+        "art": {
+          "filter": "Point",
+          "compression": "Uncompressed",
+          "alpha": true,
+          "ppu": 100
+        }
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

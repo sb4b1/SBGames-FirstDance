@@ -5,6 +5,7 @@ using System.Linq;
 using SBGames.Database;
 using SBGames.Database.Editor;
 using SBGames.Database.Editor.CSV;
+using SBGames.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
 
@@ -26,14 +27,14 @@ namespace SBGames.Editor.Stats.Tabs
         private bool _filterIssuesOnly = false;
 
         // Sorting
-        public enum SortColumn { Id, Name, Type, DamageType, BaseDamage, ManaCost, CastRange, AreaRadius, ProjectileSpeed }
+        public enum SortColumn { Id, Name, Type, DamageType, BaseDamage, ManaCost, CastRange, BaseHeal, SelfTarget, AreaRadius, ProjectileSpeed }
         private SortColumn _currentSort = SortColumn.Id;
         private bool _sortAscending = true;
 
         // Bulk Math Panel
         private bool _showBulkMath = false;
         public enum BulkScope { Filtered, SelectedOnly }
-        public enum BulkTargetField { BaseDamage, BaseManaCost, CastRange, ProjectileSpeed, AreaRadius, PostCastRecovery }
+        public enum BulkTargetField { BaseDamage, BaseHeal, BaseManaCost, CastRange, ProjectileSpeed, AreaRadius, PostCastRecovery }
         public enum BulkMathMode { PercentMultiply, FlatAdd }
 
         private BulkScope _bulkScope = BulkScope.Filtered;
@@ -42,7 +43,35 @@ namespace SBGames.Editor.Stats.Tabs
         private float _bulkValue = 10f;
 
         public bool HasUnsavedChanges => _rows.Any(r => r.IsDirty);
-        public int ValidationIssueCount => _rows.Count(r => !string.IsNullOrEmpty(r.ValidationError));
+        public int ValidationIssueCount => _rows.Count(r => r.HasAnyIssue);
+        public int ErrorCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Error);
+        public int WarningCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Warning);
+
+        public void SetFilterIssuesOnly(bool filterIssues)
+        {
+            _filterIssuesOnly = filterIssues;
+        }
+
+        public void ApplyExternalFindings(List<ValidationFinding> findings)
+        {
+            var bySubject = findings != null
+                ? findings.Where(f => f.SubjectType == ValidationSubjectType.Skill && !string.IsNullOrEmpty(f.SubjectId))
+                          .GroupBy(f => f.SubjectId, StringComparer.OrdinalIgnoreCase)
+                          .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, List<ValidationFinding>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in _rows)
+            {
+                if (bySubject.TryGetValue(row.Id, out var rowFindings))
+                {
+                    row.ExternalFindings = rowFindings;
+                }
+                else
+                {
+                    row.ExternalFindings.Clear();
+                }
+            }
+        }
 
         public class SkillRow
         {
@@ -60,6 +89,10 @@ namespace SBGames.Editor.Stats.Tabs
             public SkillData.SkillTargetFilter TargetFilter = SkillData.SkillTargetFilter.EnemiesOnly;
             public DamageType DamageType = DamageType.Physical;
             public float BaseDamage = 10f;
+            public float BaseHeal = 0f;
+            public SkillData.SelfTarget SelfTarget = SkillData.SelfTarget.Allowed;
+            public VisualAnchor VisualAnchor = VisualAnchor.Feet;
+            public float WindupDuration = 0.5f;
             public float BaseManaCost = 10f;
             public float CastRange = 0f;
 
@@ -85,11 +118,46 @@ namespace SBGames.Editor.Stats.Tabs
             public bool IsSelected = false;
             public bool IsDirty = false;
             public string ValidationError = "";
+            public List<ValidationFinding> ExternalFindings = new();
+
+            public ValidationSeverity? WorstSeverity
+            {
+                get
+                {
+                    bool hasError = !string.IsNullOrEmpty(ValidationError) ||
+                                    ExternalFindings.Any(f => f.Severity == ValidationSeverity.Error);
+                    if (hasError) return ValidationSeverity.Error;
+
+                    bool hasWarning = ExternalFindings.Any(f => f.Severity == ValidationSeverity.Warning);
+                    if (hasWarning) return ValidationSeverity.Warning;
+
+                    if (ExternalFindings.Any(f => f.Severity == ValidationSeverity.Info)) return ValidationSeverity.Info;
+
+                    return null;
+                }
+            }
+
+            public bool HasAnyIssue => WorstSeverity != null;
+
+            public string GetCombinedValidationTooltip()
+            {
+                var lines = new List<string>();
+                if (!string.IsNullOrEmpty(ValidationError))
+                {
+                    lines.Add($"[Data] {ValidationError}");
+                }
+                foreach (var f in ExternalFindings)
+                {
+                    lines.Add($"[{f.Source}] {f.Message}");
+                }
+                return string.Join("\n", lines);
+            }
 
             public void MarkDirty()
             {
                 IsDirty = true;
                 Validate();
+                ValidationService.MarkStale();
             }
 
             public void Validate()
@@ -98,6 +166,16 @@ namespace SBGames.Editor.Stats.Tabs
                 if (string.IsNullOrWhiteSpace(Id))
                 {
                     ValidationError = "Skill ID is missing.";
+                    return;
+                }
+                if (BaseHeal < 0f)
+                {
+                    ValidationError = "Base Heal cannot be negative.";
+                    return;
+                }
+                if (BaseHeal < 0f)
+                {
+                    ValidationError = "Base Heal cannot be negative.";
                     return;
                 }
                 if (BaseDamage < 0f)
@@ -186,6 +264,10 @@ namespace SBGames.Editor.Stats.Tabs
                 TargetFilter = asset.targetFilter,
                 DamageType = asset.damageType,
                 BaseDamage = asset.baseDamage,
+                BaseHeal = asset.baseHeal,
+                SelfTarget = asset.selfTarget,
+                VisualAnchor = asset.visualAnchor,
+                WindupDuration = asset.windupDuration,
                 BaseManaCost = asset.baseManaCost,
                 CastRange = asset.castRange,
                 ProjectileSpeed = asset.projectileSpeed,
@@ -254,6 +336,10 @@ namespace SBGames.Editor.Stats.Tabs
                     row.Asset.targetFilter = row.TargetFilter;
                     row.Asset.damageType = row.DamageType;
                     row.Asset.baseDamage = row.BaseDamage;
+                    row.Asset.baseHeal = row.BaseHeal;
+                    row.Asset.selfTarget = row.SelfTarget;
+                    row.Asset.visualAnchor = row.VisualAnchor;
+                    row.Asset.windupDuration = row.WindupDuration;
                     row.Asset.baseManaCost = row.BaseManaCost;
                     row.Asset.castRange = row.CastRange;
                     row.Asset.projectileSpeed = row.ProjectileSpeed;
@@ -452,7 +538,7 @@ namespace SBGames.Editor.Stats.Tabs
 
             if (_filterIssuesOnly)
             {
-                list = list.Where(r => !string.IsNullOrEmpty(r.ValidationError));
+                list = list.Where(r => r.HasAnyIssue);
             }
 
             return SortRows(list);
@@ -467,6 +553,8 @@ namespace SBGames.Editor.Stats.Tabs
                 SortColumn.Type => _sortAscending ? rows.OrderBy(r => r.Type).ToList() : rows.OrderByDescending(r => r.Type).ToList(),
                 SortColumn.DamageType => _sortAscending ? rows.OrderBy(r => r.DamageType).ToList() : rows.OrderByDescending(r => r.DamageType).ToList(),
                 SortColumn.BaseDamage => _sortAscending ? rows.OrderBy(r => r.BaseDamage).ToList() : rows.OrderByDescending(r => r.BaseDamage).ToList(),
+                SortColumn.BaseHeal => _sortAscending ? rows.OrderBy(r => r.BaseHeal).ToList() : rows.OrderByDescending(r => r.BaseHeal).ToList(),
+                SortColumn.SelfTarget => _sortAscending ? rows.OrderBy(r => r.SelfTarget).ToList() : rows.OrderByDescending(r => r.SelfTarget).ToList(),
                 SortColumn.ManaCost => _sortAscending ? rows.OrderBy(r => r.BaseManaCost).ToList() : rows.OrderByDescending(r => r.BaseManaCost).ToList(),
                 SortColumn.CastRange => _sortAscending ? rows.OrderBy(r => r.CastRange).ToList() : rows.OrderByDescending(r => r.CastRange).ToList(),
                 SortColumn.AreaRadius => _sortAscending ? rows.OrderBy(r => r.AreaRadius).ToList() : rows.OrderByDescending(r => r.AreaRadius).ToList(),
@@ -492,7 +580,9 @@ namespace SBGames.Editor.Stats.Tabs
                 DrawSortHeader("Skill Name", SortColumn.Name, 130);
                 DrawSortHeader("Type", SortColumn.Type, 75);
                 DrawSortHeader("Element", SortColumn.DamageType, 70);
-                DrawSortHeader("Damage", SortColumn.BaseDamage, 60);
+                DrawSortHeader("Damage", SortColumn.BaseDamage, 55);
+                DrawSortHeader("Heal", SortColumn.BaseHeal, 55);
+                DrawSortHeader("Self", SortColumn.SelfTarget, 65);
                 DrawSortHeader("Mana", SortColumn.ManaCost, 55);
                 DrawSortHeader("Range", SortColumn.CastRange, 55);
                 DrawSortHeader("Area Rad", SortColumn.AreaRadius, 60);
@@ -536,9 +626,12 @@ namespace SBGames.Editor.Stats.Tabs
 
                     row.IsSelected = EditorGUILayout.Toggle(row.IsSelected, GUILayout.Width(22));
 
-                    if (!string.IsNullOrEmpty(row.ValidationError))
+                    var worst = row.WorstSeverity;
+                    if (worst.HasValue)
                     {
-                        GUILayout.Label(new GUIContent("⚠️", row.ValidationError), GUILayout.Width(24));
+                        string icon = worst.Value == ValidationSeverity.Error ? "❌" : "⚠️";
+                        string tooltip = row.GetCombinedValidationTooltip();
+                        GUILayout.Label(new GUIContent(icon, tooltip), GUILayout.Width(24));
                     }
                     else if (row.IsDirty)
                     {
@@ -598,10 +691,28 @@ namespace SBGames.Editor.Stats.Tabs
 
                     // Base Damage
                     EditorGUI.BeginChangeCheck();
-                    float newDmg = EditorGUILayout.FloatField(row.BaseDamage, GUILayout.Width(60));
+                    float newDmg = EditorGUILayout.FloatField(row.BaseDamage, GUILayout.Width(55));
                     if (EditorGUI.EndChangeCheck())
                     {
                         row.BaseDamage = Mathf.Max(0f, newDmg);
+                        row.MarkDirty();
+                    }
+
+                    // Base Heal
+                    EditorGUI.BeginChangeCheck();
+                    float newHeal = EditorGUILayout.FloatField(row.BaseHeal, GUILayout.Width(55));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        row.BaseHeal = Mathf.Max(0f, newHeal);
+                        row.MarkDirty();
+                    }
+
+                    // Self Target
+                    EditorGUI.BeginChangeCheck();
+                    var newSelfTarget = (SkillData.SelfTarget)EditorGUILayout.EnumPopup(row.SelfTarget, GUILayout.Width(65));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        row.SelfTarget = newSelfTarget;
                         row.MarkDirty();
                     }
 
@@ -677,6 +788,9 @@ namespace SBGames.Editor.Stats.Tabs
                     var newIcon = (Sprite)EditorGUILayout.ObjectField("Icon", _selectedRow.Icon, typeof(Sprite), false);
                     var newPrefab = (GameObject)EditorGUILayout.ObjectField("Skill Prefab", _selectedRow.Prefab, typeof(GameObject), false);
                     var newTargetFilter = (SkillData.SkillTargetFilter)EditorGUILayout.EnumPopup("Target Filter", _selectedRow.TargetFilter);
+                    var newSelfTargetDetail = (SkillData.SelfTarget)EditorGUILayout.EnumPopup("Self Target", _selectedRow.SelfTarget);
+                    var newVisualAnchor = (VisualAnchor)EditorGUILayout.EnumPopup("Visual Anchor", _selectedRow.VisualAnchor);
+                    float newWindup = EditorGUILayout.FloatField("Windup Duration", _selectedRow.WindupDuration);
                     EditorGUILayout.LabelField("Description:");
                     string newDesc = EditorGUILayout.TextArea(_selectedRow.Description, GUILayout.Height(35));
                     if (EditorGUI.EndChangeCheck())
@@ -685,6 +799,9 @@ namespace SBGames.Editor.Stats.Tabs
                         _selectedRow.Icon = newIcon;
                         _selectedRow.Prefab = newPrefab;
                         _selectedRow.TargetFilter = newTargetFilter;
+                        _selectedRow.SelfTarget = newSelfTargetDetail;
+                        _selectedRow.VisualAnchor = newVisualAnchor;
+                        _selectedRow.WindupDuration = Mathf.Max(0f, newWindup);
                         _selectedRow.Description = newDesc;
                         _selectedRow.MarkDirty();
                     }

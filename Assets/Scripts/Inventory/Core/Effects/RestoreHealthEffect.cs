@@ -19,7 +19,7 @@ namespace SBGames.Inventory.Core.Effects
                 return false;
             }
 
-            if (stats.Life >= stats.MaxLife.Value)
+            if (stats.IsDead || stats.Life >= stats.MaxLife.Value)
             {
                 failureReason = "Character is already at full life.";
                 return false;
@@ -36,8 +36,7 @@ namespace SBGames.Inventory.Core.Effects
                 return false;
             }
 
-            stats.RestoreLife(HealAmount);
-            return true;
+            return stats.ApplyHeal(HealAmount, out _, out _);
         }
     }
 }

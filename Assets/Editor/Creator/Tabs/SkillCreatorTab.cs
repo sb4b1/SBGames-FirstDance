@@ -21,6 +21,7 @@ namespace SBGames.Editor.Creator.Tabs
     {
         Projectile,
         ChainProjectile,
+        [InspectorName("AOE Burst")]
         AoEBurst,
         Beam,
         MeleeDefault

@@ -4,6 +4,8 @@ using UnityEngine;
 public class SkillHitResolver : MonoBehaviour
 {
     public static event System.Action<SkillInstance, GameObject, float> OnSkillHealApplied;
+    public static event System.Action<SkillInstance, GameObject, float, float> OnSkillHealWithOverhealApplied;
+    public static float LastOverhealAmount { get; private set; }
 
     public void ResolveHit(SkillInstance skill, GameObject target)
     {
@@ -16,9 +18,13 @@ public class SkillHitResolver : MonoBehaviour
             var stats = target.GetComponent<CharacterStatsManager>() ?? target.GetComponentInParent<CharacterStatsManager>();
             if (stats != null)
             {
-                float healAmount = skill.CurrentDamage > 0f ? skill.CurrentDamage : skill.Data.baseDamage;
-                OnSkillHealApplied?.Invoke(skill, target, healAmount);
-                stats.RestoreLife(healAmount);
+                float healAmount = skill.Data.baseHeal > 0f ? skill.Data.baseHeal : (skill.CurrentDamage > 0f ? skill.CurrentDamage : skill.Data.baseDamage);
+                if (stats.ApplyHeal(healAmount, out float actualHealed, out float overheal))
+                {
+                    LastOverhealAmount = overheal;
+                    OnSkillHealApplied?.Invoke(skill, target, actualHealed);
+                    OnSkillHealWithOverhealApplied?.Invoke(skill, target, actualHealed, overheal);
+                }
             }
             return;
         }

@@ -10,12 +10,13 @@ public class RecoverAction : GoapActionBase<RecoverAction.Data>
 
     public override bool IsValid(IActionReceiver agent, Data data)
     {
-        if (data.AI == null || data.Kit == null) return false;
-        return data.Kit.IsCastingItem || data.AI.CanRecoverWithItemNow();
+        if (data.AI == null || data.AI.RecoverySafety <= 0f) return false;
+        return (data.Kit != null && data.Kit.IsCastingItem) || data.SelfCastInitiated || data.AI.CanRecoverWithItemNow() || data.AI.HasReadySelfOnlyHealSkill();
     }
 
     public override void Start(IMonoAgent agent, Data data)
     {
+        data.SelfCastInitiated = false;
         if (data.AI == null && agent != null && agent.Transform != null)
         {
             data.AI = agent.Transform.GetComponent<BaseAI>() ?? agent.Transform.GetComponentInParent<BaseAI>();
@@ -25,8 +26,8 @@ public class RecoverAction : GoapActionBase<RecoverAction.Data>
 
     public override bool IsInRange(IMonoAgent agent, float distance, Data data, IComponentReference references)
     {
-        // Return true so Perform can manage standing in place vs. stepping back / moving behind Tank before casting
-        return true;
+        // AgentMoveBehaviour owns travel to the sensor-provided recovery position.
+        return (data.AI != null && data.AI.HasReadySelfOnlyHealSkill()) || distance <= 0.5f;
     }
 
     public override IActionRunState Perform(IMonoAgent agent, Data data, IActionContext context)
@@ -39,10 +40,19 @@ public class RecoverAction : GoapActionBase<RecoverAction.Data>
         {
             data.Kit = data.AI.ItemKitController;
         }
-        if (data.AI == null || data.Kit == null)
+        if (data.AI == null || data.AI.RecoverySafety <= 0f)
         {
             return ActionRunState.Stop;
         }
+
+        if (data.SelfCastInitiated)
+            return data.SkillController != null && data.SkillController.HasPendingCast ? ActionRunState.Continue : ActionRunState.Completed;
+        if (data.AI.HasReadySelfOnlyHealSkill() && data.Stats != null && data.Stats.Life < data.Stats.MaxLife.Value)
+        {
+            data.SelfCastInitiated = data.AI.TryCastSelfHealSkill();
+            return data.SelfCastInitiated ? ActionRunState.Continue : ActionRunState.Completed;
+        }
+        if (data.Kit == null) return ActionRunState.Completed;
 
         // 1. If already casting an item, hold position until cast completes or is interrupted
         if (data.Kit.IsCastingItem)
@@ -62,12 +72,6 @@ public class RecoverAction : GoapActionBase<RecoverAction.Data>
         if (!data.AI.IsReadyToDrinkAtCurrentPosition())
         {
             data.AI.IsAgentStop(false);
-            Vector3 desiredPos = data.AI.GetDesiredRecoveryPosition();
-            if (data.Target is PositionTarget posTarget)
-            {
-                posTarget.SetPosition(desiredPos);
-            }
-            data.AI.AgentDestination(desiredPos);
             return ActionRunState.Continue;
         }
 
@@ -116,9 +120,12 @@ public class RecoverAction : GoapActionBase<RecoverAction.Data>
     {
         public ITarget Target { get; set; }
 
-        [GetComponent]
+        [GetComponentInParent]
         public BaseAI AI { get; set; }
 
+        [GetComponentInParent] public CharacterStatsManager Stats { get; set; }
+        [GetComponentInParent] public CharacterSkillController SkillController { get; set; }
+        public bool SelfCastInitiated { get; set; }
         public AdventurerItemKitController Kit { get; set; }
     }
 }

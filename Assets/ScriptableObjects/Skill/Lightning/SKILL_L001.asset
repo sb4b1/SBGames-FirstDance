@@ -24,6 +24,10 @@ MonoBehaviour:
   targetFilter: 0
   castRange: 0
   baseDamage: 10
+  baseHeal: 0
+  selfTarget: 0
+  visualAnchor: 0
+  windupDuration: 0.5
   damageType: 1
   baseManaCost: 10
   useCustomRecoveryDuration: 1

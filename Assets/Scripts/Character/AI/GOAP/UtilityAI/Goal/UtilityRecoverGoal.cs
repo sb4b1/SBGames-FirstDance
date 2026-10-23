@@ -14,27 +14,25 @@ public class UtilityRecoverGoal : UtilityGoal
     [Tooltip("Base urgency when curing a harmful status effect with a Status Cure item.")]
     [SerializeField, Range(0.5f, 1.0f)] private float statusCureUrgency = 0.88f;
 
-    [Tooltip("Minimum score when Recover is triggered at or below the flee threshold so Recover strictly beats Survive (clamped to 1.0) while usable items remain.")]
-    [SerializeField, Range(0.95f, 1.15f)] private float surviveOverrideFloor = 1.02f;
-
     public override float Evaluate(BaseAI context)
     {
         if (context == null || context.StatsManager == null) return 0f;
 
         var kit = context.ItemKitController;
-        if (kit == null) return 0f;
 
         // If already casting an item, maintain high commitment until cast finishes or is interrupted
-        if (kit.IsCastingItem)
+        if (kit != null && kit.IsCastingItem)
         {
-            return 1.05f;
+            return context.RecoverySafety;
         }
 
         context.GetRecoveryThresholdsAndQuota(out float hpTriggerFrac, out float manaTriggerFrac, out int perRoomQuota);
 
         // If no recovery item can be used right now (empty kit, on cooldown, or per-room quota exhausted),
         // return 0 so UtilitySurviveGoal (flee) or combat goals win immediately.
-        if (!kit.HasAnyApplicableItemNow(hpTriggerFrac, manaTriggerFrac, perRoomQuota))
+        bool hasItem = kit != null && kit.HasAnyApplicableItemNow(hpTriggerFrac, manaTriggerFrac, perRoomQuota);
+        bool hasSelfSkill = context.HasReadySelfOnlyHealSkill();
+        if (!hasItem && !hasSelfSkill)
         {
             return 0f;
         }
@@ -47,16 +45,10 @@ public class UtilityRecoverGoal : UtilityGoal
         {
             float hpFrac = Mathf.Clamp01(stats.Life / stats.MaxLife.Value);
             if (hpFrac <= hpTriggerFrac && stats.Life < stats.MaxLife.Value &&
-                kit.CanUse(ConsumableItemCategory.HealthPotion, perRoomQuota))
+                ((kit != null && kit.CanUse(ConsumableItemCategory.HealthPotion, perRoomQuota)) || hasSelfSkill))
             {
                 float deficit = 1f - hpFrac;
                 float hpScore = healthDeficitCurve != null ? healthDeficitCurve.Evaluate(deficit) : Mathf.Lerp(0.6f, 1.0f, deficit);
-
-                // Ensure Recover strictly beats Survive (which is clamped to 1.0) when below or near the flee threshold while potions remain
-                if (hpFrac <= context.SurvivalHpThreshold)
-                {
-                    hpScore = Mathf.Max(hpScore, surviveOverrideFloor);
-                }
 
                 // Fight Outlook modulation:
                 // Losing with no escape (cornered): Recovery items first (+0.10f).
@@ -81,7 +73,7 @@ public class UtilityRecoverGoal : UtilityGoal
         // 2. Status Cure evaluation
         var statusMgr = context.StatusEffectManager;
         if (statusMgr != null && statusMgr.HasHarmfulEffect() &&
-            kit.CanUse(ConsumableItemCategory.StatusCure, perRoomQuota))
+            kit != null && kit.CanUse(ConsumableItemCategory.StatusCure, perRoomQuota))
         {
             if (statusCureUrgency > bestUrgency)
             {
@@ -94,7 +86,7 @@ public class UtilityRecoverGoal : UtilityGoal
         {
             float manaFrac = Mathf.Clamp01(stats.Mana / stats.MaxMana.Value);
             bool shouldDrinkMana = (manaFrac <= manaTriggerFrac && stats.Mana < stats.MaxMana.Value) || (context.CannotCast && context.BasicAttackMode == BasicAttackMode.None && stats.Mana < stats.MaxMana.Value);
-            if (shouldDrinkMana && kit.CanUse(ConsumableItemCategory.ManaPotion, perRoomQuota))
+            if (shouldDrinkMana && kit != null && kit.CanUse(ConsumableItemCategory.ManaPotion, perRoomQuota))
             {
                 float deficit = 1f - manaFrac;
                 float manaScore = manaDeficitCurve != null ? manaDeficitCurve.Evaluate(deficit) : Mathf.Lerp(0.5f, 0.9f, deficit);
@@ -119,7 +111,7 @@ public class UtilityRecoverGoal : UtilityGoal
             bestUrgency = Mathf.Max(bestUrgency, 0.80f + 0.15f * compliance);
         }
 
-        return Mathf.Clamp(bestUrgency, 0f, 1.05f);
+        return Mathf.Clamp01(bestUrgency) * context.RecoverySafety;
     }
 
     public override EnumUtilGoal GetGOAPGoalKey()

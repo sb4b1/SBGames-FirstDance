@@ -18,6 +18,8 @@ MonoBehaviour:
   characterFunction: 3
   characterWealth: 0
   basicAttackMode: 0
+  keepDistanceMode: 0
+  comfortDistanceOverride: 0
   extraItemIds: []
   MaxLife: 140
   MaxMana: 25

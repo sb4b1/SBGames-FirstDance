@@ -40,7 +40,8 @@ public class UtilityHealAllyGoal : UtilityGoal
         }
 
         // 3. Scan for wounded ally below threshold
-        if (!context.GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent))
+        var rule = context.GetBestReadyHealSkillSelfTargetRule();
+        if (!context.GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent, rule))
         {
             context.WoundedAllyDetectedTime = -1f;
             return 0f;

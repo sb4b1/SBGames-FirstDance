@@ -54,10 +54,13 @@ public class UtilitySurviveGoal : UtilityGoal
         float burstPanicMultiplier = context.Personality != null ? context.Personality.Snapshot.BurstDamagePanicMultiplier : 1.0f;
         bool isPanicFromBurst = burstDamage > 0f && (burstDamage * burstPanicMultiplier >= maxHp * 0.25f);
 
+        float pressure = 1f - context.RecoverySafety;
+        bool recoveringUnderPressure = pressure > 0f &&
+            (context.CanRecoverWithItemNow() || (hpPercent < 1f && context.HasReadySelfOnlyHealSkill()));
         if (hpPercent > threshold)
         {
             // If HP is above fear threshold, only panic if sudden burst damage velocity or exceedingly high fear
-            if (!isPanicFromBurst && (context.FearLevel < 80 || context.IsFearLocked))
+            if (!recoveringUnderPressure && !isPanicFromBurst && (context.FearLevel < 80 || context.IsFearLocked))
                 return 0f;
         }
 
@@ -99,7 +102,7 @@ public class UtilitySurviveGoal : UtilityGoal
             totalScore *= 0.50f;
         }
 
-        return Mathf.Clamp01(totalScore);
+        return Mathf.Clamp01(Mathf.Max(totalScore, pressure));
     }
 
     public override EnumUtilGoal GetGOAPGoalKey()

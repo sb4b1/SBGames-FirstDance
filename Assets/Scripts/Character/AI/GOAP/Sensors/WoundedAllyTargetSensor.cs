@@ -13,7 +13,8 @@ public class WoundedAllyTargetSensor : LocalTargetSensorBase
         var brain = references.GetCachedComponent<BaseAI>();
         if (brain == null) return null;
 
-        if (brain.GetBestWoundedAllyTarget(out Transform target, out _))
+        var rule = brain.GetBestReadyHealSkillSelfTargetRule();
+        if (brain.GetBestWoundedAllyTarget(out Transform target, out _, rule))
         {
             if (existingTarget is TransformTarget transformTarget)
             {

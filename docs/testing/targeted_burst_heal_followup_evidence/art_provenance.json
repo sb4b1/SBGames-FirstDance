@@ -1,0 +1,19 @@
+{
+  "suppliedPreview": "C:\\Users\\Admin\\Documents\\ChatGPT\\SBGames\\output\\healing_effect\\heal_preview.gif",
+  "suppliedSheet": "C:\\Users\\Admin\\Documents\\ChatGPT\\SBGames\\output\\healing_effect\\heal_sheet.png",
+  "importedSheet": "D:\\UnityProject\\SBGames\\Assets\\Resources\\Skills\\Heal\\H001\\Sprite_S_H001.png",
+  "sourceSHA256": "962407b990adc2da42bd2055f0a98dc6112673a2921f9b3311605835de1892ec",
+  "importedSHA256": "962407b990adc2da42bd2055f0a98dc6112673a2921f9b3311605835de1892ec",
+  "sheetSize": [
+    768,
+    64
+  ],
+  "previewFrames": 12,
+  "frameSize": [
+    64,
+    64
+  ],
+  "transparentPixels": 46578,
+  "comparedVisibleFramePixels": 2574,
+  "rgbMismatchesAgainstPreviewAt4xScale": 0
+}

@@ -23,6 +23,21 @@ public class SkillInstance : MonoBehaviour, IPoolable
     public SkillStatsManager Stats { get; private set; }
     public float CurrentDamage { get; set; }
 
+    private bool hasLaunchFaction;
+    private FactionId launchFaction;
+    private string launchTag;
+
+    private void CaptureCasterAlignment(GameObject caster)
+    {
+        hasLaunchFaction = false;
+        launchTag = null;
+        if (caster == null) return;
+        var member = caster.GetComponentInParent<IFactionMember>();
+        if (member != null) { hasLaunchFaction = true; launchFaction = member.Faction; }
+        var brain = caster.GetComponentInParent<CharacterBrain>();
+        launchTag = brain != null ? brain.tag : caster.tag;
+    }
+
     private SkillTargeting targeting;
     private SkillHitResolver hitResolver;
     private ISkillMovement movement;
@@ -73,6 +88,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         Data = stats != null ? stats.SkillData : null;
         this.casterID = casterID;
         CasterGameObject = casterGameObject;
+        CaptureCasterAlignment(casterGameObject);
         currentTarget = target;
         CurrentDamage = stats != null ? stats.Damage.Value : (Data != null ? Data.baseDamage : 0f);
         RemainingChains = stats != null ? (int)stats.MaxChainTargets.Value : (Data != null ? Data.maxChainTargets : 0);
@@ -85,11 +101,18 @@ public class SkillInstance : MonoBehaviour, IPoolable
         isActive = true;
         isHit = false;
 
+        if (hitResolver == null) hitResolver = GetComponent<SkillHitResolver>();
+        if (detonation == null) detonation = GetComponent<ISkillDetonation>();
+        if (movement == null) movement = GetComponent<ISkillMovement>();
         movement?.Initialize(this, direction);
 
-        if (Data != null && Data.type == SkillType.Area)
+        if (Data != null && (Data.type == SkillType.Area || Data.type == SkillType.TargetedBurst))
         {
             DeactivateHitbox();
+            if (Data.type == SkillType.TargetedBurst)
+            {
+                Detonate();
+            }
         }
         else
         {
@@ -104,6 +127,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
         Data = data;
         this.casterID = casterID;
         CasterGameObject = casterGameObject;
+        CaptureCasterAlignment(casterGameObject);
         currentTarget = target;
         CurrentDamage = data != null ? data.baseDamage : 0f;
         RemainingChains = data != null ? data.maxChainTargets : 0;
@@ -116,11 +140,18 @@ public class SkillInstance : MonoBehaviour, IPoolable
         isActive = true;
         isHit = false;
 
+        if (hitResolver == null) hitResolver = GetComponent<SkillHitResolver>();
+        if (detonation == null) detonation = GetComponent<ISkillDetonation>();
+        if (movement == null) movement = GetComponent<ISkillMovement>();
         movement?.Initialize(this, direction);
 
-        if (data != null && data.type == SkillType.Area)
+        if (data != null && (data.type == SkillType.Area || data.type == SkillType.TargetedBurst))
         {
             DeactivateHitbox();
+            if (data.type == SkillType.TargetedBurst)
+            {
+                Detonate();
+            }
         }
         else
         {
@@ -212,6 +243,12 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
         SkillData.SkillTargetFilter filter = TargetFilter;
 
+        SkillData.SelfTarget selfRule = Data != null ? Data.selfTarget : SkillData.SelfTarget.Allowed;
+        if (isCaster && selfRule == SkillData.SelfTarget.Excluded)
+            return false;
+        if (!isCaster && selfRule == SkillData.SelfTarget.Only)
+            return false;
+
         if (isCaster)
         {
             if (filter == SkillData.SkillTargetFilter.EnemiesOnly || filter == SkillData.SkillTargetFilter.AllExceptCaster)
@@ -256,6 +293,16 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
     private bool IsAlly(GameObject target)
     {
+        if (Data != null && Data.type == SkillType.TargetedBurst)
+        {
+            if (target == null) return false;
+            var member = target.GetComponentInParent<IFactionMember>();
+            if (hasLaunchFaction && member != null)
+                return launchFaction != FactionId.Neutral && member.Faction == launchFaction;
+            var targetBrainAtBurst = target.GetComponentInParent<CharacterBrain>();
+            string targetTagAtBurst = targetBrainAtBurst != null ? targetBrainAtBurst.tag : target.tag;
+            return (launchTag == "Adventurer" || launchTag == "Monster" || launchTag == "Faction_01" || launchTag == "Faction_02") && launchTag == targetTagAtBurst;
+        }
         if (CasterGameObject == null || target == null)
             return false;
 
@@ -344,7 +391,7 @@ public class SkillInstance : MonoBehaviour, IPoolable
 
         isActive = false;
         isDespawningFromPool = true;
-        if (ObjectPoolManager.Instance != null)
+        if (ObjectPoolManager.Instance != null && TryGetComponent<PooledObject>(out _))
         {
             ObjectPoolManager.Instance.Despawn(gameObject);
         }
@@ -379,6 +426,8 @@ public class SkillInstance : MonoBehaviour, IPoolable
         isActive = false;
         currentTarget = null;
         CasterGameObject = null;
+        hasLaunchFaction = false;
+        launchTag = null;
         casterID = null;
         hasExitedCaster = false;
         launchArmingTimer = 0f;

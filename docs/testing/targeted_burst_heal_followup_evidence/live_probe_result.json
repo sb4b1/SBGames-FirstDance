@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var list=new System.Collections.Generic.List<object>();foreach(var stats in UnityEngine.Object.FindObjectsByType<CharacterStatsManager>(UnityEngine.FindObjectsSortMode.None))if(stats.name.StartsWith(\"HealProbe\"))list.Add(new {name=stats.name,life=stats.Life});return new {playing=UnityEngine.Application.isPlaying,paused=UnityEditor.EditorApplication.isPaused,targets=list};"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "playing": true,
+        "paused": false,
+        "targets": [
+          {
+            "name": "HealProbePooledTarget",
+            "life": 50
+          },
+          {
+            "name": "HealProbeTarget_ACTUAL_5_DEADCASTER_True_OVER_20",
+            "life": 100
+          }
+        ]
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

@@ -240,6 +240,11 @@ public class SkillCaster : MonoBehaviour
             }
         }
 
+        if (target == null && skillData != null && skillData.selfTarget == SkillData.SelfTarget.Only && casterTransform != null)
+        {
+            target = casterTransform.gameObject;
+        }
+
         if (target != null)
         {
             // ✅ HAS TARGET → CAST TOWARDS TARGET

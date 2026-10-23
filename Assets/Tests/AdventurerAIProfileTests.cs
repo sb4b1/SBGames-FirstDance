@@ -1071,16 +1071,16 @@ namespace SBGames.Tests
             ai.SetTarget(enemyGo.transform, 1.0f);
 
             // 1. Rank E (LateWasteful): at 25% HP (below flee threshold 0.40 and below E trigger 0.28),
-            // Recover wins while 1 HP potion is available, and drinks in place (desiredPos == transform.position)!
+            // Survive wins under melee pressure even while an HP potion remains available.
             ai.ApplyAdventurerProfile(profileE);
             stats.TakeDamage(new DamageData(75f, DamageType.True)); // 25/100 HP
             ai.UpdateResources();
 
-            Assert.AreEqual(EnumUtilGoal.Recover, ai.EvaluateBestGoalForTesting(), "Adventurer must choose Recover over Survive when usable HP potion exists.");
+            Assert.AreEqual(EnumUtilGoal.Survive, ai.EvaluateBestGoalForTesting(), "Melee pressure must suppress Recover even while a potion remains.");
             Assert.AreEqual(_rootGo.transform.position, ai.GetDesiredRecoveryPosition(), "LateWasteful (Rank E) must drink in place even under melee attack.");
             Assert.IsTrue(ai.IsReadyToDrinkAtCurrentPosition());
 
-            // Consume Rank E's only potion -> kit is now empty -> Survive (flee) immediately wins!
+            // Explicitly consume the potion to verify kit mechanics independently of AI selection.
             Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.HealthPotion));
             Assert.IsTrue(kitCtrl.AdvanceCast(1.0f));
             stats.TakeDamage(new DamageData(50f, DamageType.True)); // drop back to low HP with 0 potions left
@@ -1845,9 +1845,9 @@ namespace SBGames.Tests
             Assert.IsTrue(kitCtrl.TryStartUse(ConsumableItemCategory.Warp));
             Assert.IsTrue(kitCtrl.IsCastingItem);
 
-            // During active warp cast, commitment score must be 1.10f
+            // Active Warp commitment obeys the project-wide normalized utility rule.
             float activeScore = warpGoal.Evaluate(ai);
-            Assert.AreEqual(1.10f, activeScore, 0.0001f, "UtilityWarpGoal must return 1.10f commitment score during active warp cast.");
+            Assert.AreEqual(1f, activeScore, 0.0001f, "Active Warp commitment must stay within [0, 1].");
 
             UnityEngine.Object.DestroyImmediate(warpGoal);
             UnityEngine.Object.DestroyImmediate(baseStats);

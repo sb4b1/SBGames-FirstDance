@@ -5,6 +5,7 @@ using System.Linq;
 using SBGames.Database;
 using SBGames.Database.Editor;
 using SBGames.Database.Editor.CSV;
+using SBGames.Editor.Validation;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -46,6 +47,34 @@ namespace SBGames.Editor.Stats.Tabs
 
         public bool HasUnsavedChanges => _rows.Any(r => r.IsDirty);
         public int ValidationIssueCount => _rows.Count(r => r.HasAnyIssue);
+        public int ErrorCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Error);
+        public int WarningCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Warning);
+
+        public void SetFilterIssuesOnly(bool filterIssues)
+        {
+            _filterIssuesOnly = filterIssues;
+        }
+
+        public void ApplyExternalFindings(List<ValidationFinding> findings)
+        {
+            var bySubject = findings != null
+                ? findings.Where(f => f.SubjectType == ValidationSubjectType.Character && !string.IsNullOrEmpty(f.SubjectId))
+                          .GroupBy(f => f.SubjectId, StringComparer.OrdinalIgnoreCase)
+                          .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, List<ValidationFinding>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in _rows)
+            {
+                if (bySubject.TryGetValue(row.Id, out var rowFindings))
+                {
+                    row.ExternalFindings = rowFindings;
+                }
+                else
+                {
+                    row.ExternalFindings.Clear();
+                }
+            }
+        }
 
         public class CharacterRow
         {
@@ -92,12 +121,51 @@ namespace SBGames.Editor.Stats.Tabs
             public string SkillSyncWarning = "";
             public bool HasSkillSyncFixes;
 
-            public bool HasAnyIssue => !string.IsNullOrEmpty(ValidationError) || !string.IsNullOrEmpty(SkillSyncWarning);
+            public List<ValidationFinding> ExternalFindings = new();
+
+            public ValidationSeverity? WorstSeverity
+            {
+                get
+                {
+                    bool hasError = !string.IsNullOrEmpty(ValidationError) ||
+                                    ExternalFindings.Any(f => f.Severity == ValidationSeverity.Error);
+                    if (hasError) return ValidationSeverity.Error;
+
+                    bool hasWarning = !string.IsNullOrEmpty(SkillSyncWarning) ||
+                                      ExternalFindings.Any(f => f.Severity == ValidationSeverity.Warning);
+                    if (hasWarning) return ValidationSeverity.Warning;
+
+                    if (ExternalFindings.Any(f => f.Severity == ValidationSeverity.Info)) return ValidationSeverity.Info;
+
+                    return null;
+                }
+            }
+
+            public bool HasAnyIssue => WorstSeverity != null;
+
+            public string GetCombinedValidationTooltip()
+            {
+                var lines = new List<string>();
+                if (!string.IsNullOrEmpty(ValidationError))
+                {
+                    lines.Add($"[Data] {ValidationError}");
+                }
+                if (!string.IsNullOrEmpty(SkillSyncWarning))
+                {
+                    lines.Add($"[AI Setup] {SkillSyncWarning}");
+                }
+                foreach (var f in ExternalFindings)
+                {
+                    lines.Add($"[{f.Source}] {f.Message}");
+                }
+                return string.Join("\n", lines);
+            }
 
             public void MarkDirty()
             {
                 IsDirty = true;
                 Validate();
+                ValidationService.MarkStale();
             }
 
             public void RefreshSkillSync()
@@ -434,6 +502,12 @@ namespace SBGames.Editor.Stats.Tabs
                     DrawDetailInspector();
                 }
             }
+
+            if (_selectedRow != null && _selectedRow.ExternalFindings.Count > 0)
+            {
+                EditorGUILayout.Space(2);
+                DrawExternalFindingsPanel(_selectedRow);
+            }
         }
 
         private void DrawToolbar()
@@ -707,16 +781,12 @@ namespace SBGames.Editor.Stats.Tabs
                     row.IsSelected = EditorGUILayout.Toggle(row.IsSelected, GUILayout.Width(22));
 
                     // Status / Validation Badge
-                    if (!string.IsNullOrEmpty(row.ValidationError))
+                    var worst = row.WorstSeverity;
+                    if (worst.HasValue)
                     {
-                        GUILayout.Label(new GUIContent("⚠️", row.ValidationError), GUILayout.Width(24));
-                    }
-                    else if (!string.IsNullOrEmpty(row.SkillSyncWarning))
-                    {
-                        var prev = GUI.contentColor;
-                        GUI.contentColor = new Color(1f, 0.65f, 0f);
-                        GUILayout.Label(new GUIContent("🔗", row.SkillSyncWarning), GUILayout.Width(24));
-                        GUI.contentColor = prev;
+                        string icon = worst.Value == ValidationSeverity.Error ? "❌" : "⚠️";
+                        string tooltip = row.GetCombinedValidationTooltip();
+                        GUILayout.Label(new GUIContent(icon, tooltip), GUILayout.Width(24));
                     }
                     else if (row.IsDirty)
                     {
@@ -870,6 +940,45 @@ namespace SBGames.Editor.Stats.Tabs
             }
 
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawExternalFindingsPanel(CharacterRow row)
+        {
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                EditorGUILayout.LabelField($"🔍 Validation Findings for '{row.Id}' ({row.ExternalFindings.Count})", EditorStyles.boldLabel);
+                foreach (var finding in row.ExternalFindings)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        string icon = finding.Severity switch
+                        {
+                            ValidationSeverity.Error => "❌ [ERROR]",
+                            ValidationSeverity.Warning => "⚠️ [WARNING]",
+                            _ => "ℹ️ [INFO]"
+                        };
+                        GUILayout.Label($"{icon} [{finding.Source}] {finding.Message}", EditorStyles.wordWrappedMiniLabel);
+
+                        GUILayout.FlexibleSpace();
+
+                        if (finding.FixAction != null)
+                        {
+                            if (GUILayout.Button("Fix", EditorStyles.miniButton, GUILayout.Width(50)))
+                            {
+                                finding.FixAction.Invoke();
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(finding.AssetPath))
+                        {
+                            if (GUILayout.Button("Select", EditorStyles.miniButton, GUILayout.Width(55)))
+                            {
+                                var asset = AssetDatabase.LoadMainAssetAtPath(finding.AssetPath);
+                                if (asset != null) EditorGUIUtility.PingObject(asset);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void DrawDetailInspector()

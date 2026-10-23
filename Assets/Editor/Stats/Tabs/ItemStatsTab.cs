@@ -5,6 +5,7 @@ using System.Linq;
 using SBGames.Database;
 using SBGames.Database.Editor;
 using SBGames.Database.Editor.CSV;
+using SBGames.Editor.Validation;
 using SBGames.Inventory.Core;
 using SBGames.Inventory.Data;
 using UnityEditor;
@@ -44,7 +45,35 @@ namespace SBGames.Editor.Stats.Tabs
         private float _bulkValue = 10f;
 
         public bool HasUnsavedChanges => _rows.Any(r => r.IsDirty);
-        public int ValidationIssueCount => _rows.Count(r => !string.IsNullOrEmpty(r.ValidationError));
+        public int ValidationIssueCount => _rows.Count(r => r.HasAnyIssue);
+        public int ErrorCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Error);
+        public int WarningCount => _rows.Count(r => r.WorstSeverity == ValidationSeverity.Warning);
+
+        public void SetFilterIssuesOnly(bool filterIssues)
+        {
+            _filterIssuesOnly = filterIssues;
+        }
+
+        public void ApplyExternalFindings(List<ValidationFinding> findings)
+        {
+            var bySubject = findings != null
+                ? findings.Where(f => f.SubjectType == ValidationSubjectType.Item && !string.IsNullOrEmpty(f.SubjectId))
+                          .GroupBy(f => f.SubjectId, StringComparer.OrdinalIgnoreCase)
+                          .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, List<ValidationFinding>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in _rows)
+            {
+                if (bySubject.TryGetValue(row.Id, out var rowFindings))
+                {
+                    row.ExternalFindings = rowFindings;
+                }
+                else
+                {
+                    row.ExternalFindings.Clear();
+                }
+            }
+        }
 
         public class ItemRow
         {
@@ -70,11 +99,46 @@ namespace SBGames.Editor.Stats.Tabs
             public bool IsSelected = false;
             public bool IsDirty = false;
             public string ValidationError = "";
+            public List<ValidationFinding> ExternalFindings = new();
+
+            public ValidationSeverity? WorstSeverity
+            {
+                get
+                {
+                    bool hasError = !string.IsNullOrEmpty(ValidationError) ||
+                                    ExternalFindings.Any(f => f.Severity == ValidationSeverity.Error);
+                    if (hasError) return ValidationSeverity.Error;
+
+                    bool hasWarning = ExternalFindings.Any(f => f.Severity == ValidationSeverity.Warning);
+                    if (hasWarning) return ValidationSeverity.Warning;
+
+                    if (ExternalFindings.Any(f => f.Severity == ValidationSeverity.Info)) return ValidationSeverity.Info;
+
+                    return null;
+                }
+            }
+
+            public bool HasAnyIssue => WorstSeverity != null;
+
+            public string GetCombinedValidationTooltip()
+            {
+                var lines = new List<string>();
+                if (!string.IsNullOrEmpty(ValidationError))
+                {
+                    lines.Add($"[Data] {ValidationError}");
+                }
+                foreach (var f in ExternalFindings)
+                {
+                    lines.Add($"[{f.Source}] {f.Message}");
+                }
+                return string.Join("\n", lines);
+            }
 
             public void MarkDirty()
             {
                 IsDirty = true;
                 Validate();
+                ValidationService.MarkStale();
             }
 
             public void Validate()
@@ -422,7 +486,7 @@ namespace SBGames.Editor.Stats.Tabs
 
             if (_filterIssuesOnly)
             {
-                list = list.Where(r => !string.IsNullOrEmpty(r.ValidationError));
+                list = list.Where(r => r.HasAnyIssue);
             }
 
             return SortRows(list);
@@ -505,9 +569,12 @@ namespace SBGames.Editor.Stats.Tabs
 
                     row.IsSelected = EditorGUILayout.Toggle(row.IsSelected, GUILayout.Width(22));
 
-                    if (!string.IsNullOrEmpty(row.ValidationError))
+                    var worst = row.WorstSeverity;
+                    if (worst.HasValue)
                     {
-                        GUILayout.Label(new GUIContent("⚠️", row.ValidationError), GUILayout.Width(24));
+                        string icon = worst.Value == ValidationSeverity.Error ? "❌" : "⚠️";
+                        string tooltip = row.GetCombinedValidationTooltip();
+                        GUILayout.Label(new GUIContent(icon, tooltip), GUILayout.Width(24));
                     }
                     else if (row.IsDirty)
                     {

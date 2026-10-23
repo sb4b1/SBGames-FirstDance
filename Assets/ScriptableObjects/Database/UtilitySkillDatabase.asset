@@ -21,3 +21,5 @@ MonoBehaviour:
     so: {fileID: 11400000, guid: a3140a420a92792489a40990ca0010b2, type: 2}
   - id: SKILL_WA001
     so: {fileID: 11400000, guid: 6e113841839451a4885e55434a3ee141, type: 2}
+  - id: SKILL_HEAL_001
+    so: {fileID: 11400000, guid: e8494423a0101de41b9968f849b676a6, type: 2}

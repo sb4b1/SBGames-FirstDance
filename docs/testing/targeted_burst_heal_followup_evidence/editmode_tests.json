@@ -1,0 +1,581 @@
+{
+  "success": true,
+  "command": "command run_tests",
+  "data": {
+    "command": "run_tests",
+    "parameters": {
+      "mode": "EditMode",
+      "async_tests": "false"
+    },
+    "result": {
+      "Summary": {
+        "Total": 78,
+        "Passed": 78,
+        "Failed": 0,
+        "Skipped": 0,
+        "Inconclusive": 0
+      },
+      "Results": [
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.AddSkill_AutoGeneratesUtilityAssetAndAssignsInMatchingOrder",
+          "Status": "Passed",
+          "Duration": 1.4041748,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.AddSkill_SaveAll_CreatesNestedChildAndControllerEntry",
+          "Status": "Passed",
+          "Duration": 1.1386847,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.ExtraManualChild_IsWarnedButNeverDeleted",
+          "Status": "Passed",
+          "Duration": 1.4558342,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.MissingPrefabOrCaster_FailsGracefullyWithoutThrowing",
+          "Status": "Passed",
+          "Duration": 0.8495176,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.RemoveSkill_RemovesAssignmentFromCharacter_UtilityAssetFileRemains",
+          "Status": "Passed",
+          "Duration": 0.941324,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.RemoveSkill_SaveAll_RemovesChildAndControllerEntry",
+          "Status": "Passed",
+          "Duration": 0.8730724,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.Reorder_UpdatesControllerOrder_NotHierarchyOrder",
+          "Status": "Passed",
+          "Duration": 0.9323283,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.Revert_BeforeSave_LeavesPrefabUntouched",
+          "Status": "Passed",
+          "Duration": 0.6255502,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.RevertBeforeSave_LeavesEverythingUntouched",
+          "Status": "Passed",
+          "Duration": 0.6935285,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.SaveAllTwice_IsIdempotent",
+          "Status": "Passed",
+          "Duration": 0.795396,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.SaveAllTwiceWithGeneratedUtility_IsIdempotent",
+          "Status": "Passed",
+          "Duration": 0.7522697,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.Sync_FixesADVENTURER_N002",
+          "Status": "Passed",
+          "Duration": 0.6768455,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.Sync_FixesCharacterWithIdsButEmptyControllerList",
+          "Status": "Passed",
+          "Duration": 0.9518142,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CharacterPrefabSkillSyncTests.Validation_WarnsWhenMageAgentCannotPlanHealSkill",
+          "Status": "Passed",
+          "Duration": 0.6436149,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.CombatSandbox_AllOffensiveUnits_DealDamageWithinAllocatedWindow",
+          "Status": "Passed",
+          "Duration": 0.0184412,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.CombatSandbox_ArcherResumesFiring_AfterReachingStopDistance",
+          "Status": "Passed",
+          "Duration": 0.0278668,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.CombatSandbox_HealerKiting_PreservesSquadCohesion",
+          "Status": "Passed",
+          "Duration": 0.008629,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.CombatSandbox_RankENoise_ShowsEarlyRetreatOrOverstay_WhileRankCStable",
+          "Status": "Passed",
+          "Duration": 0.0029182,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.PartyLeader_PerformAlertShout_AlertsAllSquadMembers_ElevatingThreat",
+          "Status": "Passed",
+          "Duration": 0.0055326,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.PartyLeader_SpottedEnemy_PopulatesSquadBlackboard_AndSynchronizesToMembers",
+          "Status": "Passed",
+          "Duration": 0.0033406,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.SquadTacticalEvaluator_WithKnownEnemy_IssuesFocusFireOrder_ToEntireSquad",
+          "Status": "Passed",
+          "Duration": 0.00817,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRegressionTests.UtilityFocusFireGoal_ScoresHighForSquadMembers_WhenFocusFireOrderActive",
+          "Status": "Passed",
+          "Duration": 0.0029325,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.CombatSandboxRosterAuditTests.AuditAndPrintTargetRoster",
+          "Status": "Passed",
+          "Duration": 0.0080465,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.Editor.SpriteAnimationBuilderSkillTests.CreateSkillFXAnimatorController_BuildsAreaBurstTransitionsProperly",
+          "Status": "Passed",
+          "Duration": 0.411736,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.Editor.SpriteAnimationBuilderSkillTests.CreateSkillFXAnimatorController_BuildsProjectileTransitionsProperly",
+          "Status": "Passed",
+          "Duration": 0.2802735,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.Editor.SpriteAnimationBuilderSkillTests.GetDefaultMultiSheetSkillActions_ReturnsExpectedSlots",
+          "Status": "Passed",
+          "Duration": 0.0013127,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.Editor.SpriteAnimationBuilderSkillTests.GetStandardPresets_IncludesSkillFXPresetsWithCorrectAttributes",
+          "Status": "Passed",
+          "Duration": 0.0024765,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.FightOutlookTests.HardSafetyTrigger_SuppressesRankNoise",
+          "Status": "Passed",
+          "Duration": 0.0023919,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.FightOutlookTests.OutlookCalculation_LosingWhenTtdLowerThanTtk",
+          "Status": "Passed",
+          "Duration": 0.0008523,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.FightOutlookTests.OutlookCalculation_WinningWhenTtkLowerThanTtd",
+          "Status": "Passed",
+          "Duration": 0.0004351,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.FightOutlookTests.SeededReproducibility_RankENoise",
+          "Status": "Passed",
+          "Duration": 0.0003038,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.FightOutlookTests.TankTolerance_ToleratesWorseOutlookThanHealer",
+          "Status": "Passed",
+          "Duration": 0.0005254,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.ApplyHeal_ClampsToMaxLife",
+          "Status": "Passed",
+          "Duration": 0.0040976,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.ApplyHeal_FullHealth_ReturnsOverhealWithoutLifeNotification",
+          "Status": "Passed",
+          "Duration": 0.0016574,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.ApplyHeal_IgnoresDeadTargets",
+          "Status": "Passed",
+          "Duration": 0.0039782,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.ApplyHeal_ReportsOverhealCorrectly",
+          "Status": "Passed",
+          "Duration": 0.0020156,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.GetBestWoundedAllyTarget_Respects_SelfTargetSetting",
+          "Status": "Passed",
+          "Duration": 0.0040407,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.SelfTarget_Allowed_ValidatesBothSelfAndAlly",
+          "Status": "Passed",
+          "Duration": 0.0042935,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.SelfTarget_Excluded_RejectsSelf_PermitsAlly",
+          "Status": "Passed",
+          "Duration": 0.0016271,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.SelfTarget_Only_RejectsAlly_PermitsSelf",
+          "Status": "Passed",
+          "Duration": 0.0022169,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_AppliesHealAtBurstMoment_AndFizzlesOnDeadTarget",
+          "Status": "Passed",
+          "Duration": 0.005649,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_CasterLostDuringWindup_StillHealsAndEmitsBothEvents(0)",
+          "Status": "Passed",
+          "Duration": 0.0102901,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_CasterLostDuringWindup_StillHealsAndEmitsBothEvents(1)",
+          "Status": "Passed",
+          "Duration": 0.0020629,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_CasterLostDuringWindup_StillHealsAndEmitsBothEvents(2)",
+          "Status": "Passed",
+          "Duration": 0.0018933,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_CasterLostDuringWindup_StillHealsAndEmitsBothEvents(3)",
+          "Status": "Passed",
+          "Duration": 0.0031361,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_DoesNotApplyHeal_BeforeBurstMoment",
+          "Status": "Passed",
+          "Duration": 0.0040283,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_HealsOnlyChosenTarget_NeverNearbyAlliesOrEnemies",
+          "Status": "Passed",
+          "Duration": 0.0034481,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_Revalidation_FizzlesIfTargetBecomesEnemyOrUnqualified",
+          "Status": "Passed",
+          "Duration": 0.0025541,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_TargetPooledDuringWindup_FizzlesEvenAfterReuse(False)",
+          "Status": "Passed",
+          "Duration": 0.0040358,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.HealSkillTests.TargetedBurst_TargetPooledDuringWindup_FizzlesEvenAfterReuse(True)",
+          "Status": "Passed",
+          "Duration": 0.0029096,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.KeepDistanceTests.AutoOnAndOff_ResolutionFromRange",
+          "Status": "Passed",
+          "Duration": 0.0012301,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.KeepDistanceTests.CharactersCsv_KeepDistanceFieldsRoundTrip",
+          "Status": "Passed",
+          "Duration": 0.0041071,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.KeepDistanceTests.HysteresisDistances_StartAndStopBoundaries",
+          "Status": "Passed",
+          "Duration": 0.000933,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.KeepDistanceTests.ReferenceRange_DerivationForCasterWithoutBasicAttack",
+          "Status": "Passed",
+          "Duration": 0.0006023,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.LegacyRecoveryRegressionTests.UpdatedPotionCompetitionAndRankPositioning",
+          "Status": "Passed",
+          "Duration": 0.0306853,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.LegacyRecoveryRegressionTests.UpdatedWarpCommitmentIsNormalized",
+          "Status": "Passed",
+          "Duration": 0.0235439,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.AllAuthoredGoals_StayNormalized_AcrossResourceThreatDistanceSweep",
+          "Status": "Passed",
+          "Duration": 0.2468555,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.Arbiter_ClampsFutureGoalOutputs_AndNeverStoresHysteresis",
+          "Status": "Passed",
+          "Duration": 0.0029413,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.EqualRawScores_SurviveWins_InEitherOrder_DespiteRecoverHysteresis(False)",
+          "Status": "Passed",
+          "Duration": 0.0038706,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.EqualRawScores_SurviveWins_InEitherOrder_DespiteRecoverHysteresis(True)",
+          "Status": "Passed",
+          "Duration": 0.0023986,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.HealerPrefab_HasHealGoal_AndSuppliedAnimatedEffect",
+          "Status": "Passed",
+          "Duration": 0.0073121,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.RecoveryAndSurviveEvaluate_AllocateZeroManagedBytesAfterWarmup",
+          "Status": "Passed",
+          "Duration": 0.0338018,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.Safety_UsesEachCachedSignal_AndRecoversAfterMemoryReset",
+          "Status": "Passed",
+          "Duration": 0.0032636,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.SelfOnlyHeal_SafeRecovers_HeavyPressureSurvives_AndActionObeys(False)",
+          "Status": "Passed",
+          "Duration": 0.0042637,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.SelfOnlyHeal_SafeRecovers_HeavyPressureSurvives_AndActionObeys(True)",
+          "Status": "Passed",
+          "Duration": 0.0020067,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.RecoverySafetyTests.UtilityCurveValidation_CatchesNegativePositiveAndTangentOvershoot",
+          "Status": "Passed",
+          "Duration": 0.0018194,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.DetermineTemplate_MapsExpectedArchetypes",
+          "Status": "Passed",
+          "Duration": 0.2920109,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_AssignsToSkillData_AndGeneratesCasterPrefab",
+          "Status": "Passed",
+          "Duration": 0.6911113,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_Beam_HasBeamMovementAndBeamSkill",
+          "Status": "Passed",
+          "Duration": 0.4388667,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_Chain_HasSensorConfigured",
+          "Status": "Passed",
+          "Duration": 0.3837354,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_DoesNotOverwriteExisting_UnlessExplicitlyRequested",
+          "Status": "Passed",
+          "Duration": 0.3944553,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_Projectile_HasRequiredComponentsAndLayer",
+          "Status": "Passed",
+          "Duration": 0.4184986,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.GenerateEffectPrefab_ProjectileWithArea_HasAoEDetonationAndSensor",
+          "Status": "Passed",
+          "Duration": 0.4278928,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.SkillEffectPrefabGeneratorTests.ValidatePrefab_DetectsMissingColliderOrWrongLayer",
+          "Status": "Passed",
+          "Duration": 0.2648627,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.ValidationServiceTests.ValidationFinding_SeverityAndSubjectMapping_IsCorrect",
+          "Status": "Passed",
+          "Duration": 0.0008776,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.ValidationServiceTests.ValidationFinding_SkillMapping_AssignsSkillSubjectType",
+          "Status": "Passed",
+          "Duration": 0.0002953,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "SBGames.Tests.ValidationServiceTests.ValidationService_HeadlessReportParity_MatchesExpectedFormat",
+          "Status": "Passed",
+          "Duration": 0.0217615,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "AddressableAssets.DocExampleCode.TestStub.RequiredTest",
+          "Status": "Passed",
+          "Duration": 0.0004602,
+          "Message": null,
+          "StackTrace": null
+        }
+      ],
+      "Duration": 26.08,
+      "StatusPath": null,
+      "Mode": "EditMode",
+      "FilterApplied": null,
+      "success": true,
+      "result": null
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

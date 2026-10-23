@@ -106,6 +106,8 @@ namespace SBGames.Testing
             public float DamageTaken { get; private set; }
             public float HealingReceived { get; private set; }
             public float SkillHealingReceived { get; private set; }
+            public float OverhealReceived { get; private set; }
+            public int SkillHealsApplied { get; private set; }
             public float PotionHealingReceived { get; private set; }
             public float RegenHealingReceived { get; private set; }
             public int HealsCast { get; private set; }
@@ -136,6 +138,17 @@ namespace SBGames.Testing
                 {
                     PotionHealingReceived += amount;
                 }
+            }
+            public void RecordAppliedSkillHeal(float amount)
+            {
+                SkillHealsApplied++;
+                // OnLifeRestored ran synchronously before the skill event. Reclassify that exact heal.
+                PotionHealingReceived = Mathf.Max(0f, PotionHealingReceived - amount);
+                SkillHealingReceived += amount;
+            }
+            public void RecordOverhealReceived(float amount)
+            {
+                OverhealReceived += amount;
             }
             public void RecordRegenHealingReceived(float amount)
             {
@@ -188,12 +201,7 @@ namespace SBGames.Testing
             public void OnLifeRestoredHandler(float amount)
             {
                 // If SkillHitResolver resolved a skill heal this frame or just prior, it is skill healing; otherwise potion/consumable
-                bool isSkill = (ownerRunner != null && (Time.time - ownerRunner.LastSkillHealTimestamp) < 0.05f);
-                RecordHealingReceived(amount, isSkill);
-                if (ownerRunner != null && isSkill && ownerRunner.FirstHealElapsedTime < 0f && ownerRunner.State == SimulationState.Running)
-                {
-                    ownerRunner.FirstHealElapsedTime = ownerRunner.ElapsedTime;
-                }
+                RecordHealingReceived(amount, false);
             }
 
             public void OnRegenLifeRestoredHandler(float amount)
@@ -206,6 +214,16 @@ namespace SBGames.Testing
                 if (skillData != null && (skillData.targetFilter == SkillData.SkillTargetFilter.AlliesOnly || skillData.targetFilter == SkillData.SkillTargetFilter.SelfOnly))
                 {
                     HealsCast++;
+                    if (ownerRunner != null && ownerRunner.injectNearFullTarget && !ownerRunner.nearFullTargetInjected && target != null)
+                    {
+                        var targetStats = target.GetComponentInParent<CharacterStatsManager>();
+                        if (targetStats != null && !targetStats.IsDead)
+                        {
+                            // Simulate a competing heal arriving during the burst wind-up.
+                            targetStats.ApplyHeal(Mathf.Max(0f, targetStats.MaxLife.Value - targetStats.Life - 5f), out _, out _);
+                            ownerRunner.nearFullTargetInjected = true;
+                        }
+                    }
                     float elapsed = ownerRunner != null ? ownerRunner.ElapsedTime : 0f;
                     if (FirstHealTime < 0f)
                         FirstHealTime = elapsed;
@@ -247,6 +265,7 @@ namespace SBGames.Testing
             public int healsCast;
             public float totalHealingDone;
             public float skillHealingDone;
+            public float totalOverheal;
             public float potionHealingDone;
             public float regenHealing;
             public float timeToFirstHeal;
@@ -390,11 +409,13 @@ namespace SBGames.Testing
         private void OnEnable()
         {
             SkillHitResolver.OnSkillHealApplied += HandleSkillHealApplied;
+            SkillHitResolver.OnSkillHealWithOverhealApplied += HandleSkillHealWithOverhealApplied;
         }
 
         private void OnDisable()
         {
             SkillHitResolver.OnSkillHealApplied -= HandleSkillHealApplied;
+            SkillHitResolver.OnSkillHealWithOverhealApplied -= HandleSkillHealWithOverhealApplied;
             // Restore normal timeScale on exit to avoid persisting warped timeScale across editor scenes
             Time.timeScale = 1f;
         }
@@ -402,6 +423,27 @@ namespace SBGames.Testing
         private void HandleSkillHealApplied(SkillInstance skill, GameObject target, float amount)
         {
             LastSkillHealTimestamp = Time.time;
+        }
+
+        private void HandleSkillHealWithOverhealApplied(SkillInstance skill, GameObject target, float actualHealed, float overheal)
+        {
+            LastSkillHealTimestamp = Time.time;
+            if (target != null)
+            {
+                for (int i = 0; i < activeCombatants.Count; i++)
+                {
+                    var c = activeCombatants[i];
+                    if (c != null && (c.GameObject == target || target.transform.IsChildOf(c.GameObject.transform)))
+                    {
+                        c.RecordAppliedSkillHeal(actualHealed);
+                        if (overheal > 0f)
+                        {
+                            c.RecordOverhealReceived(overheal);
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
         #endregion
@@ -698,6 +740,7 @@ namespace SBGames.Testing
             int totalHealsCast = 0;
             float totalHealingDone = 0f;
             float totalSkillHealingDone = 0f;
+            float totalOverhealDone = 0f;
             float totalPotionHealingDone = 0f;
             float totalRegenHealingDone = 0f;
             int tankFlees = 0;
@@ -711,6 +754,7 @@ namespace SBGames.Testing
                 totalHealsCast += adv.HealsCast;
                 totalHealingDone += adv.HealingReceived;
                 totalSkillHealingDone += adv.SkillHealingReceived;
+                totalOverhealDone += adv.OverhealReceived;
                 totalPotionHealingDone += adv.PotionHealingReceived;
                 totalRegenHealingDone += adv.RegenHealingReceived;
 
@@ -769,6 +813,7 @@ namespace SBGames.Testing
                 healsCast = totalHealsCast,
                 totalHealingDone = totalHealingDone,
                 skillHealingDone = totalSkillHealingDone,
+                totalOverheal = totalOverhealDone,
                 potionHealingDone = totalPotionHealingDone,
                 regenHealing = totalRegenHealingDone,
                 timeToFirstHeal = FirstHealElapsedTime,
@@ -779,7 +824,7 @@ namespace SBGames.Testing
                 totalSwingsHit = swingsHit,
                 totalSwingsMissed = swingsMissed,
                 timeoutReason = timeoutReason,
-                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | Swings(Hit/Miss): {swingsHit}/{swingsMissed} ({(swingsAttempted > 0 ? (float)swingsHit / swingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} (Skill: {totalSkillHealingDone:F0} HP, Pot: {totalPotionHealingDone:F0} HP, Regen: {totalRegenHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}{(outcome == BattleOutcome.Timeout ? $" | Reason: {timeoutReason}" : "")}"
+                summary = $"{winnerString} Duration: {simulationElapsedTime:F2}s | DPS - Adv: {advDps:F1}, Mon: {monDps:F1} | Swings(Hit/Miss): {swingsHit}/{swingsMissed} ({(swingsAttempted > 0 ? (float)swingsHit / swingsAttempted * 100f : 0f):F1}%) | DmgTaken(T/D/H): {tankDmg:F0}/{dpsDmg:F0}/{healerDmg:F0} | Heals: {totalHealsCast} (Skill: {totalSkillHealingDone:F0} HP, Overheal: {totalOverhealDone:F0} HP, Pot: {totalPotionHealingDone:F0} HP, Regen: {totalRegenHealingDone:F0} HP, 1st: {firstHealStr}) | TankFlees: {tankFlees} | HealerSurvive: {healerSurvives} | HealerIdle: {healerIdle:F2}s | Casualties - Mon: {monsterCasualties}/{initialMonsterCount}, Adv: {adventurerCasualties}/{initialAdventurerCount}{(outcome == BattleOutcome.Timeout ? $" | Reason: {timeoutReason}" : "")}"
             };
 
             Debug.Log($"<b>[BattleSimulationTestRunner]</b> {lastReport.summary}");
@@ -870,14 +915,27 @@ namespace SBGames.Testing
                 if (skillCtrl != null)
                 {
 #if UNITY_EDITOR
-                    var healSkillPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Skill/Default/SKILL_HEAL_001.prefab");
-                    if (healSkillPrefab != null)
+                    bool alreadyHasHeal = false;
+                    for (int sIdx = 0; sIdx < skillCtrl.Skills.Count; sIdx++)
                     {
-                        var skillParent = unitGo.transform.Find("Skills/SkillList") ?? skillCtrl.transform;
-                        var healSkillGo = Instantiate(healSkillPrefab, skillParent);
-                        healSkillGo.name = healSkillPrefab.name;
-                        var healSkill = new CharacterSkillController.Skill(healSkillGo, skillCtrl);
-                        skillCtrl.AddSkill(healSkill);
+                        if (skillCtrl.Skills[sIdx] != null && skillCtrl.Skills[sIdx].Data != null && skillCtrl.Skills[sIdx].Data.skillID == "SKILL_HEAL_001")
+                        {
+                            alreadyHasHeal = true;
+                            break;
+                        }
+                    }
+
+                    if (!alreadyHasHeal)
+                    {
+                        var healSkillPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Skill/Default/SKILL_HEAL_001.prefab");
+                        if (healSkillPrefab != null)
+                        {
+                            var skillParent = unitGo.transform.Find("Skills/SkillList") ?? skillCtrl.transform;
+                            var healSkillGo = Instantiate(healSkillPrefab, skillParent);
+                            healSkillGo.name = healSkillPrefab.name;
+                            var healSkill = new CharacterSkillController.Skill(healSkillGo, skillCtrl);
+                            skillCtrl.AddSkill(healSkill);
+                        }
                     }
 #endif
                 }
@@ -1118,6 +1176,7 @@ namespace SBGames.Testing
 
         [Header("Scenario Test Harness Prefabs & Profiles")]
         [SerializeField] private GameObject defaultAdventurerPrefab;
+        [SerializeField] private GameObject defaultHealerPrefab;
         [SerializeField] private GameObject defaultMonsterPrefab1;
         [SerializeField] private GameObject defaultMonsterPrefab2;
         [SerializeField] private GameObject defaultMonsterPrefab3;
@@ -1131,6 +1190,8 @@ namespace SBGames.Testing
 #if UNITY_EDITOR
             if (defaultAdventurerPrefab == null)
                 defaultAdventurerPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Adventurer/Normal/ADVENTURER_N001.prefab");
+            if (defaultHealerPrefab == null)
+                defaultHealerPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Adventurer/Normal/ADVENTURER_N006.prefab");
             if (defaultMonsterPrefab1 == null)
                 defaultMonsterPrefab1 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N001.prefab");
             if (defaultMonsterPrefab2 == null)
@@ -1300,7 +1361,7 @@ namespace SBGames.Testing
             roster.Add(new UnitSpawnSlot
             {
                 slotLabel = "Adventurer Healer",
-                unitPrefab = defaultAdventurerPrefab,
+                unitPrefab = defaultHealerPrefab != null ? defaultHealerPrefab : defaultAdventurerPrefab,
                 customSpawnPosition = new Vector3(2.2f, -1.2f, 0f),
                 faction = BattleFaction.Adventurer,
                 functionOverride = AdventurerFunction.Healer,
@@ -1329,6 +1390,7 @@ namespace SBGames.Testing
             public int healsCast;
             public float totalHealingDone;
             public float skillHealingDone;
+            public float totalOverheal;
             public float potionHealingDone;
             public float regenHealing;
             public float timeToFirstHeal;
@@ -1435,6 +1497,100 @@ namespace SBGames.Testing
         }
 
         [Serializable]
+        public class HealerBattleResult
+        {
+            public string rank;
+            public int seed;
+            public string outcome;
+            public float duration;
+            public int casts;
+            public int healsApplied;
+            public float totalHealed;
+            public float totalOverheal;
+            public bool nearFullTargetInjected;
+        }
+
+        public readonly List<HealerBattleResult> healerBattleResults = new();
+        public bool IsHealerBattleComparisonRunning { get; private set; }
+        private bool injectNearFullTarget;
+        private bool nearFullTargetInjected;
+
+        public void StartHealerOverhealBattleComparison(int seed = 101)
+        {
+            StartCoroutine(HealerOverhealBattleComparison(seed));
+        }
+
+        private IEnumerator HealerOverhealBattleComparison(int seed)
+        {
+            IsHealerBattleComparisonRunning = true;
+            healerBattleResults.Clear();
+            foreach (string rank in new[] { "E", "D", "C" })
+            {
+                ConfigureScenario(rank, false, 4f, seed);
+                // A sustained encounter gives every rank time to react, cast, and finish the battle.
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    if (roster[i].faction != BattleFaction.Monster) continue;
+                    roster[i].overrideStats = true;
+                    roster[i].customMaxLife = 150f;
+                    roster[i].customDamage = 6f;
+                    roster[i].customMovespeed = 2.5f;
+                    roster[i].customAttackRange = 0.8f;
+                    roster[i].customAttackInterval = 1.2f;
+                }
+                StartSimulation();
+                // Let CharacterBrain.Start/OnSpawn finish resolving item kits before clearing them.
+                yield return null;
+                SetTimeScale(4f);
+                injectNearFullTarget = true;
+                nearFullTargetInjected = false;
+                for (int i = 0; i < adventurerCombatants.Count; i++)
+                {
+                    var unit = adventurerCombatants[i];
+                    unit.GameObject.GetComponent<AdventurerItemKitController>()?.ClearKit();
+                    if (unit.SourceSlot.functionOverride == AdventurerFunction.Tank && unit.Stats != null)
+                        unit.Stats.TakeDamage(new DamageData(unit.Stats.MaxLife.Value * 0.6f, DamageType.True));
+                }
+                TrackedCombatant tank = null;
+                TrackedCombatant healer = null;
+                for (int i = 0; i < adventurerCombatants.Count; i++)
+                {
+                    var unit = adventurerCombatants[i];
+                    if (unit.SourceSlot.functionOverride == AdventurerFunction.Tank) tank = unit;
+                    if (unit.SourceSlot.functionOverride == AdventurerFunction.Healer) healer = unit;
+                }
+                // Prime one normal SkillCaster cast to exercise overheal regardless of tactical timing.
+                // All subsequent casts and the rest of the encounter are controlled by AI.
+                if (tank != null && healer != null && healer.AI != null && healer.AI.SkillController != null)
+                {
+                    var skills = healer.AI.SkillController.Skills;
+                    for (int i = 0; i < skills.Count; i++)
+                    {
+                        if (skills[i].Data == null || skills[i].Data.skillID != "SKILL_HEAL_001") continue;
+                        skills[i].Caster.TryCastSkill(tank.GameObject);
+                        break;
+                    }
+                }
+                while (currentState == SimulationState.Running) yield return null;
+                int applied = 0;
+                for (int i = 0; i < adventurerCombatants.Count; i++) applied += adventurerCombatants[i].SkillHealsApplied;
+                var result = new HealerBattleResult
+                {
+                    rank = rank, seed = seed, outcome = lastReport.outcome.ToString(), duration = lastReport.duration,
+                    casts = lastReport.healsCast, healsApplied = applied, totalHealed = lastReport.skillHealingDone,
+                    totalOverheal = lastReport.totalOverheal, nearFullTargetInjected = nearFullTargetInjected
+                };
+                healerBattleResults.Add(result);
+                Debug.Log("[HEAL FULL BATTLE] " + JsonUtility.ToJson(result));
+                injectNearFullTarget = false;
+                ResetSimulation(resetTimeScale: false);
+                yield return null;
+            }
+            IsHealerBattleComparisonRunning = false;
+            SetTimeScale(1f);
+        }
+
+        [Serializable]
         public class ControlledHealTestResult
         {
             public string rank;
@@ -1501,7 +1657,7 @@ namespace SBGames.Testing
                     roster.Add(new UnitSpawnSlot
                     {
                         slotLabel = "Adventurer Healer",
-                        unitPrefab = defaultAdventurerPrefab,
+                        unitPrefab = defaultHealerPrefab != null ? defaultHealerPrefab : defaultAdventurerPrefab,
                         customSpawnPosition = new Vector3(2.5f, 0f, 0f),
                         faction = BattleFaction.Adventurer,
                         functionOverride = AdventurerFunction.Healer,

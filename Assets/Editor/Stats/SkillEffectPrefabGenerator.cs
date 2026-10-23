@@ -17,7 +17,8 @@ namespace SBGames.Editor.Stats
         Projectile,
         ProjectileArea,
         Area,
-        Beam
+        Beam,
+        TargetedBurst
     }
 
     /// <summary>
@@ -53,6 +54,12 @@ namespace SBGames.Editor.Stats
                 (skill.area || skill.areaRadius > 0f))
             {
                 return SkillEffectTemplate.ProjectileArea;
+            }
+
+            // Targeted Burst (Heal or single-target instant windup burst)
+            if (skill.type == SkillType.TargetedBurst || (!skill.area && skill.baseHeal > 0f) || (skill.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && !skill.area && skill.projectileSpeed <= 0f))
+            {
+                return SkillEffectTemplate.TargetedBurst;
             }
 
             // Pure Area
@@ -185,6 +192,11 @@ namespace SBGames.Editor.Stats
                     case SkillEffectTemplate.ProjectileArea:
                         root.AddComponent<LinearProjectileMovement>();
                         root.AddComponent<AoEDetonation>();
+                        break;
+                    case SkillEffectTemplate.TargetedBurst:
+                        var burstComp = root.AddComponent<TargetedBurstDetonation>();
+                        burstComp.WindupDuration = skill.windupDuration > 0f ? skill.windupDuration : 0.5f;
+                        burstComp.Anchor = skill.visualAnchor;
                         break;
                     case SkillEffectTemplate.Area:
                         root.AddComponent<AoEDetonation>();
@@ -353,6 +365,7 @@ namespace SBGames.Editor.Stats
                 
                 // For ally heals or targeting skills
                 bool isHealOrAlly = skill.targetFilter == SkillData.SkillTargetFilter.AlliesOnly ||
+                                   skill.type == SkillType.TargetedBurst ||
                                    skill.targetFilter == SkillData.SkillTargetFilter.SelfOnly;
                 casterSO.FindProperty("requireTarget")?.SetValue(isHealOrAlly);
                 casterSO.FindProperty("spawnType")?.SetValue(isHealOrAlly ? 2 : 0); // 2 = AtTarget, 0 = AtCaster
@@ -478,6 +491,7 @@ namespace SBGames.Editor.Stats
                     t != typeof(AoEDetonation) &&
                     t != typeof(BeamMovement) &&
                     t != typeof(BeamSkill) &&
+                    t != typeof(TargetedBurstDetonation) &&
                     t != typeof(SkillTargeting))
                 {
                     return true;

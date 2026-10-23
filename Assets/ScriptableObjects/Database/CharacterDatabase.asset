@@ -130,3 +130,18 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
+  - id: ADVENTURER_N006
+    characterName: ADVENTURER_N006
+    prefab: {fileID: 2651500590597292486, guid: cace6590529923e4db211ea21e394b9b, type: 3}
+    baseStats: {fileID: 11400000, guid: d78066e25d5fc344d8a145398d1edd5c, type: 2}
+    defaultSkillIds:
+    - SKILL_HEAL_001
+    extraItemIds: []
+    hybridPrefab:
+      directAsset: {fileID: 0}
+      addressableAsset:
+        m_AssetGUID: 
+        m_SubObjectName: 
+        m_SubObjectType: 
+        m_SubObjectGUID: 
+        m_EditorAssetChanged: 0

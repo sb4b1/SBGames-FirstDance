@@ -177,7 +177,7 @@ namespace SBGames.Database.Editor.CSV
             var skillGuids = AssetDatabase.FindAssets("t:SkillData");
             var headers = new[]
             {
-                "SkillID", "SkillName", "Description", "SkillType", "TargetFilter", "DamageType", "BaseDamage", "BaseManaCost",
+                "SkillID", "SkillName", "Description", "SkillType", "TargetFilter", "DamageType", "BaseDamage", "BaseHeal", "SelfTarget", "BaseManaCost",
                 "ProjectileSpeed", "ProjectileLifetime", "Chain", "MaxChainTargets", "ChainDamageMultiplier",
                 "Area", "AreaRadius", "BeamTickInterval"
             };
@@ -198,6 +198,8 @@ namespace SBGames.Database.Editor.CSV
                     ["TargetFilter"] = skill.targetFilter.ToString(),
                     ["DamageType"] = skill.damageType.ToString(),
                     ["BaseDamage"] = skill.baseDamage.ToString("F2"),
+                    ["BaseHeal"] = skill.baseHeal.ToString("F2"),
+                    ["SelfTarget"] = skill.selfTarget.ToString(),
                     ["BaseManaCost"] = skill.baseManaCost.ToString("F2"),
                     ["ProjectileSpeed"] = skill.projectileSpeed.ToString("F2"),
                     ["ProjectileLifetime"] = skill.projectileLifetime.ToString("F2"),
@@ -264,6 +266,8 @@ namespace SBGames.Database.Editor.CSV
                 if (row.TryGetValue("TargetFilter", out var filterStr) && Enum.TryParse<SkillData.SkillTargetFilter>(filterStr, true, out var tf)) targetSkill.targetFilter = tf;
                 if (row.TryGetValue("DamageType", out var dtStr) && Enum.TryParse<DamageType>(dtStr, true, out var dt)) targetSkill.damageType = dt;
                 if (row.TryGetValue("BaseDamage", out var dmgStr) && float.TryParse(dmgStr, out var dmg)) targetSkill.baseDamage = dmg;
+                if (row.TryGetValue("BaseHeal", out var healStr) && float.TryParse(healStr, out var healVal)) targetSkill.baseHeal = healVal;
+                if (row.TryGetValue("SelfTarget", out var stStr) && Enum.TryParse<SkillData.SelfTarget>(stStr, true, out var stVal)) targetSkill.selfTarget = stVal;
                 if (row.TryGetValue("BaseManaCost", out var manaStr) && float.TryParse(manaStr, out var mana)) targetSkill.baseManaCost = mana;
                 if (row.TryGetValue("ProjectileSpeed", out var spdStr) && float.TryParse(spdStr, out var spd)) targetSkill.projectileSpeed = spd;
                 if (row.TryGetValue("ProjectileLifetime", out var ltStr) && float.TryParse(ltStr, out var lt)) targetSkill.projectileLifetime = lt;

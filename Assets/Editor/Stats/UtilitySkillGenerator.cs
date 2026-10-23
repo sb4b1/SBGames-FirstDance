@@ -15,7 +15,7 @@ namespace SBGames.Editor.Stats
     }
 
     /// <summary>
-    /// Utility and generator for per-skill UtilitySkill ScriptableObjects in Stats & Balance.
+    /// Utility and generator for per-skill UtilitySkill ScriptableObjects in Database.
     /// Manages template resolution, creation, folder conventions, and SkillData linkage.
     /// Editor-only: builds/updates assets; never mutates ScriptableObject templates at runtime.
     /// </summary>

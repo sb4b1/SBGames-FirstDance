@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var findings=SBGames.Editor.Validation.AISetupValidatorCore.RunAudit();int errors=0,warnings=0;foreach(var f in findings){if(f.Severity==SBGames.Editor.Validation.ValidationSeverity.Error)errors++;if(f.Severity==SBGames.Editor.Validation.ValidationSeverity.Warning)warnings++;}return new {errors,warnings,findings};"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "errors": 0,
+        "warnings": 0,
+        "findings": []
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

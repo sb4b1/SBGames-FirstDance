@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var r=UnityEngine.Object.FindAnyObjectByType<SBGames.Testing.BattleSimulationTestRunner>();return new {running=r.IsHealerBattleComparisonRunning,results=r.healerBattleResults};"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "running": false,
+        "results": [
+          {
+            "rank": "E",
+            "seed": 101,
+            "outcome": "AdventurersWin",
+            "duration": 14.9613714,
+            "casts": 1,
+            "healsApplied": 1,
+            "totalHealed": 5,
+            "totalOverheal": 20,
+            "nearFullTargetInjected": true
+          },
+          {
+            "rank": "D",
+            "seed": 101,
+            "outcome": "AdventurersWin",
+            "duration": 16.8022327,
+            "casts": 1,
+            "healsApplied": 1,
+            "totalHealed": 5,
+            "totalOverheal": 20,
+            "nearFullTargetInjected": true
+          },
+          {
+            "rank": "C",
+            "seed": 101,
+            "outcome": "MonstersWin",
+            "duration": 37.1587257,
+            "casts": 1,
+            "healsApplied": 1,
+            "totalHealed": 5,
+            "totalOverheal": 20,
+            "nearFullTargetInjected": true
+          }
+        ]
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

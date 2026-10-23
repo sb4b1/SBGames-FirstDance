@@ -37,6 +37,31 @@ namespace SBGames.Editor.Animation
     }
 
     /// <summary>
+    /// Supported archetype for AnimatorController state machine generation.
+    /// </summary>
+    public enum AnimationControllerType
+    {
+        /// <summary>
+        /// Standard character controller: Idle, Walk, Attack, CastSkill, Hit, Die.
+        /// </summary>
+        Character,
+
+        /// <summary>
+        /// Skill effect VFX controller: OnHit trigger, Move/Flight -> Hit/Explosion, Startup -> Burst, or One-Shot.
+        /// </summary>
+        SkillFX
+    }
+
+    /// <summary>
+    /// Preset category for organizing templates in the generator UI.
+    /// </summary>
+    public enum PresetCategory
+    {
+        Character,
+        SkillFX
+    }
+
+    /// <summary>
     /// Configuration schema for a single character animation action.
     /// </summary>
     [Serializable]
@@ -133,13 +158,15 @@ namespace SBGames.Editor.Animation
     {
         public string presetName;
         public string description;
+        public PresetCategory category;
         public List<AnimationActionConfig> actions;
 
-        public ActionPresetTemplate(string name, string desc, List<AnimationActionConfig> actionList)
+        public ActionPresetTemplate(string name, string desc, List<AnimationActionConfig> actionList, PresetCategory cat = PresetCategory.Character)
         {
             presetName = name;
             description = desc;
             actions = actionList;
+            category = cat;
         }
     }
 
@@ -151,6 +178,7 @@ namespace SBGames.Editor.Animation
     {
         public Texture2D sourceTexture;
         public SpriteSortMode sortMode = SpriteSortMode.NaturalNumericName;
+        public AnimationControllerType controllerType = AnimationControllerType.Character;
         public string outputFolderPath = "Assets/Animators/Characters/Monsters/Normal";
         public string baseName = "MONSTER_N001";
         public List<AnimationActionConfig> actions = new();
@@ -271,6 +299,7 @@ namespace SBGames.Editor.Animation
     {
         public string baseName = "ADVENTURER_N001";
         public string outputFolderPath = "Assets/Animators/Characters/Adventurers/N001";
+        public AnimationControllerType controllerType = AnimationControllerType.Character;
         public List<MultiSheetActionConfig> actions = new();
         public SpriteSortMode sortMode = SpriteSortMode.NaturalNumericName;
         public bool generateAnimatorController = true;
@@ -311,11 +340,19 @@ namespace SBGames.Editor.Animation
         public const string PARAM_IS_ATTACKING = "IsAttacking";
         public const string PARAM_IS_CASTING_SKILL = "IsCastingSkill";
 
+        // Skill VFX Animator Parameter Names
+        public const string PARAM_ON_HIT = "OnHit";
+
         // Standard Event Names
         public const string EVENT_ATTACK = "AnimationEvent_Attack";
         public const string EVENT_ATTACK_COMPLETE = "AnimationEvent_AttackComplete";
         public const string EVENT_CAST_SKILL = "AnimationEvent_CastSkill";
         public const string EVENT_CAST_SKILL_COMPLETE = "AnimationEvent_CastSkillComplete";
+
+        // Skill VFX Event Names
+        public const string EVENT_ON_DESPAWN = "OnDespawn";
+        public const string EVENT_ACTIVATE_HITBOX = "ActivateHitbox";
+        public const string EVENT_DEACTIVATE_HITBOX = "DeactivateHitbox";
 
         #region Sprite Extraction & Validation
 
@@ -795,6 +832,97 @@ namespace SBGames.Editor.Animation
             return controller;
         }
 
+        /// <summary>
+        /// Synthesizes an AnimatorController asset tailored for Skill VFX prefabs
+        /// (e.g. projectile flight into explosion on OnHit, startup into burst, or one-shot impact).
+        /// </summary>
+        public static AnimatorController CreateSkillFXAnimatorController(
+            string controllerPath,
+            Dictionary<string, AnimationClip> actionClips)
+        {
+            EnsureDirectoryForFile(controllerPath);
+
+            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
+            if (controller == null)
+            {
+                Debug.LogError($"[SpriteAnimationBuilder] Failed to create SkillFX AnimatorController at '{controllerPath}'.");
+                return null;
+            }
+
+            // SkillInstance.cs triggers OnHit via Trigger (Hash)
+            AddControllerParameter(controller, PARAM_ON_HIT, AnimatorControllerParameterType.Trigger);
+
+            var rootStateMachine = controller.layers[0].stateMachine;
+            rootStateMachine.anyStatePosition = new Vector3(50, -60, 0);
+            rootStateMachine.entryPosition = new Vector3(50, 0, 0);
+            rootStateMachine.exitPosition = new Vector3(800, 0, 0);
+
+            var states = new Dictionary<string, AnimatorState>(StringComparer.OrdinalIgnoreCase);
+            int yOffset = 0;
+
+            foreach (var kvp in actionClips)
+            {
+                string actionKey = kvp.Key;
+                AnimationClip clip = kvp.Value;
+
+                Vector3 statePos = new Vector3(250, yOffset, 0);
+                yOffset += 100;
+
+                var state = rootStateMachine.AddState(actionKey, statePos);
+                state.motion = clip;
+                states[actionKey] = state;
+            }
+
+            // Detect Archetype states
+            AnimatorState moveState = FindState(states, "Move", "Flight", "Fly", "Projectile", "Loop", "Idle");
+            AnimatorState hitState = FindState(states, "Hit", "Explosion", "Impact", "Detonate", "Death");
+            AnimatorState startState = FindState(states, "Startup", "Start", "Charge", "Cast");
+            AnimatorState burstState = FindState(states, "Burst", "Spike", "Splash", "Active");
+
+            if (moveState != null && hitState != null)
+            {
+                // Projectile Archetype: Move (loop) is default -> OnHit triggers Hit state
+                rootStateMachine.defaultState = moveState;
+
+                var moveTransition = moveState.AddTransition(hitState);
+                moveTransition.hasExitTime = false;
+                moveTransition.duration = 0f;
+                moveTransition.AddCondition(AnimatorConditionMode.If, 0, PARAM_ON_HIT);
+
+                // AnyState -> Hit as safety
+                var anyToHit = rootStateMachine.AddAnyStateTransition(hitState);
+                anyToHit.hasExitTime = false;
+                anyToHit.duration = 0f;
+                anyToHit.canTransitionToSelf = false;
+                anyToHit.AddCondition(AnimatorConditionMode.If, 0, PARAM_ON_HIT);
+            }
+            else if (startState != null && burstState != null)
+            {
+                // Area / Charge Archetype: Startup is default -> exits automatically into Burst
+                rootStateMachine.defaultState = startState;
+
+                var startToBurst = startState.AddTransition(burstState);
+                startToBurst.hasExitTime = true;
+                startToBurst.exitTime = 1.0f;
+                startToBurst.duration = 0f;
+
+                // Also allow OnHit to immediately trigger Burst if interrupted or detonated early
+                var anyToBurst = rootStateMachine.AddAnyStateTransition(burstState);
+                anyToBurst.hasExitTime = false;
+                anyToBurst.duration = 0f;
+                anyToBurst.canTransitionToSelf = false;
+                anyToBurst.AddCondition(AnimatorConditionMode.If, 0, PARAM_ON_HIT);
+            }
+            else if (states.Count > 0)
+            {
+                // Single state or custom list
+                rootStateMachine.defaultState = states.Values.First();
+            }
+
+            EditorUtility.SetDirty(controller);
+            return controller;
+        }
+
         private static AnimatorState FindState(Dictionary<string, AnimatorState> states, params string[] candidateNames)
         {
             foreach (var name in candidateNames)
@@ -926,7 +1054,14 @@ namespace SBGames.Editor.Animation
                     string controllerFileName = $"{characterPrefix}.controller";
                     string controllerPath = $"{cleanOutputDir}/{controllerFileName}";
 
-                    result.CreatedController = CreateAnimatorController(controllerPath, actionClipsMap, settings.includeStandardParameters);
+                    if (settings.controllerType == AnimationControllerType.SkillFX)
+                    {
+                        result.CreatedController = CreateSkillFXAnimatorController(controllerPath, actionClipsMap);
+                    }
+                    else
+                    {
+                        result.CreatedController = CreateAnimatorController(controllerPath, actionClipsMap, settings.includeStandardParameters);
+                    }
                 }
 
                 AssetDatabase.SaveAssets();
@@ -962,6 +1097,19 @@ namespace SBGames.Editor.Animation
                 new("CastSkill", null, false, 12f, events: true, impactFrame: 2, impactName: EVENT_CAST_SKILL, complete: true, completeName: EVENT_CAST_SKILL_COMPLETE),
                 new("Hit", null, false, 10f),
                 new("Die", null, false, 10f)
+            };
+        }
+
+        /// <summary>
+        /// Constructs standard multi-sheet action slots for Skill VFX (Move/Flight, Hit/Explosion)
+        /// with OnHit / OnDespawn event configurations pre-populated.
+        /// </summary>
+        public static List<MultiSheetActionConfig> GetDefaultMultiSheetSkillActions()
+        {
+            return new List<MultiSheetActionConfig>
+            {
+                new("Move", null, true, 12f),
+                new("Hit", null, false, 12f, events: false, impactFrame: 0, impactName: "", complete: true, completeName: EVENT_ON_DESPAWN)
             };
         }
 
@@ -1021,6 +1169,16 @@ namespace SBGames.Editor.Animation
                 {
                     match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
                         (t.name.ToLowerInvariant().Contains("die") || t.name.ToLowerInvariant().Contains("death") || t.name.ToLowerInvariant().Contains("dead")));
+                }
+                else if (name == "explosion" || name == "explode" || name == "burst")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("explod") || t.name.ToLowerInvariant().Contains("burst") || t.name.ToLowerInvariant().Contains("spike") || t.name.ToLowerInvariant().Contains("splash")));
+                }
+                else if (name == "startup" || name == "charge")
+                {
+                    match = textureList.FirstOrDefault(t => !usedTextures.Contains(t) &&
+                        (t.name.ToLowerInvariant().Contains("startup") || t.name.ToLowerInvariant().Contains("charge") || t.name.ToLowerInvariant().Contains("start")));
                 }
 
                 if (match != null)
@@ -1187,7 +1345,14 @@ namespace SBGames.Editor.Animation
                     string controllerFileName = $"{characterPrefix}.controller";
                     string controllerPath = $"{cleanOutputDir}/{controllerFileName}";
 
-                    result.CreatedController = CreateAnimatorController(controllerPath, actionClipsMap, settings.includeStandardParameters);
+                    if (settings.controllerType == AnimationControllerType.SkillFX)
+                    {
+                        result.CreatedController = CreateSkillFXAnimatorController(controllerPath, actionClipsMap);
+                    }
+                    else
+                    {
+                        result.CreatedController = CreateAnimatorController(controllerPath, actionClipsMap, settings.includeStandardParameters);
+                    }
                 }
 
                 AssetDatabase.SaveAssets();
@@ -1264,7 +1429,41 @@ namespace SBGames.Editor.Animation
                     {
                         new("Idle", 0, 4, 10f, true),
                         new("Walk", 4, 6, 12f, true)
-                    }
+                    },
+                    PresetCategory.Character
+                ),
+
+                // Skill FX Presets
+                new ActionPresetTemplate(
+                    "Skill FX: Projectile (Move & Hit)",
+                    "Standard 2-state projectile effect: Move/Flight (looping) transitioning to Hit/Explosion on OnHit trigger with OnDespawn event.",
+                    new List<AnimationActionConfig>
+                    {
+                        new("Move", 0, 4, 12f, true),
+                        new("Hit", 4, 4, 12f, false, events: false, impactFrame: 0, impactName: "", complete: true, completeName: EVENT_ON_DESPAWN)
+                    },
+                    PresetCategory.SkillFX
+                ),
+
+                new ActionPresetTemplate(
+                    "Skill FX: Area Burst (Startup & Burst)",
+                    "Standard 2-state area ground effect: Startup (charge) with ActivateHitbox followed by Burst with DeactivateHitbox & OnDespawn.",
+                    new List<AnimationActionConfig>
+                    {
+                        new("Startup", 0, 4, 10f, false, events: true, impactFrame: 3, impactName: EVENT_ACTIVATE_HITBOX),
+                        new("Burst", 4, 6, 12f, false, events: true, impactFrame: 2, impactName: EVENT_DEACTIVATE_HITBOX, complete: true, completeName: EVENT_ON_DESPAWN)
+                    },
+                    PresetCategory.SkillFX
+                ),
+
+                new ActionPresetTemplate(
+                    "Skill FX: One-Shot Burst / Impact",
+                    "Single-clip impact, strike, or explosion with OnDespawn event at the end.",
+                    new List<AnimationActionConfig>
+                    {
+                        new("Hit", 0, 6, 12f, false, events: false, impactFrame: 0, impactName: "", complete: true, completeName: EVENT_ON_DESPAWN)
+                    },
+                    PresetCategory.SkillFX
                 )
             };
         }

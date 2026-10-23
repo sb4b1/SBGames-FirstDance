@@ -21,7 +21,7 @@ public class UtilitySkill : ScriptableObject
     [SerializeField] private bool useClusterConsideration = false;
     [SerializeField] private float clusterRadius = 3f;
     [Tooltip("Curve evaluated using count of enemies in clusterRadius (e.g. X: 1 to 5 enemies, Y: multiplier).")]
-    [SerializeField] private AnimationCurve clusterCurve = AnimationCurve.Linear(1f, 0.5f, 4f, 1.5f);
+    [SerializeField] private AnimationCurve clusterCurve = AnimationCurve.Linear(1f, 0.5f, 4f, 1f);
 
     [Header("Health Threshold Gate (Optional)")]
     [SerializeField] private bool checkHealthThreshold = false;
@@ -60,6 +60,35 @@ public class UtilitySkill : ScriptableObject
                 // If not found in character skills, do not score
                 if (!foundSkill && skills.Count > 0)
                     return 0f;
+            }
+        }
+
+        // SelfTarget Rule Gate:
+        if (context.SkillController != null)
+        {
+            var skillList = context.SkillController.Skills;
+            if (skillList != null)
+            {
+                for (int i = 0; i < skillList.Count; i++)
+                {
+                    var s = skillList[i];
+                    if (s != null && s.Data != null && (s.UtilityData == this || s.ID == skillID))
+                    {
+                        if (s.Data.selfTarget == SkillData.SelfTarget.Only)
+                        {
+                            // Cannot score if target is not self
+                            if (context.CurrentTarget != null && context.CurrentTarget != context.transform)
+                                return 0f;
+                        }
+                        else if (s.Data.selfTarget == SkillData.SelfTarget.Excluded)
+                        {
+                            // Cannot score if target is self
+                            if (context.CurrentTarget == context.transform)
+                                return 0f;
+                        }
+                        break;
+                    }
+                }
             }
         }
 

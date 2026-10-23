@@ -382,6 +382,7 @@ public class AdventurerItemKitController : MonoBehaviour, IPoolable
             };
             activeSlotCount++;
             totalInitialCount += finalCount;
+            totalRemainingCount += finalCount;
         }
 
         isKitResolved = true;

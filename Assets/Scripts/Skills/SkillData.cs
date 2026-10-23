@@ -13,6 +13,13 @@ public class SkillData : ScriptableObject
     public GameObject skillPrefab;
     public UtilitySkill utilityData;
 
+    public enum SelfTarget
+    {
+        Allowed = 0,
+        Excluded = 1,
+        Only = 2
+    }
+
     public enum ProjectileForward
     {
         Up,
@@ -42,6 +49,10 @@ public class SkillData : ScriptableObject
     [Tooltip("Effective casting range. If 0, automatically derived from projectile speed/lifetime or defaults to 5.")]
     public float castRange = 0f;
     public float baseDamage = 10f;
+    public float baseHeal = 0f;
+    public SelfTarget selfTarget = SelfTarget.Allowed;
+    public VisualAnchor visualAnchor = VisualAnchor.Feet;
+    public float windupDuration = 0.5f;
     public DamageType damageType = DamageType.Physical;
     public float baseManaCost = 10f;
 

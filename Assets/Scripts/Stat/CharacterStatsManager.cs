@@ -246,28 +246,37 @@ public class CharacterStatsManager : MonoBehaviour, IDamageable
         return true;
     }
 
-    public void RestoreLife(float value)
+    public bool ApplyHeal(float amount, out float actualHealed, out float overheal)
     {
-        if (value <= 0) return;
+        actualHealed = 0f;
+        overheal = 0f;
+        if (amount <= 0f || Life <= 0f)
+            return false;
 
+        float maxLifeVal = MaxLife != null ? MaxLife.Value : 0f;
         float oldLife = Life;
-        Life = Mathf.Min(Life + value, MaxLife.Value);
-        float actualRestored = Mathf.Max(0f, Life - oldLife);
-        NotifyLifeChanged();
-        if (actualRestored > 0f)
+        Life = Mathf.Min(Life + amount, maxLifeVal);
+        actualHealed = Mathf.Max(0f, Life - oldLife);
+        overheal = Mathf.Max(0f, amount - actualHealed);
+
+        if (actualHealed > 0f)
         {
+            NotifyLifeChanged();
             if (isApplyingRegen)
             {
-                OnRegenLifeRestored?.Invoke(actualRestored);
+                OnRegenLifeRestored?.Invoke(actualHealed);
             }
             else
             {
-                OnLifeRestored?.Invoke(actualRestored);
+                OnLifeRestored?.Invoke(actualHealed);
             }
         }
+        return true;
+    }
 
-        ELogger.Log(this, nameof(RestoreLife),
-            $"{name} healed <color=green>{value}</color>");
+    public void RestoreLife(float value)
+    {
+        ApplyHeal(value, out _, out _);
     }
 
     public void RestoreMana(float value)

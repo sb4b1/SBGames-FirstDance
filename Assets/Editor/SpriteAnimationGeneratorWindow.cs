@@ -28,6 +28,7 @@ namespace SBGames.Editor
         // ----------------------------------------------------
         [SerializeField] private Texture2D sourceTexture;
         [SerializeField] private SpriteSortMode sortMode = SpriteSortMode.NaturalNumericName;
+        [SerializeField] private AnimationControllerType controllerType = AnimationControllerType.Character;
         [SerializeField] private string outputFolderPath = "Assets/Animators/Characters/Monsters/Normal";
         [SerializeField] private string baseName = "";
         [SerializeField] private bool generateAnimatorController = true;
@@ -57,6 +58,7 @@ namespace SBGames.Editor
         [SerializeField] private string multiOutputFolderPath = "Assets/Animators/Characters/Adventurers";
         [SerializeField] private string multiBaseName = "ADVENTURER_N001";
         [SerializeField] private SpriteSortMode multiSortMode = SpriteSortMode.NaturalNumericName;
+        [SerializeField] private AnimationControllerType multiControllerType = AnimationControllerType.Character;
         [SerializeField] private bool multiGenerateAnimatorController = true;
         [SerializeField] private bool multiIncludeStandardParameters = true;
         [SerializeField] private List<MultiSheetActionConfig> multiActions = new();
@@ -365,17 +367,47 @@ namespace SBGames.Editor
 
                 var presets = SpriteAnimationBuilder.GetStandardPresets();
 
+                // Group A: Character Presets
+                EditorGUILayout.LabelField("Character Presets", EditorStyles.miniBoldLabel);
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     for (int i = 0; i < presets.Count; i++)
                     {
-                        if (GUILayout.Button(presets[i].presetName, EditorStyles.miniButton))
+                        if (presets[i].category != PresetCategory.Character) continue;
+
+                        string shortName = presets[i].presetName;
+                        int parenIdx = shortName.IndexOf('(');
+                        if (parenIdx > 0) shortName = shortName.Substring(0, parenIdx).Trim();
+
+                        if (GUILayout.Button(new GUIContent(shortName, presets[i].description), EditorStyles.miniButton))
                         {
                             ApplyStandardPreset(i);
                             GUIUtility.ExitGUI();
                         }
                     }
                 }
+
+                EditorGUILayout.Space(2);
+
+                // Group B: Skill FX Presets
+                EditorGUILayout.LabelField("Skill FX Presets", EditorStyles.miniBoldLabel);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    for (int i = 0; i < presets.Count; i++)
+                    {
+                        if (presets[i].category != PresetCategory.SkillFX) continue;
+
+                        string shortName = presets[i].presetName.Replace("Skill FX: ", "");
+
+                        if (GUILayout.Button(new GUIContent("✨ " + shortName, presets[i].description), EditorStyles.miniButton))
+                        {
+                            ApplyStandardPreset(i);
+                            GUIUtility.ExitGUI();
+                        }
+                    }
+                }
+
+                EditorGUILayout.Space(4);
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
@@ -603,8 +635,11 @@ namespace SBGames.Editor
                 baseName = EditorGUILayout.TextField(new GUIContent("Base Name / Prefix", "Identifier prefix for clips and controller (e.g. MONSTER_N001)"), baseName);
 
                 EditorGUILayout.Space(2);
+                controllerType = (AnimationControllerType)EditorGUILayout.EnumPopup(new GUIContent("Controller Type", "Character (Idle/Walk/Attack/Die) or SkillFX (OnHit/Flight/Hit/Burst)"), controllerType);
+
+                EditorGUILayout.Space(2);
                 generateAnimatorController = EditorGUILayout.Toggle(new GUIContent("Generate Animator Controller", "Synthesizes .controller with state machine transitions"), generateAnimatorController);
-                if (generateAnimatorController)
+                if (generateAnimatorController && controllerType == AnimationControllerType.Character)
                 {
                     EditorGUI.indentLevel++;
                     includeStandardParameters = EditorGUILayout.Toggle(new GUIContent("Standard Parameters", "Add IsMoving, Attack, CastSkill, Hit, IsDead & compatibility parameters"), includeStandardParameters);
@@ -669,6 +704,7 @@ namespace SBGames.Editor
             {
                 sourceTexture = sourceTexture,
                 sortMode = sortMode,
+                controllerType = controllerType,
                 outputFolderPath = outputFolderPath,
                 baseName = string.IsNullOrWhiteSpace(baseName) ? sourceTexture.name : baseName,
                 actions = actions,
@@ -730,10 +766,28 @@ namespace SBGames.Editor
             var presets = SpriteAnimationBuilder.GetStandardPresets();
             if (index >= 0 && index < presets.Count)
             {
+                var preset = presets[index];
                 actions.Clear();
-                foreach (var act in presets[index].actions)
+                foreach (var act in preset.actions)
                 {
                     actions.Add(act.Clone());
+                }
+
+                if (preset.category == PresetCategory.SkillFX)
+                {
+                    controllerType = AnimationControllerType.SkillFX;
+                    if (outputFolderPath.StartsWith("Assets/Animators/Characters") || string.IsNullOrWhiteSpace(outputFolderPath))
+                    {
+                        outputFolderPath = "Assets/Animators/Skills";
+                    }
+                }
+                else
+                {
+                    controllerType = AnimationControllerType.Character;
+                    if (outputFolderPath.StartsWith("Assets/Animators/Skills") || string.IsNullOrWhiteSpace(outputFolderPath))
+                    {
+                        outputFolderPath = "Assets/Animators/Characters/Monsters/Normal";
+                    }
                 }
             }
         }
@@ -795,8 +849,10 @@ namespace SBGames.Editor
 
                 multiSortMode = (SpriteSortMode)EditorGUILayout.EnumPopup(new GUIContent("Sprite Sort Mode", "Sorting order for sliced frames within each sheet"), multiSortMode);
 
+                multiControllerType = (AnimationControllerType)EditorGUILayout.EnumPopup(new GUIContent("Controller Type", "Character (Idle/Walk/Attack/Die) or SkillFX (OnHit/Flight/Hit/Burst)"), multiControllerType);
+
                 multiGenerateAnimatorController = EditorGUILayout.Toggle(new GUIContent("Generate Controller", "Creates AnimatorController state machine wired for all actions"), multiGenerateAnimatorController);
-                if (multiGenerateAnimatorController)
+                if (multiGenerateAnimatorController && multiControllerType == AnimationControllerType.Character)
                 {
                     multiIncludeStandardParameters = EditorGUILayout.Toggle(new GUIContent("Compatibility Parameters", "Includes Speed, MoveX, MoveY, GetHit compatibility params"), multiIncludeStandardParameters);
                 }
@@ -840,11 +896,29 @@ namespace SBGames.Editor
                     }
                 }
 
-                if (GUILayout.Button("Reset Standard Slots", GUILayout.Height(26), GUILayout.Width(140)))
+                if (GUILayout.Button("Reset Character Slots", GUILayout.Height(26), GUILayout.Width(140)))
                 {
-                    if (EditorUtility.DisplayDialog("Reset Slots", "Reset action slots to standard template (Idle, Move, Attack, CastSkill, Hit, Die)?", "Reset", "Cancel"))
+                    if (EditorUtility.DisplayDialog("Reset Slots", "Reset action slots to standard Character template (Idle, Move, Attack, CastSkill, Hit, Die)?", "Reset", "Cancel"))
                     {
                         multiActions = SpriteAnimationBuilder.GetDefaultMultiSheetActions();
+                        multiControllerType = AnimationControllerType.Character;
+                        if (multiOutputFolderPath.StartsWith("Assets/Animators/Skills") || string.IsNullOrWhiteSpace(multiOutputFolderPath))
+                        {
+                            multiOutputFolderPath = "Assets/Animators/Characters/Adventurers";
+                        }
+                    }
+                }
+
+                if (GUILayout.Button("Reset Skill FX Slots", GUILayout.Height(26), GUILayout.Width(130)))
+                {
+                    if (EditorUtility.DisplayDialog("Reset Slots", "Reset action slots to Skill FX template (Move, Hit)?", "Reset", "Cancel"))
+                    {
+                        multiActions = SpriteAnimationBuilder.GetDefaultMultiSheetSkillActions();
+                        multiControllerType = AnimationControllerType.SkillFX;
+                        if (multiOutputFolderPath.StartsWith("Assets/Animators/Characters") || string.IsNullOrWhiteSpace(multiOutputFolderPath))
+                        {
+                            multiOutputFolderPath = "Assets/Animators/Skills";
+                        }
                     }
                 }
                 EditorGUILayout.EndHorizontal();
@@ -1133,6 +1207,7 @@ namespace SBGames.Editor
             {
                 baseName = cleanId,
                 outputFolderPath = outputDir,
+                controllerType = multiControllerType,
                 sortMode = multiSortMode,
                 generateAnimatorController = multiGenerateAnimatorController,
                 includeStandardParameters = multiIncludeStandardParameters,
@@ -1495,6 +1570,7 @@ namespace SBGames.Editor
                 {
                     sourceTexture = tex,
                     sortMode = SpriteSortMode.NaturalNumericName,
+                    controllerType = selectedPreset.category == PresetCategory.SkillFX ? AnimationControllerType.SkillFX : AnimationControllerType.Character,
                     outputFolderPath = charOutputDir,
                     baseName = charName,
                     actions = selectedPreset.actions.Select(a => a.Clone()).ToList(),

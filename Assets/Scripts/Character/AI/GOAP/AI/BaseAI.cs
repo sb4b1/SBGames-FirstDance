@@ -42,6 +42,10 @@ public class BaseAI : MonoBehaviour, IPoolable
     [Tooltip("Score commitment bonus applied to the currently active goal (if its raw score > 0) so competing goals like Recover and Survive do not flip-flop on boundary ticks.")]
     [SerializeField, Range(0f, 0.25f)] private float goalHysteresisBonus = 0.08f;
 
+    [SerializeField] private RecoverySafetyTuningSO recoverySafetyTuning;
+    public RecoverySafetyTuningSO RecoverySafetyTuning { get => recoverySafetyTuning; set => recoverySafetyTuning = value; }
+    public float RecoverySafety => recoverySafetyTuning != null ? recoverySafetyTuning.Evaluate(this) : 0f;
+
     private bool hasProfileSurvivalThreshold;
     private float profileSurvivalHpThreshold;
     private TargetPriorityMode profileTargetPriorityMode = TargetPriorityMode.Nearest;
@@ -75,7 +79,8 @@ public class BaseAI : MonoBehaviour, IPoolable
     public float GoalHysteresisBonus { get => goalHysteresisBonus; set => goalHysteresisBonus = Mathf.Clamp(value, 0f, 0.5f); }
     public EnumUtilGoal ActiveGoal => activeGoal;
     public EnumUtilGoal CurrentActiveGoalKey => activeGoal;
-    public bool IsCornered => CheckIsCornered();
+    private bool cachedIsCornered;
+    public bool IsCornered => cachedIsCornered;
 
     [Header("Fight Outlook (Phase 6)")]
     [SerializeField] private FightOutlookTuningSO fightOutlookTuning;
@@ -339,6 +344,7 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     private void Awake()
     {
+        if (recoverySafetyTuning == null) recoverySafetyTuning = Resources.Load<RecoverySafetyTuningSO>("AI/RecoverySafety_Default");
         this.goap = FindAnyObjectByType<GoapBehaviour>();
         this.provider = this.GetComponent<GoapActionProvider>();
 
@@ -917,7 +923,7 @@ public class BaseAI : MonoBehaviour, IPoolable
     /// Differentiated by AdventurerProfile heuristics (HealHpThreshold, HealPriorityMode).
     /// Zero managed allocations.
     /// </summary>
-    public bool GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent)
+    public bool GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent, SkillData.SelfTarget selfTargetRule = SkillData.SelfTarget.Allowed)
     {
         woundedTarget = null;
         lowestHpPercent = 1.0f;
@@ -937,6 +943,8 @@ public class BaseAI : MonoBehaviour, IPoolable
             {
                 var ally = allyTargets[i];
                 if (ally == null) continue;
+                if (ally.gameObject == gameObject && selfTargetRule == SkillData.SelfTarget.Excluded) continue;
+                if (ally.gameObject != gameObject && selfTargetRule == SkillData.SelfTarget.Only) continue;
 
                 var stats = ally.GetComponent<CharacterStatsManager>() ?? ally.GetComponentInParent<CharacterStatsManager>();
                 if (stats == null || stats.Life <= 0f) continue;
@@ -963,12 +971,13 @@ public class BaseAI : MonoBehaviour, IPoolable
         }
 
         // 2. Also check squad members and leader if registered
-        if (HasSquadLeader && SquadMember.Leader != null)
+        var partyLeaderObj = PartyLeader != null ? PartyLeader : (HasSquadLeader ? SquadMember.Leader : null);
+        if (partyLeaderObj != null)
         {
-            var leader = SquadMember.Leader;
+            var leader = partyLeaderObj;
 
             // Check the leader itself
-            if (leader.gameObject != gameObject)
+            if (leader.gameObject != gameObject && selfTargetRule != SkillData.SelfTarget.Only)
             {
                 var leaderStats = leader.StatsManager;
                 if (leaderStats != null && leaderStats.Life > 0f)
@@ -998,7 +1007,7 @@ public class BaseAI : MonoBehaviour, IPoolable
                 for (int i = 0; i < members.Count; i++)
                 {
                     var m = members[i];
-                    if (m == null || !m.IsAlive || m.gameObject == gameObject) continue;
+                    if (m == null || !m.IsAlive || m.gameObject == gameObject || selfTargetRule == SkillData.SelfTarget.Only) continue;
 
                     var stats = m.StatsManager;
                     if (stats == null || stats.Life <= 0f) continue;
@@ -1025,6 +1034,21 @@ public class BaseAI : MonoBehaviour, IPoolable
             }
         }
 
+        // Check self if allowed or only
+        if (selfTargetRule != SkillData.SelfTarget.Excluded && StatsManager != null && StatsManager.Life > 0f)
+        {
+            float selfMaxHp = StatsManager.MaxLife != null && StatsManager.MaxLife.Value > 0f ? StatsManager.MaxLife.Value : 100f;
+            float selfHpPercent = StatsManager.Life / selfMaxHp;
+            if (selfHpPercent < threshold)
+            {
+                if (selfHpPercent < lowestHp)
+                {
+                    lowestHp = selfHpPercent;
+                    bestCandidate = transform;
+                }
+            }
+        }
+
         // 3. Selection based on priority mode
         if (priorityMode == HealerPriorityMode.TankFirstThenLowestHp && tankCandidate != null)
         {
@@ -1046,19 +1070,71 @@ public class BaseAI : MonoBehaviour, IPoolable
     /// <summary>
     /// Checks whether this agent currently has a ready heal skill (AlliesOnly target filter).
     /// </summary>
-    public bool HasReadyHealSkill()
+    public bool HasReadyHealSkill(bool allowSelfOnly = false)
     {
         if (skillController == null || skillController.Skills == null) return false;
         var skillList = skillController.Skills;
         for (int i = 0; i < skillList.Count; i++)
         {
             var s = skillList[i];
-            if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.IsReady)
+            if (s != null && s.Data != null && s.IsReady)
+            {
+                bool isAllies = s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly;
+                if (isAllies)
+                {
+                    if (!allowSelfOnly && s.Data.selfTarget == SkillData.SelfTarget.Only)
+                        continue;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public bool HasReadySelfOnlyHealSkill()
+    {
+        if (skillController == null || skillController.Skills == null) return false;
+        var skillList = skillController.Skills;
+        for (int i = 0; i < skillList.Count; i++)
+        {
+            var s = skillList[i];
+            if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.Data.selfTarget == SkillData.SelfTarget.Only && s.IsReady)
             {
                 return true;
             }
         }
         return false;
+    }
+
+    public bool TryCastSelfHealSkill()
+    {
+        if (skillController == null || skillController.Skills == null) return false;
+        var skillList = skillController.Skills;
+        for (int i = 0; i < skillList.Count; i++)
+        {
+            var s = skillList[i];
+            if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.Data.selfTarget == SkillData.SelfTarget.Only && s.IsReady)
+            {
+                return RecoverySafety > 0f && skillController.StartCasting(s, StatsManager != null ? StatsManager.gameObject : gameObject);
+            }
+        }
+        return false;
+    }
+
+    public SkillData.SelfTarget GetBestReadyHealSkillSelfTargetRule()
+    {
+        if (skillController == null || skillController.Skills == null) return SkillData.SelfTarget.Allowed;
+        var skillList = skillController.Skills;
+        for (int i = 0; i < skillList.Count; i++)
+        {
+            var s = skillList[i];
+            if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.IsReady)
+            {
+                if (s.Data.selfTarget != SkillData.SelfTarget.Only)
+                    return s.Data.selfTarget;
+            }
+        }
+        return SkillData.SelfTarget.Allowed;
     }
 
     public void SetGoal(bool force = false)
@@ -1120,6 +1196,7 @@ public class BaseAI : MonoBehaviour, IPoolable
 
         UtilityGoal bestGoal = null;
         float highestScore = 0f;
+        float highestRawScore = 0f;
 
 #if UNITY_EDITOR
         goalScores.Clear();
@@ -1131,7 +1208,9 @@ public class BaseAI : MonoBehaviour, IPoolable
             if (goal == null) continue;
 
             EnumUtilGoal goalKey = goal.GetGOAPGoalKey();
-            float score = goal.Evaluate(this);
+            float rawScore = goal.Evaluate(this);
+            float score = float.IsNaN(rawScore) ? 0f : Mathf.Clamp01(rawScore);
+            rawScore = score;
 
             // Hysteresis: grant a commitment bonus to the currently active goal if it is still valid (score > 0)
             // so competing goals like Recover and Survive do not flip-flop on boundary ticks.
@@ -1140,9 +1219,12 @@ public class BaseAI : MonoBehaviour, IPoolable
                 score += goalHysteresisBonus;
             }
 
-            if (score > highestScore)
+            bool survivalTie = rawScore > 0f && rawScore == highestRawScore &&
+                (goalKey == EnumUtilGoal.Survive || (bestGoal != null && bestGoal.GetGOAPGoalKey() == EnumUtilGoal.Survive));
+            if ((survivalTie && goalKey == EnumUtilGoal.Survive) || (!survivalTie && score > highestScore))
             {
                 highestScore = score;
+                highestRawScore = rawScore;
                 bestGoal = goal;
             }
 
@@ -1150,7 +1232,7 @@ public class BaseAI : MonoBehaviour, IPoolable
             goalScores.GetPairs().Add(new SerializableDictionary<EnumUtilGoal, float>.Pair
             {
                 Key = goalKey,
-                Value = score
+                Value = rawScore
             });
 #endif
         }
@@ -1188,6 +1270,7 @@ public class BaseAI : MonoBehaviour, IPoolable
 
         UtilitySkill bestUtilSkill = null;
         float highestScore = 0f;
+        float highestRawScore = 0f;
 
 #if UNITY_EDITOR
         skillScores.Clear();
@@ -1569,6 +1652,7 @@ public class BaseAI : MonoBehaviour, IPoolable
         }
 
         lastOutlookUpdateTime = currentTime;
+        cachedIsCornered = CheckIsCornered();
 
         if (!fightRngInitialized)
         {

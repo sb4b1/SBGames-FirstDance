@@ -2,5 +2,6 @@ public enum SkillType
 {
     Default,
     Projectile,
-    Area
+    Area,
+    TargetedBurst
 }

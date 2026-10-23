@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using SBGames.Database.Editor;
 using SBGames.Database.Editor.CSV;
 using SBGames.Editor.Stats.Tabs;
+using SBGames.Editor.Validation;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,7 +12,7 @@ namespace SBGames.Editor.Stats
 {
     /// <summary>
     /// Centralized editor window for managing, balancing, and comparing Character, Item, and Skill statistics.
-    /// Provides in-place editing, batch multipliers, validation badges, and two-way CSV pipeline synchronization.
+    /// Provides in-place editing, batch multipliers, validation badges, AI Setup verification, and two-way CSV pipeline synchronization.
     /// </summary>
     public class StatBalanceManagerWindow : EditorWindow
     {
@@ -17,11 +20,15 @@ namespace SBGames.Editor.Stats
         private string[] _tabTitles;
         [SerializeField] private int _selectedTabIndex = 0;
 
-        [MenuItem("SBGames/Stats & Balance Manager", priority = 2)]
-        [MenuItem("Window/SBGames/Stats & Balance Manager", priority = 100)]
+        private List<ValidationFinding> _globalFindings = new();
+        private bool _showGlobalFindings = true;
+        private bool _issuesOnlyFilterActive = false;
+
+        [MenuItem("SBGames/Database", priority = 2)]
+        [MenuItem("Window/SBGames/Database", priority = 100)]
         public static StatBalanceManagerWindow OpenWindow()
         {
-            var window = GetWindow<StatBalanceManagerWindow>("Stats & Balance");
+            var window = GetWindow<StatBalanceManagerWindow>("Database");
             window.minSize = new Vector2(850, 600);
             window.Show();
             return window;
@@ -30,6 +37,7 @@ namespace SBGames.Editor.Stats
         private void OnEnable()
         {
             EnsureInitialized();
+            RunValidation();
         }
 
         private void EnsureInitialized()
@@ -57,6 +65,29 @@ namespace SBGames.Editor.Stats
             Repaint();
         }
 
+        public void RunValidation()
+        {
+            if (_tabs == null || _tabs.Length == 0)
+            {
+                EnsureInitialized();
+            }
+
+            var findings = ValidationService.RunFullValidation((progress, step) =>
+            {
+                EditorUtility.DisplayProgressBar("Validating Database...", step, progress);
+            });
+            EditorUtility.ClearProgressBar();
+
+            _globalFindings = findings.Where(f => f.SubjectType == ValidationSubjectType.Global || string.IsNullOrEmpty(f.SubjectId)).ToList();
+
+            foreach (var tab in _tabs)
+            {
+                tab.ApplyExternalFindings(findings);
+            }
+
+            Repaint();
+        }
+
         private void OnGUI()
         {
             if (_tabs == null || _tabs.Length != 3)
@@ -68,6 +99,9 @@ namespace SBGames.Editor.Stats
             EditorGUILayout.Space(4);
             DrawGlobalHeaderToolbar();
             EditorGUILayout.Space(2);
+
+            // Global Findings Collapsible Strip
+            DrawGlobalFindingsStrip();
 
             // Active Tab Content
             if (_selectedTabIndex >= 0 && _selectedTabIndex < _tabs.Length)
@@ -91,6 +125,48 @@ namespace SBGames.Editor.Stats
                     GUI.FocusControl(null);
                 }
 
+                EditorGUILayout.Space(6);
+
+                // Validate Button
+                if (GUILayout.Button("🔍 Validate", EditorStyles.toolbarButton, GUILayout.Width(80)))
+                {
+                    RunValidation();
+                }
+
+                // Summary & Stale Marker
+                int totalErrors = 0;
+                int totalWarnings = 0;
+                if (_tabs != null)
+                {
+                    foreach (var tab in _tabs)
+                    {
+                        totalErrors += tab.ErrorCount;
+                        totalWarnings += tab.WarningCount;
+                    }
+                }
+                totalErrors += _globalFindings.Count(f => f.Severity == ValidationSeverity.Error);
+                totalWarnings += _globalFindings.Count(f => f.Severity == ValidationSeverity.Warning);
+
+                string summaryText = $"{totalErrors} errors, {totalWarnings} warnings";
+                GUIContent summaryContent = new GUIContent(summaryText, "Click to filter Issues Only");
+                if (GUILayout.Button(summaryContent, EditorStyles.toolbarButton, GUILayout.Width(130)))
+                {
+                    _issuesOnlyFilterActive = !_issuesOnlyFilterActive;
+                    if (_tabs != null)
+                    {
+                        foreach (var tab in _tabs)
+                        {
+                            tab.SetFilterIssuesOnly(_issuesOnlyFilterActive);
+                        }
+                    }
+                }
+
+                if (ValidationService.IsStale)
+                {
+                    var staleStyle = new GUIStyle(EditorStyles.miniLabel) { normal = { textColor = new Color(1f, 0.65f, 0f) } };
+                    GUILayout.Label("⚠️ results may be stale", staleStyle, GUILayout.Width(140));
+                }
+
                 GUILayout.FlexibleSpace();
 
                 bool anyDirty = false;
@@ -110,6 +186,7 @@ namespace SBGames.Editor.Stats
                 if (GUILayout.Button("💾 Save All", EditorStyles.toolbarButton, GUILayout.Width(80)))
                 {
                     foreach (var tab in _tabs) tab.SaveData();
+                    RunValidation();
                 }
 
                 if (GUILayout.Button("↺ Revert", EditorStyles.toolbarButton, GUILayout.Width(65)))
@@ -117,6 +194,7 @@ namespace SBGames.Editor.Stats
                     if (EditorUtility.DisplayDialog("Revert All", "Discard all unsaved edits and reload from assets?", "Discard", "Cancel"))
                     {
                         foreach (var tab in _tabs) tab.DiscardChanges();
+                        RunValidation();
                     }
                 }
                 GUI.enabled = true;
@@ -132,16 +210,67 @@ namespace SBGames.Editor.Stats
                     {
                         DatabaseCsvPipeline.ImportAllFromCsv(true);
                         foreach (var tab in _tabs) tab.ReloadData();
+                        RunValidation();
                     });
                     menu.AddSeparator("");
                     menu.AddItem(new GUIContent("Rebuild All Database Catalogs"), false, () =>
                     {
                         DatabaseAutoIndexer.RebuildAllCatalogs();
                         foreach (var tab in _tabs) tab.ReloadData();
+                        RunValidation();
                     });
                     menu.ShowAsContext();
                 }
             }
+        }
+
+        private void DrawGlobalFindingsStrip()
+        {
+            if (_globalFindings == null || _globalFindings.Count == 0) return;
+
+            int errors = _globalFindings.Count(f => f.Severity == ValidationSeverity.Error);
+            int warnings = _globalFindings.Count(f => f.Severity == ValidationSeverity.Warning);
+            string header = $"🌐 Global Setup Findings ({errors} Errors, {warnings} Warnings)";
+
+            _showGlobalFindings = EditorGUILayout.Foldout(_showGlobalFindings, header, true, EditorStyles.foldoutHeader);
+            if (!_showGlobalFindings) return;
+
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                foreach (var finding in _globalFindings)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        string badge = finding.Severity switch
+                        {
+                            ValidationSeverity.Error => "❌ [ERROR]",
+                            ValidationSeverity.Warning => "⚠️ [WARNING]",
+                            _ => "ℹ️ [INFO]"
+                        };
+
+                        GUILayout.Label($"{badge} [{finding.Category}] {finding.Message}", EditorStyles.wordWrappedMiniLabel);
+
+                        GUILayout.FlexibleSpace();
+
+                        if (finding.FixAction != null)
+                        {
+                            if (GUILayout.Button("Fix", EditorStyles.miniButton, GUILayout.Width(50)))
+                            {
+                                finding.FixAction.Invoke();
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(finding.AssetPath))
+                        {
+                            if (GUILayout.Button("Select", EditorStyles.miniButton, GUILayout.Width(55)))
+                            {
+                                var asset = AssetDatabase.LoadMainAssetAtPath(finding.AssetPath);
+                                if (asset != null) EditorGUIUtility.PingObject(asset);
+                            }
+                        }
+                    }
+                }
+            }
+            EditorGUILayout.Space(2);
         }
 
         private void DrawFooterStatusBar()
@@ -153,6 +282,7 @@ namespace SBGames.Editor.Stats
                 {
                     totalIssues += _tabs[i].ValidationIssueCount;
                 }
+                totalIssues += _globalFindings.Count;
 
                 if (totalIssues > 0)
                 {

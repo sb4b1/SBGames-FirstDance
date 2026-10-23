@@ -30,7 +30,8 @@ public class HealAllyAction : GoapActionBase<HealAllyAction.Data>
             }
 
             // Fallback: if data.Target was not resolved yet, ask BaseAI for best wounded ally
-            if (targetObj == null && data.AI != null && data.AI.GetBestWoundedAllyTarget(out Transform fallbackTarget, out _))
+            var rule = data.AI != null ? data.AI.GetBestReadyHealSkillSelfTargetRule() : SkillData.SelfTarget.Allowed;
+            if (targetObj == null && data.AI != null && data.AI.GetBestWoundedAllyTarget(out Transform fallbackTarget, out _, rule))
             {
                 var brain = fallbackTarget.GetComponentInParent<CharacterBrain>();
                 targetObj = brain != null ? brain.gameObject : fallbackTarget.root.gameObject;
@@ -70,7 +71,7 @@ public class HealAllyAction : GoapActionBase<HealAllyAction.Data>
                     for (int i = 0; i < skillList.Count; i++)
                     {
                         var s = skillList[i];
-                        if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.IsReady)
+                        if (s != null && s.Data != null && s.Data.targetFilter == SkillData.SkillTargetFilter.AlliesOnly && s.Data.selfTarget != SkillData.SelfTarget.Only && s.IsReady)
                         {
                             healSkill = s;
                             break;
@@ -140,7 +141,7 @@ public class HealAllyAction : GoapActionBase<HealAllyAction.Data>
             return true;
         }
 
-        if (data.AI != null && !data.AI.GetBestWoundedAllyTarget(out _, out _))
+        if (data.AI != null && !data.AI.GetBestWoundedAllyTarget(out _, out _, data.AI.GetBestReadyHealSkillSelfTargetRule()))
         {
             return false;
         }

@@ -115,7 +115,7 @@ namespace SBGames.Editor.Creator
                     SpriteAnimationGeneratorWindow.OpenWindow();
                 }
 
-                if (GUILayout.Button("📊 Stats & Balance Manager", EditorStyles.toolbarButton, GUILayout.Height(24), GUILayout.Width(170)))
+                if (GUILayout.Button("📊 Database", EditorStyles.toolbarButton, GUILayout.Height(24), GUILayout.Width(130)))
                 {
                     SBGames.Editor.Stats.StatBalanceManagerWindow.OpenWindow();
                 }

@@ -13,7 +13,7 @@ public class RecoverSensor : MultiSensorBase
         {
             var ai = references?.GetCachedComponent<BaseAI>();
             if (ai == null) return 0;
-            return ai.CanRecoverWithItemNow() ? 1 : 0;
+            return ai.CanRecoverWithItemNow() || ai.HasReadySelfOnlyHealSkill() ? 1 : 0;
         });
 
         this.AddLocalTargetSensor<RecoverTarget>((agent, references, target) =>
