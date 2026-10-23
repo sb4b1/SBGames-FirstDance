@@ -1,7 +1,7 @@
 Id,CharacterName,MaxLife,MaxMana,LifeRegen,ManaRegen,Movespeed,Damage,AttackRange,AttackTimeInterval,DefaultSkillIds,Function,Wealth,ExtraItemIds,BasicAttackMode,KeepDistanceMode,ComfortDistanceOverride
 DUMMY_TARGET_001,Training Dummy,99999.0,0.0,0.0,0.0,0.0,0.0,1.0,1.0,,None,Average,,Auto,Auto,0.0
 ADVENTURER_N099,Blue Witch,150.0,100.0,0.0,0.0,5.0,15.0,1.0,1.0,SKILL_WI001,DPS,Average,,None,Auto,0.0
-MONSTER_N003,Axe Goblin,80.0,0.0,0.0,0.0,4.0,10.0,1.0,1.0,,None,Average,,Auto,Auto,0.0
+MONSTER_N001,Axe Goblin,80.0,0.0,0.0,0.0,4.0,10.0,1.0,1.0,,None,Average,,Auto,Auto,0.0
 ADVENTURER_N001,ADVENTURER_N001,120.0,40.0,0.0,0.0,4.5,12.0,1.0,0.8,,"Tank, DPS",Poor,,Auto,Auto,0.0
 ADVENTURER_N002,ADVENTURER_N002,80.0,40.0,0.0,0.0,4.5,14.0,6.0,0.8,SKILL_WI001,DPS,Average,,Auto,Auto,0.0
 ADVENTURER_N003,ADVENTURER_N003,70.0,70.0,0.0,0.0,4.5,6.0,6.0,1.2,SKILL_F001;SKILL_WA001;SKILL_WA002,DPS,Average,,None,Auto,0.0

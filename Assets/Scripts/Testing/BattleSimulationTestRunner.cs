@@ -1136,7 +1136,7 @@ namespace SBGames.Testing
             if (defaultMonsterPrefab2 == null)
                 defaultMonsterPrefab2 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N002.prefab");
             if (defaultMonsterPrefab3 == null)
-                defaultMonsterPrefab3 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N003.prefab");
+                defaultMonsterPrefab3 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N001.prefab");
             if (defaultBossPrefab == null)
                 defaultBossPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Boss/MONSTER_BOSS_001.prefab");
             if (defaultProfileRankE == null)

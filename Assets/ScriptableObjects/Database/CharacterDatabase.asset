@@ -42,7 +42,7 @@ MonoBehaviour:
         m_SubObjectType: 
         m_SubObjectGUID: 
         m_EditorAssetChanged: 0
-  - id: MONSTER_N003
+  - id: MONSTER_N001
     characterName: Axe Goblin
     prefab: {fileID: 6664999883879676430, guid: 21c59b2e823c38f4ead803656d399673, type: 3}
     baseStats: {fileID: 11400000, guid: e44b019f85357b04bb3e68dc51f5ad9b, type: 2}

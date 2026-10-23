@@ -39,7 +39,7 @@ namespace SBGames.Editor.Creator.Tabs
         // Presets & Basic Config
         // ----------------------------------------------------
         [SerializeField] private CharacterArchetype archetype = CharacterArchetype.NormalMonster;
-        [SerializeField] private string characterId = "MONSTER_N003";
+        [SerializeField] private string characterId = "MONSTER_N001";
         [SerializeField] private string characterDisplayName = "New Monster";
 
         // ----------------------------------------------------
@@ -468,7 +468,7 @@ namespace SBGames.Editor.Creator.Tabs
 
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                characterId = EditorGUILayout.TextField(new GUIContent("Character ID", "Unique identifier code (e.g. MONSTER_N003)"), characterId);
+                characterId = EditorGUILayout.TextField(new GUIContent("Character ID", "Unique identifier code (e.g. MONSTER_N001)"), characterId);
                 characterDisplayName = EditorGUILayout.TextField(new GUIContent("Display Name", "In-game human readable name"), characterDisplayName);
             }
         }

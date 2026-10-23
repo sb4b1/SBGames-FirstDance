@@ -253,22 +253,25 @@ namespace SBGames.Testing
             Debug.Log("[CombatBootstrap] Created fallback GOAP runner with Normal, Mage, and Minion agent type factories.", goapGo);
         }
 
-        private void EnsureAgentFactoriesOnExistingGoap(GoapBehaviour goap)
+        public static void EnsureAgentFactoriesOnExistingGoap(GoapBehaviour goap)
         {
+            if (goap == null) return;
+
             if (goap.agentTypeConfigFactories == null)
             {
                 goap.agentTypeConfigFactories = new List<AgentTypeFactoryBase>();
             }
 
-            // Ensure NormalAgentTypeFactory is registered
             bool hasNormal = false;
+            bool hasMage = false;
+            bool hasMinion = false;
+
             for (int i = 0; i < goap.agentTypeConfigFactories.Count; i++)
             {
-                if (goap.agentTypeConfigFactories[i] is NormalAgentTypeFactory)
-                {
-                    hasNormal = true;
-                    break;
-                }
+                var f = goap.agentTypeConfigFactories[i];
+                if (f is NormalAgentTypeFactory) hasNormal = true;
+                else if (f is MageAgentTypeFactory) hasMage = true;
+                else if (f is MinionAgentTypeFactory) hasMinion = true;
             }
 
             if (!hasNormal)
@@ -276,6 +279,20 @@ namespace SBGames.Testing
                 var factory = goap.GetComponent<NormalAgentTypeFactory>() ?? goap.gameObject.AddComponent<NormalAgentTypeFactory>();
                 goap.agentTypeConfigFactories.Add(factory);
                 Debug.Log("[CombatBootstrap] Appended missing NormalAgentTypeFactory to GoapBehaviour.", goap);
+            }
+
+            if (!hasMage)
+            {
+                var factory = goap.GetComponent<MageAgentTypeFactory>() ?? goap.gameObject.AddComponent<MageAgentTypeFactory>();
+                goap.agentTypeConfigFactories.Add(factory);
+                Debug.Log("[CombatBootstrap] Appended missing MageAgentTypeFactory to GoapBehaviour.", goap);
+            }
+
+            if (!hasMinion)
+            {
+                var factory = goap.GetComponent<MinionAgentTypeFactory>() ?? goap.gameObject.AddComponent<MinionAgentTypeFactory>();
+                goap.agentTypeConfigFactories.Add(factory);
+                Debug.Log("[CombatBootstrap] Appended missing MinionAgentTypeFactory to GoapBehaviour.", goap);
             }
         }
 
