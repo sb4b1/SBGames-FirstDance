@@ -111,7 +111,17 @@ namespace SBGames.Testing
             public float PotionHealingReceived { get; private set; }
             public float RegenHealingReceived { get; private set; }
             public int HealsCast { get; private set; }
+            public int HealsOnTank { get; private set; }
+            public int HealsOnSelf { get; private set; }
+            public int HealsOnOther { get; private set; }
             public float FirstHealTime { get; private set; } = -1f;
+            public float FirstDamageTime { get; private set; } = -1f;
+            public readonly float[] GoalSeconds = new float[5];
+            public float SurviveMovingSeconds;
+            public float SurviveRetreatDistance;
+            public float LastMana;
+            public float ThreatWithWoundedAllySeconds;
+
             public int FleeEvents { get; private set; }
             public int SurviveGoalTransitions { get; private set; }
             public float IdleTime { get; private set; }
@@ -165,6 +175,8 @@ namespace SBGames.Testing
             public void OnDamagedHandler(DamageData dmg)
             {
                 RecordDamageTaken(dmg.Amount);
+                if (dmg.Amount > 0f && FirstDamageTime < 0f)
+                    FirstDamageTime = ownerRunner != null ? ownerRunner.ElapsedTime : 0f;
 
                 if (ownerRunner != null && dmg.Amount > 0f && dmg.Source != null)
                 {
@@ -214,6 +226,26 @@ namespace SBGames.Testing
                 if (skillData != null && (skillData.targetFilter == SkillData.SkillTargetFilter.AlliesOnly || skillData.targetFilter == SkillData.SkillTargetFilter.SelfOnly))
                 {
                     HealsCast++;
+                    if (target != null)
+                    {
+                        if (target == GameObject || target.transform.IsChildOf(GameObject.transform))
+                            HealsOnSelf++;
+                        else if (ownerRunner != null && ownerRunner.adventurerCombatants != null)
+                        {
+                            bool foundTank = false;
+                            for (int ti = 0; ti < ownerRunner.adventurerCombatants.Count; ti++)
+                            {
+                                var adv = ownerRunner.adventurerCombatants[ti];
+                                if (adv != null && adv != this && adv.SourceSlot.functionOverride == AdventurerFunction.Tank && (adv.GameObject == target || target.transform.IsChildOf(adv.GameObject.transform)))
+                                {
+                                    HealsOnTank++;
+                                    foundTank = true;
+                                    break;
+                                }
+                            }
+                            if (!foundTank) HealsOnOther++;
+                        }
+                    }
                     if (ownerRunner != null && ownerRunner.injectNearFullTarget && !ownerRunner.nearFullTargetInjected && target != null)
                     {
                         var targetStats = target.GetComponentInParent<CharacterStatsManager>();
@@ -238,7 +270,7 @@ namespace SBGames.Testing
                 Brain = brain;
                 Stats = stats;
                 AI = ai;
-                Agent = go != null ? go.GetComponent<UnityEngine.AI.NavMeshAgent>() : null;
+                Agent = go != null ? (go.GetComponent<UnityEngine.AI.NavMeshAgent>() ?? go.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>()) : null;
                 Faction = faction;
                 SourceSlot = slot;
                 ownerRunner = runner;
@@ -433,7 +465,7 @@ namespace SBGames.Testing
                 for (int i = 0; i < activeCombatants.Count; i++)
                 {
                     var c = activeCombatants[i];
-                    if (c != null && (c.GameObject == target || target.transform.IsChildOf(c.GameObject.transform)))
+                    if (c != null && c.GameObject != null && (c.GameObject == target || target.transform.IsChildOf(c.GameObject.transform)))
                     {
                         c.RecordAppliedSkillHeal(actualHealed);
                         if (overheal > 0f)
@@ -1048,8 +1080,23 @@ namespace SBGames.Testing
                     var adv = adventurerCombatants[i];
                     if (!adv.IsAlive) continue;
 
+                    adv.LastMana = adv.Stats != null ? adv.Stats.Mana : adv.LastMana;
                     if (adv.AI != null)
                     {
+                        var key = adv.AI.CurrentGoalKey;
+                        int bucket = key == EnumUtilGoal.HealAlly ? 0 : key == EnumUtilGoal.Survive ? 1 :
+                            key == EnumUtilGoal.Recover ? 2 : key == EnumUtilGoal.KillEnemy ? 3 : 4;
+                        adv.GoalSeconds[bucket] += dt;
+                        if (adv.SourceSlot.functionOverride == AdventurerFunction.Healer)
+                        {
+                            if (adv.AI.GetBestWoundedAllyTarget(out _, out _, SkillData.SelfTarget.Excluded) && adv.AI.HealSafety < 1f)
+                                adv.ThreatWithWoundedAllySeconds += dt;
+                            if (key == EnumUtilGoal.Survive && adv.Agent != null && adv.Agent.velocity.sqrMagnitude > 0.01f)
+                            {
+                                adv.SurviveMovingSeconds += dt;
+                                adv.SurviveRetreatDistance += adv.Agent.velocity.magnitude * dt;
+                            }
+                        }
                         EnumUtilGoal currentGoal = adv.AI.CurrentGoalKey;
                         if (currentGoal == EnumUtilGoal.Survive && adv.LastGoalKey != EnumUtilGoal.Survive)
                         {
@@ -1195,7 +1242,11 @@ namespace SBGames.Testing
             if (defaultMonsterPrefab1 == null)
                 defaultMonsterPrefab1 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N001.prefab");
             if (defaultMonsterPrefab2 == null)
+            {
                 defaultMonsterPrefab2 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N002.prefab");
+                if (defaultMonsterPrefab2 == null)
+                    defaultMonsterPrefab2 = defaultMonsterPrefab1;
+            }
             if (defaultMonsterPrefab3 == null)
                 defaultMonsterPrefab3 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character/Monster/Normal/MONSTER_N001.prefab");
             if (defaultBossPrefab == null)
@@ -1494,6 +1545,116 @@ namespace SBGames.Testing
             Time.fixedDeltaTime = 0.02f;
             Debug.Log($"<color=green>[BATCH] All {batchResults.Count} runs completed successfully!</color>");
             onAllComplete?.Invoke();
+        }
+
+        public bool IsUnprimedHealerPassRunning { get; private set; }
+        public int UnprimedRunsCompleted { get; private set; }
+
+        public void StartUnprimedHealerPass(bool controlOnly = false, bool resumeCompleted = false)
+        {
+            if (IsUnprimedHealerPassRunning) return;
+            StartCoroutine(UnprimedHealerPass(controlOnly, resumeCompleted));
+        }
+
+        private IEnumerator UnprimedHealerPass(bool controlOnly, bool resumeCompleted)
+        {
+            IsUnprimedHealerPassRunning = true;
+            UnprimedRunsCompleted = 0;
+            injectNearFullTarget = false;
+            isControlledTestRunning = false;
+            float oldLimit = maxSimulationDuration;
+            maxSimulationDuration = 180f;
+            string path = System.IO.Path.Combine(Application.dataPath, "../docs/testing/healer_unprimed_telemetry.csv");
+            var completed = new System.Collections.Generic.HashSet<string>(System.StringComparer.Ordinal);
+            if (controlOnly || resumeCompleted)
+            {
+                var retained = new System.Collections.Generic.List<string>();
+                foreach (var line in System.IO.File.ReadAllLines(path))
+                {
+                    if (!resumeCompleted && line.StartsWith("S3,", System.StringComparison.Ordinal)) continue;
+                    retained.Add(line);
+                    var cells = line.Split(',');
+                    if (cells.Length > 2 && cells[0] != "scenario")
+                        completed.Add(cells[0] + "," + cells[1] + "," + cells[2]);
+                }
+                System.IO.File.WriteAllLines(path, retained);
+                UnprimedRunsCompleted = retained.Count - 1;
+            }
+            else
+                System.IO.File.WriteAllText(path, "scenario,seed,rank,outcome,duration,first_ally_damage,first_heal_cast,heal_casts,heals_on_tank,heals_on_self,heals_on_other,applied_heals,total_healed,total_overheal,healer_end_mana,healer_survived,goal_healally,goal_survive,goal_recover,goal_killenemy,goal_other,survive_moving_seconds,survive_distance,healer_damage,ally_damage,threat_with_wounded_ally_seconds\n");
+            foreach (string scenario in controlOnly ? new[] { "S3" } : new[] { "S1", "S2", "S3" })
+            foreach (string rank in new[] { "E", "D", "C" })
+            for (int seed = 101; seed <= 105; seed++)
+            {
+                if (completed.Contains(scenario + "," + seed + "," + rank)) continue;
+                ConfigureScenario(rank, false, 4f, seed);
+                roster.RemoveAll(slot => slot.functionOverride == AdventurerFunction.DPS);
+                int monsterIndex = 0;
+                foreach (var slot in roster)
+                {
+                    if (slot.faction != BattleFaction.Monster) continue;
+                    // Reuse the follow-up report's sustained-battle fixture unchanged.
+                    slot.overrideStats = true;
+                    slot.customMaxLife = 150f; slot.customDamage = scenario == "S3" ? 0f : (scenario == "S1" ? 11f : 6f);
+                    slot.customMovespeed = 2.5f; slot.customAttackRange = 0.8f; slot.customAttackInterval = 1.2f;
+                    if (scenario == "S2" && monsterIndex == 2)
+                        slot.customSpawnPosition = new Vector3(1.2f, -1.2f, 0f);
+                    monsterIndex++;
+                }
+                StartSimulation();
+                TrackedCombatant healer = null, tank = null;
+                foreach (var unit in adventurerCombatants)
+                {
+                    if (unit.SourceSlot.functionOverride == AdventurerFunction.Healer) healer = unit;
+                    else tank = unit;
+                }
+                // Start/OnSpawn can reinitialize stats and skills. Wait before fixing the control fixture.
+                yield return null;
+                // Control prevents offensive skill damage too; no health restoration/injection.
+                if (scenario == "S3")
+                    foreach (var monster in monsterCombatants)
+                    {
+                        monster.Stats.Damage.BaseValue = 0f;
+                        // Combat currently substitutes 10 damage for a zero stat. Use passive enemies for this control.
+                        monster.Brain.InterruptAllActions();
+                        // Cancel the pending spawn-time AIActivation callback before making this enemy passive.
+                        monster.Brain.StopAllCoroutines();
+                        monster.Brain.SetControlMode(ControlMode.Player);
+                        monster.Brain.AIActivation(false);
+                        var controller = monster.GameObject.GetComponentInChildren<CharacterSkillController>();
+                        if (controller == null) continue;
+                        while (controller.Skills.Count > 0) controller.RemoveSkill(controller.Skills[0]);
+                    }
+                SetTimeScale(4f);
+                foreach (var unit in adventurerCombatants)
+                    unit.GameObject.GetComponent<AdventurerItemKitController>()?.ClearKit();
+                while (currentState == SimulationState.Running) yield return null;
+                float firstDamage = tank != null ? tank.FirstDamageTime : -1f;
+                float healed = 0f, overheal = 0f; int applied = 0;
+                foreach (var unit in adventurerCombatants)
+                { healed += unit.SkillHealingReceived; overheal += unit.OverhealReceived; applied += unit.SkillHealsApplied; }
+                var values = new object[] { scenario, seed, rank, lastReport.outcome, lastReport.duration,
+                    firstDamage, healer.FirstHealTime, healer.HealsCast, healer.HealsOnTank, healer.HealsOnSelf, healer.HealsOnOther,
+                    applied, healed, overheal,
+                    healer.LastMana, healer.IsAlive, healer.GoalSeconds[0], healer.GoalSeconds[1],
+                    healer.GoalSeconds[2], healer.GoalSeconds[3], healer.GoalSeconds[4],
+                    healer.SurviveMovingSeconds, healer.SurviveRetreatDistance, healer.DamageTaken,
+                    tank != null ? tank.DamageTaken : 0f, healer.ThreatWithWoundedAllySeconds };
+                var line = new System.Text.StringBuilder();
+                for (int i = 0; i < values.Length; i++)
+                {
+                    if (i > 0) line.Append(',');
+                    line.Append(System.Convert.ToString(values[i], System.Globalization.CultureInfo.InvariantCulture));
+                }
+                System.IO.File.AppendAllText(path, line + "\n");
+                UnprimedRunsCompleted++;
+                Debug.Log("[UNPRIMED HEAL] " + line);
+                ResetSimulation(false);
+                yield return null;
+            }
+            maxSimulationDuration = oldLimit;
+            SetTimeScale(1f);
+            IsUnprimedHealerPassRunning = false;
         }
 
         [Serializable]

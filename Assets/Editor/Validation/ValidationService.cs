@@ -96,6 +96,29 @@ namespace SBGames.Editor.Validation
         // =====================================================================
         // SECTION A: CHARACTER PREFABS
         // =====================================================================
+        public static void ValidateHealerGoal(GameObject prefab, string characterId, string path, List<ValidationFinding> findings, bool catalogHasHeal = false)
+        {
+            if (prefab == null) return;
+            bool hasHeal = catalogHasHeal;
+            var casters = prefab.GetComponentsInChildren<SkillStatsManager>(true);
+            foreach (var caster in casters)
+                if (caster.BaseData != null && caster.BaseData.baseHeal > 0f) hasHeal = true;
+            var controllers = prefab.GetComponentsInChildren<CharacterSkillController>(true);
+            foreach (var controller in controllers)
+                if (controller.Skills != null)
+                    foreach (var skill in controller.Skills)
+                        if (skill != null && skill.Data != null && skill.Data.baseHeal > 0f) hasHeal = true;
+            if (!hasHeal) return;
+            var ai = prefab.GetComponentInChildren<BaseAI>(true);
+            if (ai != null && ai.Goals != null)
+                foreach (var goal in ai.Goals)
+                    if (goal is UtilityHealAllyGoal) return;
+            findings.Add(new ValidationFinding(ValidationSeverity.Error, ValidationFindingSource.AISetup,
+                ValidationSubjectType.Character, characterId, "Character Prefab", prefab.name, path,
+                "Character equips a heal skill but BaseAI is missing a HealAlly utility goal.",
+                "Assign DefaultHealAllyGoal to BaseAI.goals (self-only skills still execute through Recover)."));
+        }
+
         private static void AuditCharacterPrefabs(List<ValidationFinding> findings)
         {
             var prefabToCharId = BuildPrefabToCharacterIdMap();
@@ -121,6 +144,8 @@ namespace SBGames.Editor.Validation
                 {
                     charId = mappedPathId;
                 }
+
+                ValidateHealerGoal(go, charId, path, findings);
 
                 void AddCharFinding(ValidationSeverity sev, string msg, string fix)
                 {
@@ -735,6 +760,14 @@ namespace SBGames.Editor.Validation
                 foreach (var c in masterDb.Characters.Characters)
                 {
                     if (c == null) continue;
+                    bool catalogHasHeal = c.defaultSkillIds != null && masterDb.Skills != null &&
+                        c.defaultSkillIds.Any(id => masterDb.Skills.Get(id) != null && masterDb.Skills.Get(id).baseHeal > 0f);
+                    if (catalogHasHeal)
+                    {
+                        var healerPrefab = c.GetPrefabDirect();
+                        ValidateHealerGoal(healerPrefab, c.id, AssetDatabase.GetAssetPath(healerPrefab), findings, true);
+                    }
+
                     if (c.prefab == null && (c.hybridPrefab == null || !c.hybridPrefab.HasDirectAsset))
                     {
                         findings.Add(new ValidationFinding(

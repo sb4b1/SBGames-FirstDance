@@ -88,4 +88,16 @@ _Avoid_: Door slot, opening marker, exit port
 Exact 1:1 alignment between opposite `PieceOpening` sockets connecting two adjacent pieces without tile overlap.
 _Avoid_: Room snapping, doorway docking, tile gluing
 
+**Sandbox**:
+An isolated scene dedicated to verifying and balancing a single game subsystem (such as Combat, Dungeon Generation, Meta GUI, or Adventurer Runs) independently from the full game loop.
+_Avoid_: Test gym, playground, debug room, mock scene
+
+**Scenario**:
+An immutable ScriptableObject asset defining a test case for a sandbox, including setup parameters, seeds, and the checklist item IDs it covers.
+_Avoid_: Test case asset, test level, test preset, run profile
+
+**Sign-off**:
+A formal verification document containing mechanical checklist assertions and judged feel criteria that gate feature readiness before prototype integration.
+_Avoid_: Acceptance report, QA stamp, test ticket, approval form
+
 

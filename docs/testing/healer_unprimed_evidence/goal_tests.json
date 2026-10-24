@@ -1,0 +1,108 @@
+{
+  "source": "editmode_tests.json",
+  "Summary": {
+    "Total": 14,
+    "Passed": 14,
+    "Failed": 0
+  },
+  "Results": [
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.AllReadySkills_AreCheckedForPermittedWounds",
+      "Status": "Passed",
+      "Duration": 0.0101386,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.Evaluate_AllocatesZeroManagedBytes",
+      "Status": "Passed",
+      "Duration": 0.0172058,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.HealTelemetry_SkipsDestroyedCombatants",
+      "Status": "Passed",
+      "Duration": 0.002082,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.HeavyThreat_Arbitration_CharacterizesHealthyHealerGap(False)",
+      "Status": "Passed",
+      "Duration": 0.0041884,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.HeavyThreat_Arbitration_CharacterizesHealthyHealerGap(True)",
+      "Status": "Passed",
+      "Duration": 0.0025709,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.LowestHealthSweep_IsMonotonicAndNormalized",
+      "Status": "Passed",
+      "Duration": 0.073794,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.NoAgentProfile_UsesGoalConfiguredTuning",
+      "Status": "Passed",
+      "Duration": 0.0025599,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.NotReady_CooldownOrMana_NoScore(False)",
+      "Status": "Passed",
+      "Duration": 0.0018983,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.NotReady_CooldownOrMana_NoScore(True)",
+      "Status": "Passed",
+      "Duration": 0.0025028,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.NoWound_NoScore",
+      "Status": "Passed",
+      "Duration": 0.001274,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.SelfExcluded_WithAIOnChild_UsesCharacterRoot",
+      "Status": "Passed",
+      "Duration": 0.0028349,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.SelfExcludedOrOnly_NoAllyGoal",
+      "Status": "Passed",
+      "Duration": 0.0022613,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.UrgencyUsesLowestHP_WhileProfileStillPrefersTank",
+      "Status": "Passed",
+      "Duration": 0.0025431,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "SBGames.Tests.HealAllyGoalTests.Validator_GoalRemoved_ReportsCharacterFinding",
+      "Status": "Passed",
+      "Duration": 0.0023879,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  {
+    "FullName": "SBGames.Tests.HealAllyGoalTests.HeavyThreat_SurviveWinsNormalArbitration(False)",
+    "Status": "Failed",
+    "Duration": 0.0157493,
+    "Message": "  Expected: greater than 0.830000043f\r\n  But was:  0.0f\r\n",
+    "StackTrace": "at SBGames.Tests.HealAllyGoalTests.HeavyThreat_SurviveWinsNormalArbitration (System.Boolean lowHealth) [0x000bd] in D:\\UnityProject\\SBGames\\Assets\\Tests\\Editor\\HealAllyGoalTests.cs:115\r\n"
+  }
+]

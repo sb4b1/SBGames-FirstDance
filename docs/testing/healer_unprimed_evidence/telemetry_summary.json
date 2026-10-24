@@ -1,0 +1,267 @@
+{
+  "rows": 45,
+  "unique_keys": 45,
+  "all_expected_keys": true,
+  "control_zero_damage_and_zero_casts": true,
+  "mana_matches_cast_accounting": true,
+  "outcomes": {
+    "AdventurersWin": 21,
+    "Timeout": 16,
+    "MonstersWin": 8
+  },
+  "groups": [
+    {
+      "scenario": "S1",
+      "rank": "E",
+      "runs": 5,
+      "runs_with_cast": 0,
+      "casts": 0,
+      "applied_heals": 0,
+      "healed": 0.0,
+      "overheal": 0.0,
+      "healer_survived": 1,
+      "directly_damaged_seeds": [
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "outcomes": {
+        "AdventurersWin": 4,
+        "Timeout": 1
+      },
+      "average_first_heal_delay": null,
+      "delay_observations": 0,
+      "mean_goal_seconds": {
+        "healally": 0.0,
+        "survive": 35.5753582,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 15.274266
+      }
+    },
+    {
+      "scenario": "S1",
+      "rank": "D",
+      "runs": 5,
+      "runs_with_cast": 5,
+      "casts": 5,
+      "applied_heals": 5,
+      "healed": 125.0,
+      "overheal": 0.0,
+      "healer_survived": 4,
+      "directly_damaged_seeds": [
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "outcomes": {
+        "AdventurersWin": 4,
+        "Timeout": 1
+      },
+      "average_first_heal_delay": 10.6886498,
+      "delay_observations": 5,
+      "mean_goal_seconds": {
+        "healally": 1.1004168,
+        "survive": 0.36934864,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 21.51532
+      }
+    },
+    {
+      "scenario": "S1",
+      "rank": "C",
+      "runs": 5,
+      "runs_with_cast": 4,
+      "casts": 4,
+      "applied_heals": 4,
+      "healed": 100.0,
+      "overheal": 0.0,
+      "healer_survived": 2,
+      "directly_damaged_seeds": [
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "outcomes": {
+        "Timeout": 2,
+        "AdventurersWin": 3
+      },
+      "average_first_heal_delay": 10.564620999999999,
+      "delay_observations": 4,
+      "mean_goal_seconds": {
+        "healally": 0.9360443999999999,
+        "survive": 0.55619682,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 20.777776
+      }
+    },
+    {
+      "scenario": "S2",
+      "rank": "E",
+      "runs": 5,
+      "runs_with_cast": 0,
+      "casts": 0,
+      "applied_heals": 0,
+      "healed": 0.0,
+      "overheal": 0.0,
+      "healer_survived": 3,
+      "directly_damaged_seeds": [
+        102,
+        103
+      ],
+      "outcomes": {
+        "AdventurersWin": 3,
+        "MonstersWin": 2
+      },
+      "average_first_heal_delay": null,
+      "delay_observations": 0,
+      "mean_goal_seconds": {
+        "healally": 0.0,
+        "survive": 1.5789801999999997,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 16.868755999999998
+      }
+    },
+    {
+      "scenario": "S2",
+      "rank": "D",
+      "runs": 5,
+      "runs_with_cast": 3,
+      "casts": 18,
+      "applied_heals": 18,
+      "healed": 450.0,
+      "overheal": 0.0,
+      "healer_survived": 1,
+      "directly_damaged_seeds": [
+        101,
+        102,
+        104,
+        105
+      ],
+      "outcomes": {
+        "MonstersWin": 4,
+        "AdventurersWin": 1
+      },
+      "average_first_heal_delay": 21.265483333333332,
+      "delay_observations": 3,
+      "mean_goal_seconds": {
+        "healally": 1.4197612000000002,
+        "survive": 6.0705122000000005,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 35.217064
+      }
+    },
+    {
+      "scenario": "S2",
+      "rank": "C",
+      "runs": 5,
+      "runs_with_cast": 2,
+      "casts": 12,
+      "applied_heals": 12,
+      "healed": 300.0,
+      "overheal": 0.0,
+      "healer_survived": 3,
+      "directly_damaged_seeds": [
+        103,
+        104
+      ],
+      "outcomes": {
+        "AdventurersWin": 3,
+        "MonstersWin": 2
+      },
+      "average_first_heal_delay": 17.702984,
+      "delay_observations": 2,
+      "mean_goal_seconds": {
+        "healally": 1.839791,
+        "survive": 2.4294888,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 19.441298
+      }
+    },
+    {
+      "scenario": "S3",
+      "rank": "E",
+      "runs": 5,
+      "runs_with_cast": 0,
+      "casts": 0,
+      "applied_heals": 0,
+      "healed": 0.0,
+      "overheal": 0.0,
+      "healer_survived": 5,
+      "directly_damaged_seeds": [],
+      "outcomes": {
+        "Timeout": 3,
+        "AdventurersWin": 2
+      },
+      "average_first_heal_delay": null,
+      "delay_observations": 0,
+      "mean_goal_seconds": {
+        "healally": 0.0,
+        "survive": 0.0,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 117.05909
+      }
+    },
+    {
+      "scenario": "S3",
+      "rank": "D",
+      "runs": 5,
+      "runs_with_cast": 0,
+      "casts": 0,
+      "applied_heals": 0,
+      "healed": 0.0,
+      "overheal": 0.0,
+      "healer_survived": 5,
+      "directly_damaged_seeds": [],
+      "outcomes": {
+        "Timeout": 5
+      },
+      "average_first_heal_delay": null,
+      "delay_observations": 0,
+      "mean_goal_seconds": {
+        "healally": 0.0,
+        "survive": 0.0,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 180.02162
+      }
+    },
+    {
+      "scenario": "S3",
+      "rank": "C",
+      "runs": 5,
+      "runs_with_cast": 0,
+      "casts": 0,
+      "applied_heals": 0,
+      "healed": 0.0,
+      "overheal": 0.0,
+      "healer_survived": 5,
+      "directly_damaged_seeds": [],
+      "outcomes": {
+        "Timeout": 4,
+        "AdventurersWin": 1
+      },
+      "average_first_heal_delay": null,
+      "delay_observations": 0,
+      "mean_goal_seconds": {
+        "healally": 0.0,
+        "survive": 0.0,
+        "recover": 0.0,
+        "killenemy": 0.0,
+        "other": 148.906964
+      }
+    }
+  ]
+}

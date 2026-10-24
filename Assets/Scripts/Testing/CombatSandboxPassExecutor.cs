@@ -406,7 +406,7 @@ namespace SBGames.Testing
             });
         }
 
-        private static IEnumerator ExecuteScenarioRunRoutine(
+        public static IEnumerator ExecuteScenarioRunRoutine(
             BattleSimulationTestRunner runner,
             ScenarioRunData run,
             float timeScale,

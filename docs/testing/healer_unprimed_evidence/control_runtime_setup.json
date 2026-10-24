@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var r = UnityEngine.Object.FindAnyObjectByType<SBGames.Testing.BattleSimulationTestRunner>(); var rows = new System.Collections.Generic.List<string>(); rows.Add(\"runs=\"+r.UnprimedRunsCompleted+\" elapsed=\"+r.ElapsedTime); foreach (var m in r.Monsters) if (m.Stats != null) rows.Add(m.GameObject.name+\" damage=\"+m.Stats.Damage.Value+\" life=\"+m.MaxLife+\" aiActive=\"+m.AI.gameObject.activeInHierarchy); foreach (var a in r.Adventurers) rows.Add(a.SourceSlot.slotLabel+\" damageTaken=\"+a.DamageTaken+\" casts=\"+a.HealsCast); return rows.ToArray();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": [
+        "runs=30 elapsed=30.35269",
+        "Monster_1_MONSTER_N001 damage=0 life=150 aiActive=False",
+        "Monster_3_MONSTER_N001 damage=0 life=150 aiActive=False",
+        "Adventurer Tank damageTaken=0 casts=0",
+        "Adventurer Healer damageTaken=0 casts=0"
+      ]
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

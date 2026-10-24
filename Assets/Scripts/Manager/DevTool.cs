@@ -122,6 +122,10 @@ public class DevTool : MonoBehaviour
     private float currentFps = 60f;
     private float fpsTimer = 0f;
 
+    // Modular Sandbox & DevTool Panels
+    private readonly List<SBGames.Testing.Sandbox.IDevToolPanel> customPanels = new();
+    private string[] activeTabLabels;
+
     // Singleton-like scene access for HUD
     public static DevTool Instance { get; private set; }
 
@@ -228,6 +232,11 @@ public class DevTool : MonoBehaviour
         if (enableOverlayHotkey && WasToggleHotkeyPressed())
         {
             showOnScreenHUD = !showOnScreenHUD;
+        }
+
+        for (int i = 0; i < customPanels.Count; i++)
+        {
+            customPanels[i]?.OnPanelUpdate();
         }
     }
 
@@ -508,7 +517,8 @@ public class DevTool : MonoBehaviour
     {
         // Navigation bar and quick close button
         GUILayout.BeginHorizontal();
-        selectedTab = GUILayout.Toolbar(selectedTab, tabLabels, GUILayout.ExpandWidth(true));
+        string[] currentLabels = activeTabLabels ?? tabLabels;
+        selectedTab = GUILayout.Toolbar(selectedTab, currentLabels, GUILayout.ExpandWidth(true));
         if (GUILayout.Button("✕", GUILayout.Width(28f)))
         {
             showOnScreenHUD = false;
@@ -517,31 +527,78 @@ public class DevTool : MonoBehaviour
 
         GUILayout.Space(6f);
 
-        switch (selectedTab)
+        if (selectedTab < tabLabels.Length)
         {
-            case 0:
-                DrawStatusTab();
-                break;
-            case 1:
-                DrawTimeTab();
-                break;
-            case 2:
-                DrawGameLoopTab();
-                break;
-            case 3:
-                DrawCharactersTab();
-                break;
-            case 4:
-                DrawItemsTab();
-                break;
-            case 5:
-                DrawGizmoConfigTab();
-                break;
+            switch (selectedTab)
+            {
+                case 0:
+                    DrawStatusTab();
+                    break;
+                case 1:
+                    DrawTimeTab();
+                    break;
+                case 2:
+                    DrawGameLoopTab();
+                    break;
+                case 3:
+                    DrawCharactersTab();
+                    break;
+                case 4:
+                    DrawItemsTab();
+                    break;
+                case 5:
+                    DrawGizmoConfigTab();
+                    break;
+            }
+        }
+        else
+        {
+            int panelIndex = selectedTab - tabLabels.Length;
+            if (panelIndex >= 0 && panelIndex < customPanels.Count)
+            {
+                customPanels[panelIndex]?.DrawPanelGUI();
+            }
         }
 
         // Enable window dragging by clicking and holding the top bar
         GUI.DragWindow(new Rect(0, 0, 10000, 30));
     }
+
+    #region Panel Registration
+
+    public void RegisterPanel(SBGames.Testing.Sandbox.IDevToolPanel panel)
+    {
+        if (panel == null || customPanels.Contains(panel)) return;
+        customPanels.Add(panel);
+        customPanels.Sort((a, b) => a.Order.CompareTo(b.Order));
+        RebuildTabLabels();
+        panel.OnPanelRegistered(this);
+    }
+
+    public void UnregisterPanel(SBGames.Testing.Sandbox.IDevToolPanel panel)
+    {
+        if (panel == null) return;
+        if (customPanels.Remove(panel))
+        {
+            RebuildTabLabels();
+            if (selectedTab >= (activeTabLabels?.Length ?? tabLabels.Length))
+            {
+                selectedTab = 0;
+            }
+        }
+    }
+
+    private void RebuildTabLabels()
+    {
+        var list = new List<string>(tabLabels);
+        for (int i = 0; i < customPanels.Count; i++)
+        {
+            list.Add(customPanels[i].PanelTitle);
+        }
+        activeTabLabels = list.ToArray();
+    }
+
+    #endregion
 
     private void DrawStatusTab()
     {

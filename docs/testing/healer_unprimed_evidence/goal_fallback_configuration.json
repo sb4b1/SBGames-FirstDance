@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var g = UnityEditor.AssetDatabase.LoadAssetAtPath<UtilityHealAllyGoal>(\"Assets/ScriptableObjects/UtilityGoal/Default/DefaultHealAllyGoal.asset\"); var so = new UnityEditor.SerializedObject(g); var p = UnityEditor.AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>(\"Assets/ScriptableObjects/AIProfiles/Profile_Rank_D.asset\"); so.FindProperty(\"fallbackProfile\").objectReferenceValue = p; so.ApplyModifiedPropertiesWithoutUndo(); UnityEditor.AssetDatabase.SaveAssetIfDirty(g); return new { fallback = p.name, p.HealHpThreshold, p.HealReactionDelay };"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "fallback": "Profile_Rank_D",
+        "HealHpThreshold": 0.5,
+        "HealReactionDelay": 0.25
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

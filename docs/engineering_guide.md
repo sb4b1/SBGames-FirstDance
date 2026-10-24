@@ -351,6 +351,20 @@ All code executing in `Update()`, `FixedUpdate()`, GOAP `Sense()`, `Perform()`, 
 
 ---
 
+### Playbook 6: Adding a New Feature Sandbox
+
+Follow the shared sandbox architecture contract (`docs/testing/sandbox_contract.md`):
+
+1. **Create Scene**: Create `Assets/Scenes/<Feature>_Sandbox.unity`.
+2. **Define Scenario Data Asset**: Inherit from `SandboxScenarioSO` (in `Assets/Scripts/Testing/Sandbox/`) to define domain parameters and link checklist IDs.
+3. **Implement Bootstrap**: Inherit from `SandboxBootstrapBase` (`[DefaultExecutionOrder(-200)]`) to initialize required singletons/mocks and purge meta game objects (`[CoreGameLoop]`, `[DungeonMaster]`).
+4. **Implement Runner**: Inherit from `SandboxRunnerBase`, implement `RunScenarioRoutine`, `RunAllScenariosRoutine`, and `ResetSandbox`. Use `SandboxSafetyTimeoutWatcher` for infinite loop guards and `SandboxReportWriter` to output Markdown and CSV telemetry.
+5. **Add DevTool Panels**: Attach `DevTool`, `ScenarioRunnerPanel` (Panel 1), and `ReportViewerPanel` (Panel 4) to the scene's `[TEST_HARNESS]` GameObject.
+6. **Register Headless Entry Point**: Add a static entry method in `SandboxHeadlessRunner.cs` callable via Unity CLI batchmode.
+7. **Create Sign-off Document**: Copy `docs/testing/sandbox_signoff_template.md` to `docs/testing/<feature>_signoff.md`. Note that only prototype-blocking gaps become issue tracker tickets.
+
+---
+
 ## 6. Known Codebase Quirks & Gotchas
 
 Agents working on the codebase should be aware of these existing code traps and inconsistencies:

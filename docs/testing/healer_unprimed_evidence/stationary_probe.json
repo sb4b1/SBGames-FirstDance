@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var r = UnityEngine.Object.FindAnyObjectByType<SBGames.Testing.BattleSimulationTestRunner>(); var rows = new System.Collections.Generic.List<string>(); rows.Add(\"runs=\"+r.UnprimedRunsCompleted+\" elapsed=\"+r.ElapsedTime); foreach (var c in r.AllCombatants) { if (c.GameObject == null) continue; var ab = c.AI.GetComponent<CrashKonijn.Agent.Runtime.AgentBehaviour>(); var move = c.AI.GetComponent<AgentMoveBehaviour>(); rows.Add(c.GameObject.name+\" HP=\"+c.CurrentLife+\" pos=\"+c.GameObject.transform.position+\" goal=\"+c.AI.CurrentGoalKey+\" action=\"+ab.ActionState.Action+\" move=\"+move.ShouldMove+\" stopped=\"+c.Agent.isStopped+\" path=\"+c.Agent.hasPath+\" canmove=\"+c.Brain.CanMove); } return rows.ToArray();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": [
+        "runs=6 elapsed=148.3505",
+        "Monster_3_MONSTER_N001 HP=150 pos=(1.88, -1.21, -0.07) goal=Wander action=IdleAction move=False stopped=True path=True canmove=True",
+        "Adventurer_4_ADVENTURER_N001 HP=66 pos=(1.88, -1.21, -0.17) goal=KillEnemy action=AttackAction move=False stopped=True path=False canmove=False"
+      ]
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

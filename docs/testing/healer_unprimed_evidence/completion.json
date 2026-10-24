@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var r = UnityEngine.Object.FindAnyObjectByType<SBGames.Testing.BattleSimulationTestRunner>(); return new { r.UnprimedRunsCompleted, r.IsUnprimedHealerPassRunning };"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "UnprimedRunsCompleted": 45,
+        "IsUnprimedHealerPassRunning": false
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

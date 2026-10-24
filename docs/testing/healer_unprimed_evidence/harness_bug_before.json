@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "command": "command console",
+  "data": {
+    "command": "console",
+    "parameters": {
+      "level": "error",
+      "tail": "20"
+    },
+    "result": {
+      "entries": [
+        {
+          "seq": 940,
+          "timestampUtc": "2026-10-24T00:46:39.4819067Z",
+          "level": "error",
+          "logType": "Exception",
+          "message": "MissingReferenceException: The object of type 'UnityEngine.GameObject' has been destroyed but you are still trying to access it.\nYour script should either check if it is null or you should not destroy the object.",
+          "stackTrace": "UnityEngine.Object+MarshalledUnityObject.TryThrowEditorNullExceptionObject (UnityEngine.Object unityObj, System.String parameterName) (at <93e6391e4688454a985ab5dc6ed6bd98>:0)\nUnityEngine.Bindings.ThrowHelper.ThrowNullReferenceException (System.Object obj) (at <93e6391e4688454a985ab5dc6ed6bd98>:0)\nUnityEngine.GameObject.get_transform () (at <93e6391e4688454a985ab5dc6ed6bd98>:0)\nSBGames.Testing.BattleSimulationTestRunner.HandleSkillHealWithOverhealApplied (SkillInstance skill, UnityEngine.GameObject target, System.Single actualHealed, System.Single overheal) (at Assets/Scripts/Testing/BattleSimulationTestRunner.cs:445)\nSkillHitResolver.ResolveHit (SkillInstance skill, UnityEngine.GameObject target) (at Assets/Scripts/Skills/SkillHitResolver.cs:26)\nSkillInstance.OnHit (UnityEngine.GameObject target, HitContext context) (at Assets/Scripts/Skills/SkillInstance.cs:347)\nTargetedBurstDetonation+<WindupRoutine>d__38.MoveNext () (at Assets/Scripts/Skills/TargetedBurstDetonation.cs:291)\nUnityEngine.SetupCoroutine.InvokeMoveNext (System.Collections.IEnumerator enumerator, System.IntPtr returnValueAddress) (at <93e6391e4688454a985ab5dc6ed6bd98>:0)\nUnityEngine.StackTraceUtility:ExtractStringFromExceptionInternal(Object, String&, String&)\n",
+          "seeded": false
+        }
+      ],
+      "cursor": 2398,
+      "session": "88987ffbfbaa4d09bd2865b660d82019",
+      "returned": 1,
+      "dropped": false,
+      "reset": false,
+      "counts": {
+        "error": 1,
+        "warn": 155,
+        "log": 1844
+      },
+      "groundTruth": {
+        "sampledUtc": "2026-10-24T00:51:33.5831699Z",
+        "ageMs": 240,
+        "compilationFailed": false,
+        "compiling": false,
+        "consoleErrors": 0,
+        "consoleWarnings": 77,
+        "consoleLogs": 1210,
+        "seeded": true
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

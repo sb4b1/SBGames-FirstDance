@@ -44,7 +44,10 @@ public class BaseAI : MonoBehaviour, IPoolable
 
     [SerializeField] private RecoverySafetyTuningSO recoverySafetyTuning;
     public RecoverySafetyTuningSO RecoverySafetyTuning { get => recoverySafetyTuning; set => recoverySafetyTuning = value; }
-    public float RecoverySafety => recoverySafetyTuning != null ? recoverySafetyTuning.Evaluate(this) : 0f;
+    public float RecoverySafety => (recoverySafetyTuning != null ? recoverySafetyTuning : (recoverySafetyTuning = Resources.Load<RecoverySafetyTuningSO>("AI/RecoverySafety_Default"))) != null ? recoverySafetyTuning.Evaluate(this) : 0f;
+    [SerializeField] private RecoverySafetyTuningSO healSafetyTuning;
+    public RecoverySafetyTuningSO HealSafetyTuning { get => healSafetyTuning; set => healSafetyTuning = value; }
+    public float HealSafety => (healSafetyTuning != null ? healSafetyTuning : (healSafetyTuning = Resources.Load<RecoverySafetyTuningSO>("AI/HealSafety_Default"))) != null ? healSafetyTuning.Evaluate(this) : 1f;
 
     private bool hasProfileSurvivalThreshold;
     private float profileSurvivalHpThreshold;
@@ -923,13 +926,15 @@ public class BaseAI : MonoBehaviour, IPoolable
     /// Differentiated by AdventurerProfile heuristics (HealHpThreshold, HealPriorityMode).
     /// Zero managed allocations.
     /// </summary>
-    public bool GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent, SkillData.SelfTarget selfTargetRule = SkillData.SelfTarget.Allowed)
+    public bool GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent, SkillData.SelfTarget selfTargetRule = SkillData.SelfTarget.Allowed, bool useProfilePriority = true, AdventurerAIProfile profileOverride = null)
     {
+        GameObject owner = StatsManager != null ? StatsManager.gameObject : gameObject;
         woundedTarget = null;
         lowestHpPercent = 1.0f;
 
-        float threshold = adventurerProfile != null ? adventurerProfile.HealHpThreshold : 0.50f;
-        HealerPriorityMode priorityMode = adventurerProfile != null ? adventurerProfile.HealPriorityMode : HealerPriorityMode.LowestHp;
+        var healerProfile = profileOverride != null ? profileOverride : adventurerProfile;
+        float threshold = healerProfile != null ? healerProfile.HealHpThreshold : 0.50f;
+        HealerPriorityMode priorityMode = healerProfile != null ? healerProfile.HealPriorityMode : HealerPriorityMode.LowestHp;
 
         Transform bestCandidate = null;
         float lowestHp = 1.0f;
@@ -943,8 +948,8 @@ public class BaseAI : MonoBehaviour, IPoolable
             {
                 var ally = allyTargets[i];
                 if (ally == null) continue;
-                if (ally.gameObject == gameObject && selfTargetRule == SkillData.SelfTarget.Excluded) continue;
-                if (ally.gameObject != gameObject && selfTargetRule == SkillData.SelfTarget.Only) continue;
+                if (ally.gameObject == owner && selfTargetRule == SkillData.SelfTarget.Excluded) continue;
+                if (ally.gameObject != owner && selfTargetRule == SkillData.SelfTarget.Only) continue;
 
                 var stats = ally.GetComponent<CharacterStatsManager>() ?? ally.GetComponentInParent<CharacterStatsManager>();
                 if (stats == null || stats.Life <= 0f) continue;
@@ -977,7 +982,7 @@ public class BaseAI : MonoBehaviour, IPoolable
             var leader = partyLeaderObj;
 
             // Check the leader itself
-            if (leader.gameObject != gameObject && selfTargetRule != SkillData.SelfTarget.Only)
+            if (leader.gameObject != owner && selfTargetRule != SkillData.SelfTarget.Only)
             {
                 var leaderStats = leader.StatsManager;
                 if (leaderStats != null && leaderStats.Life > 0f)
@@ -1007,7 +1012,7 @@ public class BaseAI : MonoBehaviour, IPoolable
                 for (int i = 0; i < members.Count; i++)
                 {
                     var m = members[i];
-                    if (m == null || !m.IsAlive || m.gameObject == gameObject || selfTargetRule == SkillData.SelfTarget.Only) continue;
+                    if (m == null || !m.IsAlive || m.gameObject == owner || selfTargetRule == SkillData.SelfTarget.Only) continue;
 
                     var stats = m.StatsManager;
                     if (stats == null || stats.Life <= 0f) continue;
@@ -1044,13 +1049,13 @@ public class BaseAI : MonoBehaviour, IPoolable
                 if (selfHpPercent < lowestHp)
                 {
                     lowestHp = selfHpPercent;
-                    bestCandidate = transform;
+                    bestCandidate = owner.transform;
                 }
             }
         }
 
         // 3. Selection based on priority mode
-        if (priorityMode == HealerPriorityMode.TankFirstThenLowestHp && tankCandidate != null)
+        if (useProfilePriority && priorityMode == HealerPriorityMode.TankFirstThenLowestHp && tankCandidate != null)
         {
             woundedTarget = tankCandidate;
             lowestHpPercent = tankHp;

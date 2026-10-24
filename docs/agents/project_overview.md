@@ -141,4 +141,5 @@ Always use canonical domain terms. Do not invent synonyms:
 - **Combat AI & Threat Prioritization ADR**: [`docs/adr/0002-dynamic-combat-ai-and-threat-prioritization.md`](file:///d:/UnityProject/SBGames/docs/adr/0002-dynamic-combat-ai-and-threat-prioritization.md)
 - **Engineering & Technical Architecture Guide**: [`docs/engineering_guide.md`](file:///d:/UnityProject/SBGames/docs/engineering_guide.md)
 - **Combat Sandbox & Simulation Guide**: [`docs/testing/combat_sandbox_guide.md`](file:///d:/UnityProject/SBGames/docs/testing/combat_sandbox_guide.md)
+- **Sandbox Architecture Contract**: [`docs/testing/sandbox_contract.md`](file:///d:/UnityProject/SBGames/docs/testing/sandbox_contract.md)
 - **Agent Issue Tracker Protocol**: [`docs/agents/issue-tracker.md`](file:///d:/UnityProject/SBGames/docs/agents/issue-tracker.md)

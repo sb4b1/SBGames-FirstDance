@@ -37,3 +37,4 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   baseWeight: 1
+  fallbackProfile: {fileID: 11400000, guid: 7537c2704adbfbf46990c8d2f0a67da8, type: 2}

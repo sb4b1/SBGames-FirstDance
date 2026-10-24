@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var rows = new System.Collections.Generic.List<string>(); foreach (var rank in new[] { \"E\", \"D\", \"C\" }) { var p = UnityEditor.AssetDatabase.LoadAssetAtPath<AdventurerAIProfile>(\"Assets/ScriptableObjects/AIProfiles/Profile_Rank_\"+rank+\".asset\"); rows.Add(rank+\" threshold=\"+p.HealHpThreshold+\" reaction=\"+p.HealReactionDelay+\" priority=\"+p.HealPriorityMode); } var db = UnityEditor.AssetDatabase.LoadAssetAtPath<SBGames.Database.MasterGameDatabaseSO>(\"Assets/Resources/MasterGameDatabase.asset\"); foreach (var c in db.Characters.Characters) { if (c == null || c.defaultSkillIds == null) continue; foreach (var id in c.defaultSkillIds) { var d = db.Skills.Get(id); if (d == null || d.baseHeal <= 0f) continue; var prefab = c.GetPrefabDirect(); var ai = prefab != null ? prefab.GetComponentInChildren<BaseAI>(true) : null; rows.Add(\"catalog=\"+c.id+\" skill=\"+id+\" healGoal=\"+(ai != null && System.Linq.Enumerable.Any(ai.Goals, g => g is UtilityHealAllyGoal))); } } return rows.ToArray();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": [
+        "E threshold=0.5 reaction=0.8 priority=LowestHp",
+        "D threshold=0.5 reaction=0.25 priority=LowestHp",
+        "C threshold=0.5 reaction=0.05 priority=TankFirstThenLowestHp",
+        "catalog=ADVENTURER_N006 skill=SKILL_HEAL_001 healGoal=True"
+      ]
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

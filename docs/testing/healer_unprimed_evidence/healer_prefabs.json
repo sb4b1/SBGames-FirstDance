@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var db = UnityEditor.AssetDatabase.LoadAssetAtPath<SBGames.Database.MasterGameDatabaseSO>(\"Assets/Resources/MasterGameDatabase.asset\"); var rows = new System.Collections.Generic.List<string>(); foreach (var guid in UnityEditor.AssetDatabase.FindAssets(\"t:Prefab\", new[]{\"Assets/Prefabs/Character\"})) { var path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid); var p = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.GameObject>(path); if (p == null) continue; foreach (var sm in p.GetComponentsInChildren<SkillStatsManager>(true)) { if (sm.BaseData == null || sm.BaseData.baseHeal <= 0f) continue; var ai = p.GetComponentInChildren<BaseAI>(true); rows.Add(path + \" | \" + sm.BaseData.skillID + \" | HealAlly=\" + (ai != null && ai.Goals != null && System.Linq.Enumerable.Any(ai.Goals, g => g is UtilityHealAllyGoal))); } } return rows.ToArray();"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": [
+        "Assets/Prefabs/Character/Adventurer/Normal/ADVENTURER_N006.prefab | SKILL_HEAL_001 | HealAlly=True"
+      ]
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

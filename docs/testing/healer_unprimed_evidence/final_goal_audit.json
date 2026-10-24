@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "command": "command eval",
+  "data": {
+    "command": "eval",
+    "parameters": {
+      "code": "var g = UnityEditor.AssetDatabase.LoadAssetAtPath<UtilityHealAllyGoal>(\"Assets/ScriptableObjects/UtilityGoal/Default/DefaultHealAllyGoal.asset\"); var so = new UnityEditor.SerializedObject(g); var curve = so.FindProperty(\"urgencyCurve\").animationCurveValue; var keys = new System.Collections.Generic.List<string>(); foreach (var k in curve.keys) keys.Add(\"time=\"+k.time+\" value=\"+k.value+\" inTangent=\"+k.inTangent+\" outTangent=\"+k.outTangent); return new { normalized = SBGames.Editor.Validation.AISetupValidatorCore.IsUtilityCurveNormalized(curve), keys = keys.ToArray(), baseWeight = so.FindProperty(\"baseWeight\").floatValue, fallbackProfile = so.FindProperty(\"fallbackProfile\").objectReferenceValue.name, playing = UnityEditor.EditorApplication.isPlaying, sceneDirty = UnityEngine.SceneManagement.SceneManager.GetActiveScene().isDirty };"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": true,
+      "result": {
+        "normalized": true,
+        "keys": [
+          "time=0 value=0.55 inTangent=0 outTangent=0.35",
+          "time=1 value=0.9 inTangent=0.35 outTangent=0"
+        ],
+        "baseWeight": 1,
+        "fallbackProfile": "Profile_Rank_D",
+        "playing": false,
+        "sceneDirty": false
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

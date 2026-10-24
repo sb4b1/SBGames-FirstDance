@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "command": "command console",
+  "data": {
+    "command": "console",
+    "parameters": {
+      "level": "error",
+      "tail": "30"
+    },
+    "result": {
+      "entries": [],
+      "cursor": 241,
+      "session": "71907bf8564640b1a499b4b2a7c830ad",
+      "returned": 0,
+      "dropped": false,
+      "reset": false,
+      "counts": {
+        "error": 0,
+        "warn": 83,
+        "log": 158
+      },
+      "groundTruth": {
+        "sampledUtc": "2026-10-24T09:33:13.0343961Z",
+        "ageMs": 67,
+        "compilationFailed": false,
+        "compiling": false,
+        "consoleErrors": 0,
+        "consoleWarnings": 28,
+        "consoleLogs": 156,
+        "seeded": true
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "D:\\UnityProject\\SBGames"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

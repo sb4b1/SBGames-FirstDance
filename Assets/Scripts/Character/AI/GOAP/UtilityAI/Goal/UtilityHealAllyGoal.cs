@@ -7,48 +7,60 @@ public class UtilityHealAllyGoal : UtilityGoal
     [Tooltip("Urgency curve evaluated from 0 (at threshold) to 1 (at critical HP).")]
     [SerializeField] private AnimationCurve urgencyCurve = AnimationCurve.Linear(0f, 0.55f, 1f, 0.90f);
 
-    [SerializeField, Range(0.1f, 3f)] private float baseWeight = 1.0f;
+    [SerializeField, Range(0f, 1f)] private float baseWeight = 1.0f;
+
+    [Tooltip("Existing tuning profile used only when the agent has no profile override.")]
+    [SerializeField] private AdventurerAIProfile fallbackProfile;
 
     public override float Evaluate(BaseAI context)
     {
         if (context == null) return 0f;
-
-        // 1. Hard Gate: Agent must possess a ready heal skill (AlliesOnly) and minimum mana
-        if (!context.HasReadyHealSkill() || context.AgentMana < 5f)
+        var profile = context.AdventurerProfile != null ? context.AdventurerProfile : fallbackProfile;
+        if (profile == null)
         {
             context.WoundedAllyDetectedTime = -1f;
             return 0f;
         }
 
-        // 2. Compete with healer's own survival:
-        // When the healer is in real danger (HP <= survival threshold or panic),
-        // survival goal MUST win over healing allies.
-        float maxHp = 100f;
-        if (context.StatsManager != null && context.StatsManager.MaxLife != null && context.StatsManager.MaxLife.Value > 0f)
+        float lowestHpPercent = 1f;
+        bool hasCandidate = false;
+        var skills = context.SkillController != null ? context.SkillController.Skills : null;
+        if (skills != null)
         {
-            maxHp = context.StatsManager.MaxLife.Value;
+            for (int i = 0; i < skills.Count; i++)
+            {
+                var skill = skills[i];
+                if (skill == null || skill.Data == null || !skill.IsReady ||
+                    skill.Data.baseHeal <= 0f ||
+                    (skill.Caster.Stats != null && context.AgentMana < skill.Caster.Stats.ManaCost.Value) ||
+                    skill.Data.targetFilter != SkillData.SkillTargetFilter.AlliesOnly ||
+                    skill.Data.selfTarget == SkillData.SelfTarget.Only) continue;
+
+                // Perception/squad caches only; target preference stays with the profile.
+                if (context.GetBestWoundedAllyTarget(out _, out float hp, skill.Data.selfTarget, false, profile))
+                {
+                    hasCandidate = true;
+                    lowestHpPercent = Mathf.Min(lowestHpPercent, hp);
+                }
+            }
         }
-
-        float ownHpPercent = Mathf.Clamp01(context.AgentLife / maxHp);
-        float survivalThreshold = context.SurvivalHpThreshold;
-
-        // If healer is in danger, yield immediately to SurviveGoal
-        if (survivalThreshold > 0f && ownHpPercent <= survivalThreshold)
+        if (!hasCandidate)
         {
             context.WoundedAllyDetectedTime = -1f;
             return 0f;
         }
 
-        // 3. Scan for wounded ally below threshold
-        var rule = context.GetBestReadyHealSkillSelfTargetRule();
-        if (!context.GetBestWoundedAllyTarget(out Transform woundedTarget, out float lowestHpPercent, rule))
+        float maxHp = context.StatsManager != null && context.StatsManager.MaxLife != null
+            ? context.StatsManager.MaxLife.Value : 0f;
+        float ownHpPercent = maxHp > 0f ? Mathf.Clamp01(context.AgentLife / maxHp) : 1f;
+        if (context.SurvivalHpThreshold > 0f && ownHpPercent <= context.SurvivalHpThreshold)
         {
             context.WoundedAllyDetectedTime = -1f;
             return 0f;
         }
 
         // 4. Reaction delay from AdventurerAIProfile (Rank E: 0.8s, Rank D: 0.25s, Rank C: 0.05s)
-        float reactionDelay = context.AdventurerProfile != null ? context.AdventurerProfile.HealReactionDelay : 0.25f;
+        float reactionDelay = profile.HealReactionDelay;
         if (reactionDelay > 0f)
         {
             if (context.WoundedAllyDetectedTime < 0f)
@@ -64,15 +76,9 @@ public class UtilityHealAllyGoal : UtilityGoal
         }
 
         // 5. Score calculation: ally HP deficit scales score from 0.55 to 0.90
-        float threshold = context.AdventurerProfile != null ? context.AdventurerProfile.HealHpThreshold : 0.50f;
+        float threshold = profile.HealHpThreshold;
         float deficit = threshold > 0f ? Mathf.Clamp01((threshold - lowestHpPercent) / threshold) : 0f;
-        float score = urgencyCurve.Evaluate(deficit) * baseWeight;
-
-        // If healer is somewhat injured (between survivalThreshold and 50%), dampen heal score
-        if (ownHpPercent < 0.50f)
-        {
-            score *= Mathf.InverseLerp(survivalThreshold, 0.50f, ownHpPercent);
-        }
+        float score = urgencyCurve.Evaluate(deficit) * baseWeight * context.HealSafety;
 
         return Mathf.Clamp01(score);
     }

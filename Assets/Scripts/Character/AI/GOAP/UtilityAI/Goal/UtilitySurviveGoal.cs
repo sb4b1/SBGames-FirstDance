@@ -54,12 +54,14 @@ public class UtilitySurviveGoal : UtilityGoal
         float burstPanicMultiplier = context.Personality != null ? context.Personality.Snapshot.BurstDamagePanicMultiplier : 1.0f;
         bool isPanicFromBurst = burstDamage > 0f && (burstDamage * burstPanicMultiplier >= maxHp * 0.25f);
 
-        float pressure = 1f - context.RecoverySafety;
+        bool isHealerRole = (context.EffectiveFunction & AdventurerFunction.Healer) != 0 || context.HasReadyHealSkill(allowSelfOnly: true);
+        float healPressure = isHealerRole ? (1f - context.HealSafety) : 0f;
+        float pressure = Mathf.Max(1f - context.RecoverySafety, healPressure);
         bool recoveringUnderPressure = pressure > 0f &&
-            (context.CanRecoverWithItemNow() || (hpPercent < 1f && context.HasReadySelfOnlyHealSkill()));
+            (context.CanRecoverWithItemNow() || (hpPercent < 1f && context.HasReadySelfOnlyHealSkill()) || healPressure > 0f);
         if (hpPercent > threshold)
         {
-            // If HP is above fear threshold, only panic if sudden burst damage velocity or exceedingly high fear
+            // If HP is above fear threshold, only panic if sudden burst damage velocity, exceedingly high fear, or under recovery/healer threat pressure
             if (!recoveringUnderPressure && !isPanicFromBurst && (context.FearLevel < 80 || context.IsFearLocked))
                 return 0f;
         }

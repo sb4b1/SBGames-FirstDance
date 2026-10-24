@@ -1,53 +1,47 @@
 # SBGames — Project Progress & Architecture Snapshot
-*Last Updated: 2026-10-19 | Latest Commit: f05136c feat: implement core character stats, AI GOAP behaviors, and combat systems with associated prefabs and assets*
+*Last Updated: 2026-10-24 | Latest Commit: 5ef568a feat: add character N006, targeted burst heal skills, AI recovery systems, and validation tools*
 
 ## 1. Recently Completed Milestones & Features
-- **Character Stat & Regeneration Pipeline ([`RegenTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/RegenTuningSO.cs), [`CharacterStatsManager`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/CharacterStatsManager.cs)):**
-  - Implemented continuous life and mana regeneration (`LifeRegen`, `ManaRegen`) in [`CharacterStatsManager.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/CharacterStatsManager.cs) via per-frame `TickRegen(Time.deltaTime)`.
-  - Added out-of-combat regeneration acceleration governed by [`RegenTuningSO.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/RegenTuningSO.cs): tracks elapsed time since last damage dealt or taken (`timeSinceLastDamageTakenOrDealt`), boosting regeneration rates by a configurable multiplier (default 3.0× after 5.0s out of combat).
-  - Authored default tuning asset [`RegenTuning_Default.asset`](file:///d:/UnityProject/SBGames/Assets/ScriptableObjects/RegenTuning_Default.asset) and accompanying test suite [`CharacterRegenTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/CharacterRegenTests.cs).
-- **Basic Attack Modes & Projectile Integration ([`BasicAttackMode`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/BasicAttackMode.cs), [`CharacterBaseStats`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/CharacterBaseStats.cs)):**
-  - Added [`BasicAttackMode`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/BasicAttackMode.cs) (`Auto = 0`, `None = 1`) to [`CharacterBaseStatSO.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/CharacterBaseStats.cs), enabling archetypes to either perform automated standard attacks or rely purely on active GOAP skills (e.g. specialized mages or pacifist supports).
-  - Updated [`CharacterCombatController.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/Controller/CharacterCombatController.cs) and [`AttackAction.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Actions/AttackAction.cs) to check `BasicAttackMode`, preventing unintended basic attack loops on non-basic-attacking archetypes.
-  - Added arrow projectile sprites (`arrow_1.png` – `arrow_4.png`, `Just_arrow.png`) and verified via [`BasicAttackModeTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/BasicAttackModeTests.cs).
-- **Character & Monster Asset Restructuring:**
-  - Standardized adventurer animator controllers and motion clips under `Assets/Animators/Characters/Adventurers/Normal/N002` through `N005`.
-  - Updated monster animator controllers (`NC001_Animator`, `NC002`, `MONSTER_N003`) and consolidated monster prefabs.
-  - Synchronized character database definitions and CSV tables (`Characters.csv`, `DatabaseCsvPipeline.cs`, `MasterGameDatabase.asset`).
-- **AI Healing Behavior & Healer Combat Loop ([Report](file:///d:/UnityProject/SBGames/docs/testing/heal_proof_and_edc_comparison_report.md)):**
-  - Full GOAP and Utility AI support for ally restoration: [`HealAllyGoal`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Goals/HealAllyGoal.cs), [`HealAllyAction`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Actions/HealAllyAction.cs), [`UtilityHealAllyGoal`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/UtilityAI/Goal/UtilityHealAllyGoal.cs), [`HealCapabilityFactory`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Capabilities/HealCapabilityFactory.cs), [`WoundedAllyTargetSensor`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Sensors/WoundedAllyTargetSensor.cs), [`WoundedAllyTarget`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/TargetKeys/Target/WoundedAllyTarget.cs), and [`AlliesNeedHealing`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/WorldKeys/AlliesNeedHealing.cs) world key.
-  - Resolved 0 HP heal bug by enforcing target health-deficit checks, registering the GOAP world-key decrease effect, fixing caster root resolution under scene grouping containers (`SpawnedCombatUnits`), and aligning projectile trigger layer masks.
-  - Authored heal assets: `SKILL_HEAL_001.prefab`, `SKILL_HEAL_001.asset`, `DefaultHealAllyGoal.asset`, `Utility_SKILL_HEAL_001.asset`.
-- **Adaptive Sensor Pulse Intervals in VisionController ([Report](file:///d:/UnityProject/SBGames/docs/testing/adaptive_sensor_pulse_intervals_report.md)):**
-  - Dynamic state-driven perception tiers configured via [`PerceptionTuningSO.cs`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/PerceptionTuningSO.cs): Calm (0.40s / 2.5 Hz), Default (0.20s / 5.0 Hz), Engaged (0.12s / 8.33 Hz), Critical (0.05s / 20.0 Hz).
-  - Asymmetric dwell hysteresis ($0.50\text{s}$ before demotion), deterministic desynchronization phase offsets, and rate-limited reactive force pulses (`RequestImmediatePulse()`). Verified via [`VisionControllerAdaptivePulseTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/VisionControllerAdaptivePulseTests.cs).
-- **Dungeon Piece System & 2D Camera Controller ([ADR 0003](file:///d:/UnityProject/SBGames/docs/adr/0003-dungeon-piece-system-and-selection.md)):**
-  - Authored piece generation (`DungeonPiece`, `PieceSetSO`, `DungeonPieceDescriptor`, `DungeonPieceSelector`) with dynamic dimensions ($W \times H \ge 4 \times 4$), structural roles (`Room` vs `Pathway`), freeform 2-tile openings, non-square quarter-turn rotation, and collision-free seam layout solver (`DungeonSeamLayoutSolver`).
-  - Dynamic room capacity calculation derived from piece-local `BuildableMask` and placement crowding penalties (`IRoomCapacityTracker`, `DungeonRoomCapacityTracker`).
-  - 2D camera controller ([`CameraController2D`](file:///d:/UnityProject/SBGames/Assets/Scripts/Camera/CameraController2D.cs)) with 1:1 right-click drag pan, cursor-centered zoom, smart drag discrimination, and dynamic arena bounds clamping.
+- **Targeted Burst Heal Skill System & Adventurer N006 ([`TargetedBurstDetonation`](file:///d:/UnityProject/SBGames/Assets/Scripts/Skills/TargetedBurstDetonation.cs), [`TargetedBurstTargetLifetime`](file:///d:/UnityProject/SBGames/Assets/Scripts/Skills/TargetedBurstTargetLifetime.cs), [`VisualAnchor`](file:///d:/UnityProject/SBGames/Assets/Scripts/Skills/Enums/VisualAnchor.cs), [Report](file:///d:/UnityProject/SBGames/docs/testing/targeted_burst_heal_followup_report.md)):**
+  - Added `SkillType.TargetedBurst` with wind-up detonation (`SKILL_HEAL_001`: 0.5s wind-up, 25 BaseHeal, 10 mana, 6u range, 1s cooldown), tracking targets in `LateUpdate` via `VisualAnchor.Feet` without reparenting into target hierarchies.
+  - Captures launch faction/tag alignment so caster death, deactivation, or destruction during wind-up does not cancel an in-flight heal; tracks target pool generation via `TargetedBurstTargetLifetime` so targets deactivated and immediately recycled do not receive stale heals.
+  - Centralized all positive character healing through `CharacterStatsManager.ApplyHeal(amount, out actualHealed, out overheal)`, suppressing `OnLifeChanged` when `actualHealed == 0`, rejecting dead targets in `RestoreHealthEffect`, and emitting `SkillHitResolver.OnSkillHealWithOverhealApplied(SkillInstance, GameObject, float, float)` alongside `OnSkillHealApplied`.
+  - Added healer adventurer `ADVENTURER_N006` (`ADVENTURER_N006.prefab`, `ADVENTURER_N006.asset`, animator controller/clips) and 12-frame `SKILLFX_SKILL_HEAL_001.prefab` (`Anim_S_H001`) on sorting layer `SkillFX` (order 5). Verified by [`HealSkillTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/HealSkillTests.cs) and [`TargetedBurstVisualFitTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/TargetedBurstVisualFitTests.cs).
+- **Utility Score Normalization & Recovery Safety System ([`RecoverySafetyTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/RecoverySafetyTuningSO.cs), [`UtilityRecoverGoal`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/UtilityAI/Goal/UtilityRecoverGoal.cs), [`UtilitySurviveGoal`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/UtilityAI/Goal/UtilitySurviveGoal.cs)):**
+  - Centralized `[0, 1]` utility score normalization in `BaseAI.SelectBestGoal` (sanitizing NaN to 0 and clamping infinities), applying `goalHysteresisBonus = 0.08f` strictly to temporary comparison scores and resolving ties in favor of `Survive`.
+  - Replaced `UtilityRecoverGoal`'s `surviveOverrideFloor = 1.02f` with a zero-allocation multiplicative safety factor configured by [`RecoverySafetyTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/RecoverySafetyTuningSO.cs) (`Assets/Resources/AI/RecoverySafety_Default.asset`) combining cached `ThreatLevel`, 2-second recent damage from `CharacterAIMemory`, and cached enemy squared distance.
+  - Enabled self-only skill healing in `UtilityRecoverGoal`, `RecoverSensor`, and `RecoverAction` without requiring an item kit, and fixed `AdventurerItemKitController` category slot remaining-count initialization. Verified by [`RecoverySafetyTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/RecoverySafetyTests.cs) and [`LegacyRecoveryRegressionTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/LegacyRecoveryRegressionTests.cs).
+- **Unified Editor Validation Service ([`ValidationService`](file:///d:/UnityProject/SBGames/Assets/Editor/Validation/ValidationService.cs), [`ValidationFinding`](file:///d:/UnityProject/SBGames/Assets/Editor/Validation/ValidationFinding.cs)):**
+  - Consolidated project-wide validation across [`AISetupValidatorWindow`](file:///d:/UnityProject/SBGames/Assets/Editor/Validation/AISetupValidatorWindow.cs), [`SBGamesCreatorWindow`](file:///d:/UnityProject/SBGames/Assets/Editor/Creator/SBGamesCreatorWindow.cs), and [`StatBalanceManagerWindow`](file:///d:/UnityProject/SBGames/Assets/Editor/Stats/StatBalanceManagerWindow.cs).
+  - Added automated inspection of serialized `AnimationCurve` keys and Bezier tangent extrema across UtilityAI goals and skills, correcting 12 out-of-range curves across `KillEnemy`, `Warp`, and skill cluster curves. Verified by [`ValidationServiceTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/ValidationServiceTests.cs).
+- **Combat Sandbox Pass Executor & Roster Audit ([`CombatSandboxPassExecutor`](file:///d:/UnityProject/SBGames/Assets/Scripts/Testing/CombatSandboxPassExecutor.cs), [Report](file:///d:/UnityProject/SBGames/docs/testing/combat_sandbox_pass_report.md)):**
+  - Added batch scenario execution and telemetry export (`docs/testing/combat_sandbox_pass_telemetry.csv`) alongside [`PartyBattleAnalyticsHarness`](file:///d:/UnityProject/SBGames/Assets/Scripts/Testing/PartyBattleAnalyticsHarness.cs) and [`CombatSandboxRosterAuditTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/CombatSandboxRosterAuditTests.cs).
+  - Standardized skill animator folders (`Anim_S_F001`, `Anim_S_H001`, `Anim_S_L001`, `Anim_S_WA001`, `Anim_S_WA002`, `Anim_S_WI001`) and added [`SpriteAnimationBuilderSkillTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/Editor/SpriteAnimationBuilderSkillTests.cs).
+- **Tactical Positioning, Kiting & Fight Outlook ([`KeepDistanceResolver`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/KeepDistanceResolver.cs), [`FightOutlookCalculator`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/FightOutlookCalculator.cs)):**
+  - Dynamic ranged kiting (`UtilityKeepDistanceGoal`, `KeepDistanceTuningSO`, `KeepDistanceMode`) and zero-allocation TTK vs TTD fight outlook calculation (`FightOutlookTuningSO`).
 - **Unity Editor & Test Suite Status:**
-  - 28 test suites in `Assets/Tests/` with all tests passing (+2 new suites: [`BasicAttackModeTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/BasicAttackModeTests.cs), [`CharacterRegenTests.cs`](file:///d:/UnityProject/SBGames/Assets/Tests/CharacterRegenTests.cs)).
-  - Live Unity Editor verified via Unity CLI (`unity status`, `unity cmd console`): PID 3276 running on port 7800, 0 compilation errors, 0 active console errors.
+  - 40 test suites across `Assets/Tests/` (28 runtime suites) and `Assets/Tests/Editor/` (12 editor suites) with all 78 discovered EditMode tests passing and 0 AI setup validator findings.
+  - Live Unity Editor verified via Unity CLI (`unity status`, `unity cmd console`): PID 42080 running on port 7800, 0 compilation errors, 0 active console errors.
 
 ## 2. Current Codebase & Script Inventory (Delta / Key Modules)
-Current C# file counts across `Assets/Scripts/` (341 total scripts), `Assets/Editor/` (29 total scripts), and `Assets/Tests/` (28 total scripts):
+Current C# file counts across `Assets/Scripts/` (353 total scripts), `Assets/Editor/` (37 total scripts), and `Assets/Tests/` (40 total scripts):
 
 | Folder | C# files | Role / Key Modules |
 | --- | ---: | --- |
-| `Assets/Scripts/Character` | 132 | Character identity, controllers, traps, AI profiles/memory, adaptive perception, and GOAP/Utility AI system. |
+| `Assets/Scripts/Character` | 139 | Character identity, controllers, traps, AI profiles/memory, adaptive perception, fight outlook, keep distance, recovery safety, and GOAP/Utility AI (+1 script). |
 | `Assets/Scripts/Dungeon` | 26 | Room/door markers, registry, procedural layout graph/generator, dynamic piece system, seam layout solver, and runtime builder. |
 | `Assets/Scripts/Placement` | 26 | Dungeon placement system, grid visualizer, bench, buildable mask validator, and room capacity tracking. |
 | `Assets/Scripts/Loop` | 26 | Core game loop, combat results handler, DM abilities/talents, post-battle reports, and progression/fame. |
-| `Assets/Scripts/Inventory` | 26 | Inventory, equipment, items, consumable effects (including Warp escape), and save data. |
+| `Assets/Scripts/Inventory` | 26 | Inventory, equipment, items, consumable effects (including `RestoreHealthEffect` and Warp escape), and save data. |
+| `Assets/Scripts/Skills` | 16 | Skill casting, targeting, projectile pooling, targeted burst detonation/lifetime, visual anchors, and hit resolution (+3 scripts). |
 | `Assets/Scripts/Database` | 13 | Catalog ScriptableObjects, CSV parsers, character/item databases, and editor sync pipeline. |
-| `Assets/Scripts/Skills` | 13 | Skill casting, targeting, projectile pooling, ally/enemy hit resolution, and skill database. |
 | `Assets/Scripts/Shop` | 12 | Shop manager, merchant inventories, pricing, and economy loop. |
-| `Assets/Scripts/Stat` | 11 | Character base stats, stat managers, life/mana regeneration pipeline, and basic attack modes (+2 scripts). |
+| `Assets/Scripts/Stat` | 11 | Character base stats, stat managers (`ApplyHeal`, `TakeDamage`, `TickRegen`), life/mana regeneration pipeline, and basic attack modes. |
 | `Assets/Scripts/Squads` | 11 | Party leader, squad blackboard, squad member coordination, tactical evaluators, and scout intel HUD. |
 | `Assets/Scripts/Personality` | 7 | Character personality traits, personality profiles, and behavioral biases. |
+| `Assets/Scripts/Testing` | 6 | Combat test bootstrap, HUD, battle simulation runner, party battle analytics harness, and sandbox pass executor (+1 script). |
 | `Assets/Scripts/Events` | 6 | Dungeon event definitions, event manager, contexts, and altar/dark boon events. |
 | `Assets/Scripts/Input` | 4 | Input management and keybinding configurations. |
-| `Assets/Scripts/Testing` | 4 | Combat test environment bootstrap, combat test HUD, and simulation runners (`BattleSimulationTestRunner`). |
 | `Assets/Scripts/Interface` | 4 | Core entity interfaces (`IDamageable`, `IPoolable`, `ITargetable`, `IInteractable`). |
 | `Assets/Scripts/StatusEffect` | 3 | Status effect manager, controllers, and status effect instances. |
 | `Assets/Scripts/Manager` | 3 | High-level game and audio managers. |
@@ -62,62 +56,48 @@ Current C# file counts across `Assets/Scripts/` (341 total scripts), `Assets/Edi
 | `Assets/Scripts/Examples` | 0 | Example templates directory. |
 
 ### Key Modules Added or Refactored
-- [`RegenTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/RegenTuningSO.cs):
-  - **Responsibilities:** Immutable configuration asset defining out-of-combat delay threshold and out-of-combat regeneration multipliers for life and mana.
-  - **Key API:** `OutOfCombatDelay`, `OutOfCombatRegenMultiplier`, `CreateRuntimeInstance(delay, mult)`.
-- [`BasicAttackMode`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/BasicAttackMode.cs):
-  - **Responsibilities:** Archetype configuration enum determining whether units perform basic attacks (`Auto = 0`) or rely entirely on skill casting (`None = 1`).
-- [`CharacterStatsManager`](file:///d:/UnityProject/SBGames/Assets/Scripts/Stat/CharacterStatsManager.cs) *(Refactored)*:
-  - **Responsibilities:** Tracks unit health and mana, executes continuous regeneration ticks via `TickRegen()`, manages `timeSinceLastDamageTakenOrDealt`, and scales regen when out of combat.
-  - **Key API:** `LifeRegen`, `ManaRegen`, `TickRegen(float)`, `RestoreLife(float)`, `RestoreMana(float)`, `TryConsumeMana(float)`.
-- [`HealAllyGoal`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Goals/HealAllyGoal.cs) & [`HealAllyAction`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/GOAP/Actions/HealAllyAction.cs):
-  - **Responsibilities:** GOAP goal and action commanding healers to target and cast restoration spells on injured allies, checking target validity and range.
-  - **Key API:** `Perform(IMonoAgent, ActionData)`, `HealHpThreshold = 0.50f`.
-- [`PerceptionTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/PerceptionTuningSO.cs):
-  - **Responsibilities:** Configuration asset for adaptive perception intervals (Calm, Default, Engaged, Critical), dwell timers, and force-pulse rate limits.
-  - **Key API:** `CalmInterval`, `DefaultInterval`, `EngagedInterval`, `CriticalInterval`, `MinTierDwellDuration`.
-- [`VisionController`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/Controller/VisionController.cs) *(Refactored)*:
-  - **Responsibilities:** Dynamic perception polling using state-driven tiers with dwell hysteresis, phase desynchronization, and reactive force pulse support.
-  - **Key API:** `CurrentTier`, `EffectivePulseInterval`, `RequestImmediatePulse()`, `SetTuning(PerceptionTuningSO)`.
+- [`TargetedBurstDetonation`](file:///d:/UnityProject/SBGames/Assets/Scripts/Skills/TargetedBurstDetonation.cs) & [`TargetedBurstTargetLifetime`](file:///d:/UnityProject/SBGames/Assets/Scripts/Skills/TargetedBurstTargetLifetime.cs):
+  - **Responsibilities:** Manages delayed wind-up burst effects (`SkillType.TargetedBurst`) following target world positions (`VisualAnchor.Feet`), preserving launch caster alignment if the caster dies mid-wind-up, and invalidating bursts if the target is deactivated/recycled.
+  - **Key API:** `Arm(...)`, `Generation`, `VisualAnchor`.
+- [`RecoverySafetyTuningSO`](file:///d:/UnityProject/SBGames/Assets/Scripts/Character/AI/RecoverySafetyTuningSO.cs):
+  - **Responsibilities:** Immutable tuning asset computing a `[0, 1]` multiplicative safety factor for `UtilityRecoverGoal` from cached `ThreatLevel`, recent damage ratio in `CharacterAIMemory`, and squared enemy distance.
+  - **Key API:** `EvaluateSafety(threatLevel, recentDamageRatio, nearestEnemyDistSqr)`.
+- [`ValidationService`](file:///d:/UnityProject/SBGames/Assets/Editor/Validation/ValidationService.cs) & [`ValidationFinding`](file:///d:/UnityProject/SBGames/Assets/Editor/Validation/ValidationFinding.cs):
+  - **Responsibilities:** Shared editor validation engine auditing character prefabs, skill assets, GOAP capabilities, and serialized `AnimationCurve` value/tangent ranges across editor windows.
+  - **Key API:** `ValidateAll()`, `ValidateCurveInUnitRange(AnimationCurve, ...)`.
+- [`CombatSandboxPassExecutor`](file:///d:/UnityProject/SBGames/Assets/Scripts/Testing/CombatSandboxPassExecutor.cs):
+  - **Responsibilities:** Executes multi-scenario sandbox passes and exports structured battle telemetry and markdown summaries.
 
 ## 3. Architecture, GOAP & Event Wiring
 - **GOAP & Utility AI Catalog:**
   - **14 Goals (`GoalBase`):** `AlertAlliesGoal`, `DebriefLeaderGoal`, `FallBackGoal`, `FocusFireGoal`, `FollowLeaderGoal`, `HealAllyGoal`, `IdleGoal`, `KeepDistanceGoal`, `KillEnemyGoal`, `RecoverGoal`, `ScoutReconGoal`, `StandbyGoal`, `SurviveGoal`, `WarpGoal`.
   - **14 Actions (`GoapActionBase`):** `AlertAlliesAction`, `AttackAction`, `CastSkillAction`, `DebriefLeaderAction`, `FallBackAction`, `FleeAction`, `FocusFireAction`, `FollowLeaderAction`, `HealAllyAction`, `IdleAction`, `RecoverAction`, `ScoutReconAction`, `WanderAction`, `WarpAction`.
-  - **13 Utility Goals (`UtilityGoal`):** `UtilityAlertAlliesGoal`, `UtilityDebriefGoal`, `UtilityFallBackGoal`, `UtilityFocusFireGoal`, `UtilityFollowLeaderGoal`, `UtilityHealAllyGoal`, `UtilityKillEnemyGoal`, `UtilityRecoverGoal`, `UtilityScoutReconGoal`, `UtilityStandbyGoal`, `UtilitySurviveGoal`, `UtilityWanderGoal`, `UtilityWarpGoal`.
-  - **Utility Skills:** `UtilityBaseSkill`, `UtilityFireSpell`, `UtilityNoAvailableSkill`.
+  - **14 Utility Goals (`UtilityGoal`):** `UtilityAlertAlliesGoal`, `UtilityDebriefGoal`, `UtilityFallBackGoal`, `UtilityFocusFireGoal`, `UtilityFollowLeaderGoal`, `UtilityHealAllyGoal`, `UtilityKeepDistanceGoal`, `UtilityKillEnemyGoal`, `UtilityRecoverGoal`, `UtilityScoutReconGoal`, `UtilityStandbyGoal`, `UtilitySurviveGoal`, `UtilityWanderGoal`, `UtilityWarpGoal`.
+  - **Utility Skills:** `UtilityBaseSkill`, `UtilityFireSpell`, `UtilityNoAvailableSkill`, plus database-registered assets (`Utility_SKILL_001`, `Utility_SKILL_HEAL_001`, `Utility_SKILL_F001`, `Utility_SKILL_F002`, `Utility_SKILL_L001`, `Utility_SKILL_L002`, `Utility_SKILL_WA001`, `Utility_SKILL_WA002`, `Utility_SKILL_WI001`, `Utility_SKILL_WI002`).
   - **15 World Keys (`WorldKeyBase`):** `AgentLife`, `AgentMana`, `AlliesNeedHealing`, `CanWarp`, `EnemyDistance`, `FearLevel`, `HasAlertedAllies`, `HasDebriefedLeader`, `HasScoutedArea`, `HasSquadOrder`, `IsIdle`, `IsSkillReady`, `NeedsRecovery`, `SquadOrderTypeKey`, `ThreatLevel`.
   - **10 Target Keys (`TargetKeyBase`):** `EnemyTarget`, `FocusFireTarget`, `KeepDistanceTarget`, `LeaderTarget`, `RecoverTarget`, `ScoutReconTarget`, `SelfTarget`, `WanderTarget`, `WarpTarget`, `WoundedAllyTarget`.
   - **10 Capability Factories:** `AttackCapabilityFactory`, `BasicCapabilityFactory`, `HealCapabilityFactory`, `MinionBasicCapabilityFactory`, `RecoveryCapabilityFactory`, `SkillCapabilityFactory`, `SquadCapabilityFactory`, `SurvivalCapabilityFactory`, `WanderCapabilityFactory`, `WarpCapabilityFactory`.
   - **Agent Type Capabilities Mapping:**
     - `NormalAgent`: Wander, Attack, Skill, Basic, Squad, Survival, Recovery, Warp, Heal.
-    - `MageAgent`: Wander, Attack, Skill, Basic, Squad, Survival, Recovery, Warp.
+    - `MageAgent`: Wander, Attack, Skill, Basic, Squad, Survival, Recovery, Heal, Warp.
     - `MinionAgent`: Wander, Attack, MinionBasic, Squad, Survival *(Recovery, Warp, and Heal omitted)*.
 - **Core Systems & Services Wiring:**
-  - `BaseAI`: Bridges Utility AI goal evaluations to CrashKonijn GOAP planning. Caches perception (`VisionController`), character stats (`CharacterStatsManager`), squad membership (`SquadMember`), personality traits (`CharacterPersonality`), memory (`CharacterAIMemory`), item kit usage (`AdventurerItemKitController`), and doorway staging (`DoorwayStagingController`). Implements goal hysteresis (`goalHysteresisBonus = 0.08f`) and provides `GetBestWoundedAllyTarget` for ally scanning.
-  - `PartyLeader` & `SquadBlackboard`: Maintains squad operational orders (`Engage`, `FallBack`, `ScoutRecon`, `Standby`), room clearance progress, hazard memory, focus-fire targets, and leader succession.
-  - `DungeonRoomRegistry`: Tracks all active `RoomVolume` instances and placed `DungeonPiece` components in scene for camera bounds clamping, DM placement validation, room lookups, and AI room event triggers.
-  - `DungeonPlacementManager` & `DungeonPlacementSystem`: Manages grid coordinate validation, occupancy tracking, resource wallet spending, buildable mask checking, and room capacity enforcement (`IRoomCapacityTracker`).
-  - `GameServices`: Central service registry resolving singleton dependencies (`DungeonPlacementManager`, `CharacterManager`, `ObjectPoolManager`, etc.) by exact type name.
-  - `CoreGameLoop`: Oversees high-level game states, phase transitions (`PlanningPhase`, `ActionPhase`), round timers, and victory/defeat evaluation.
+  - `BaseAI`: Centrally normalizes all `UtilityGoal` evaluations to `[0, 1]`, applies `goalHysteresisBonus = 0.08f` only to temporary comparison values, resolves equal-score ties in favor of `Survive`, and loads `RecoverySafety_Default` for safe recovery scoring.
+  - `CharacterStatsManager`: Single authoritative entry point for character vitality changes: damage via `IDamageable.TakeDamage(in DamageData)` and healing via `ApplyHeal(float, out float, out float)`.
+  - `PartyLeader` & `SquadBlackboard`: Coordinates squad orders (`Engage`, `FallBack`, `ScoutRecon`, `Standby`), room clearance progress, hazard memory, focus-fire targets, and leader succession.
+  - `DungeonRoomRegistry`, `DungeonPlacementManager` & `GameServices`: Manages room volumes, piece placement, capacity tracking (`IRoomCapacityTracker`), and singleton service resolution.
 - **Cross-System Event Hooks:**
-  - `CharacterStatsManager`: Dispatches `OnLifeChanged(current, max)` and `OnCharacterDeath(manager)`.
-  - `SkillHitResolver`: Dispatches `OnSkillHealApplied(caster, target, amount)` for test monitoring and UI floaters.
-  - `AdventurerEventHub`: Publishes leader death/succession, checkpoint updates, room entry/clearing, potion/warp item usage, retreat blockades, DM seal triggers, and escape completion.
-  - `CombatResultHandler`: Dispatches `OnCombatEnded`, `OnSquadWiped`, `OnAdventurersEscaped` to evaluate battle metrics and trigger `PostBattleReport`.
-  - `CoreGameLoop`: Emits `OnPhaseChanged`, `OnRoundStarted`, `OnGameOver`.
-  - `DMSealAbilityController` & `DungeonMaster`: Listens to seal triggers, energy accumulation, and talent purchases.
+  - `CharacterStatsManager`: `OnLifeChanged(current, max)`, `OnLifeRestored(amount)`, `OnCharacterDeath(manager)`.
+  - `SkillHitResolver`: `OnSkillHealApplied(SkillInstance, GameObject, float)` (actual heal) and `OnSkillHealWithOverhealApplied(SkillInstance, GameObject, float, float)` (actual heal + overheal).
+  - `AdventurerEventHub`: Publishes leader death/succession, checkpoint updates, room entry/clearing, potion/warp usage, retreat blockades, DM seal triggers, and escape completion.
+  - `CombatResultHandler` & `CoreGameLoop`: Emits `OnCombatEnded`, `OnSquadWiped`, `OnAdventurersEscaped`, `OnPhaseChanged`, `OnRoundStarted`, and `OnGameOver`.
 
 ## 4. Pending Manual Steps, Known Issues & Next Steps
 - **Unity Editor / Inspector Tasks:**
-  - Ensure healer prefabs (e.g. `ADVENTURER_N001`) have `DefaultHealAllyGoal` assigned in `BaseAI.goals` and `SKILL_HEAL_001` configured in `CharacterSkillController.skills`.
-  - Assign `RegenTuning_Default.asset` to `CharacterStatsManager` instances or prefabs where out-of-combat regeneration tuning is required.
-  - Assign `PerceptionTuning_Default.asset` to `VisionController` instances to activate adaptive perception tiers.
-  - Confirm that `CameraController2D` is attached to the Main Camera with `clampToArenaBounds = true` across gameplay scenes.
-  - In `Combat_Sandbox.unity`, ensure `BattleSimulationTestRunner` harness is populated with valid adventurer and monster prefabs.
+  - Run `Tools/SBGames/AI Setup Validator` (or `ValidationService`) after authoring new skills, utility curves, or character prefabs to maintain 0 validation findings.
+  - When authoring new `UtilityGoal` or `UtilitySkill` curves, ensure curve keys and Bezier tangents stay strictly within `[0, 1]` so `ValidationService` passes without curve overshoot warnings.
+  - Keep `Resources/AI/RecoverySafety_Default.asset` present or assign a custom `RecoverySafetyTuningSO` on `BaseAI` when tuning recovery-vs-retreat thresholds.
 - **Known Gotchas / Architectural Constraints:**
-  - **Inactive GameObject Coroutines on Death/Cleanup:** When an agent is deactivated during death or despawn while an action stops (`OnDisable` $\to$ `StopAction` $\to$ `CharacterBrain.EndCastSkill` / `EndAttack`), calling `StartCoroutine` on an inactive GameObject logs a Unity warning/error. Handlers should guard with `gameObject.activeInHierarchy` before starting recovery coroutines.
-  - **MageAgent Healing:** `MageAgentTypeFactory` does not register `HealCapabilityFactory`. If a Mage or Cleric subclass is expected to cast ally heals via GOAP, `HealCapabilityFactory` must be added to its factory.
-  - **Recover vs Survive Priority:** When recovery items remain in a unit's item kit, `UtilityRecoverGoal` overrides `UtilitySurviveGoal` (`surviveOverrideFloor = 1.02f` vs clamped `1.0f`). Frontline units under extreme burst damage may exhaust items or fall before transitioning to `Survive`.
-  - **Macro Footprints:** Dungeon piece generation currently supports single-piece footprints with dynamic interior dimensions ($W \times H \ge 4 \times 4$); multi-cell macro pieces spanning multiple layout graph nodes remain deferred.
-  - **Phase Enum Overlap:** `CoreGameLoop.GamePhase` and `DungeonPhaseState.DungeonPhase` overlap conceptually, with both defining phase 0 as planning/build.
+  - **Inactive GameObject Coroutines on Action Stop:** Deactivating an agent during death/despawn while a GOAP action stops (`OnDisable` $\to$ `StopAction`) can invoke recovery coroutines on an inactive GameObject unless guarded by `gameObject.activeInHierarchy`.
+  - **Legacy Test Discovery Boundary:** Tests in `Assets/Tests/*.cs` compile into `Assembly-CSharp` rather than an Editor test assembly unless bridged via fixtures in `Assets/Tests/Editor/` (such as `LegacyRecoveryRegressionTests.cs`).
+  - **Macro Footprints & Phase Enums:** Dungeon piece generation supports single-piece dynamic dimensions ($W \times H \ge 4 \times 4$) while multi-node macro pieces remain deferred; `CoreGameLoop.GamePhase` and `DungeonPhaseState.DungeonPhase` remain separate enums sharing ordinal 0 for planning/build.
